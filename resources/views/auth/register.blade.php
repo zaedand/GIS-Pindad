@@ -43,7 +43,7 @@
                     <h1 class="text-3xl font-semibold">GIS<span class="text-blue-500">Phone</span>Monitor</h1>
                 </div>
 
-                <div class="mb-6">
+                <div class="mb-6 p-10">
                     <a href="/">
                         <x-application-logo class="w-48 h-auto mx-auto" />
                     </a>
@@ -146,7 +146,7 @@
 
             <div class="mt-8 pt-6 border-t border-gray-100">
                 <p class="text-center text-sm text-gray-500">
-                    Sistem ini hanya untuk penggunaan internal perusahaan.<br>Pastikan Anda memiliki izin untuk mendaftar.
+                    Sistem ini hanya digunakan untuk Internal PT.Pindad(Persero).<br>Pastikan Anda memiliki izin untuk mendaftar.
                 </p>
             </div>
         </div>

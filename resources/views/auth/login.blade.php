@@ -28,14 +28,14 @@
     </script>
 </head>
 
-<body class="min-h-screen flex items-center justify-center bg-gradient-to-br from-white to-blue-200 p-4 font-sans">
-    <div class="flex flex-col lg:flex-row w-full max-w-6xl shadow-lg border rounded-2xl overflow-hidden">
+<body class="min-h-screen flex items-center justify-center p-4 font-instrument-sans bg-gradient-to-br from-white to-slate-50">
+    <div class="flex flex-col md:flex-row w-full max-w-6xl">
 
         <!-- Left Branding -->
         <div class="bg-white text-black p-10 w-full lg:w-1/2 flex flex-col justify-between">
             <div>
                 <div class="flex items-center mb-8">
-                    <div class="w-16 h-16 bg-white/20 flex items-center justify-center mr-3 rounded">
+                    <div class="w-16 h-16 bg-black/10 flex items-center justify-center mr-3 rounded">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -44,9 +44,9 @@
                     <h1 class="text-3xl font-semibold">GIS<span class="text-blue-500">Phone</span>Monitor</h1>
                 </div>
 
-                <div class="mb-6">
+                <div class="mb-6 p-10">
                     <a href="/">
-                        <x-application-logo class="w-40 h-auto fill-current text-gray-500" />
+                        <x-application-logo class="w-48 h-auto mx-auto" />
                     </a>
                 </div>
             </div>
@@ -54,7 +54,7 @@
 
 
         <!-- Right Form -->
-        <div class="w-full lg:w-1/2 bg-white p-10 flex flex-col justify-center">
+        <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-10 md:w-1/2">
 
             <div class="mb-8 text-center">
                 <h2 class="text-3xl font-bold text-gray-800 mb-2">LOGIN</h2>
@@ -160,7 +160,7 @@
             </form>
 
             <p class="text-center text-sm text-gray-500 mt-8 border-t pt-4">
-                Sistem ini untuk penggunaan internal perusahaan. Hubungi IT Support jika ada kendala.
+                Sistem ini hanya digunakan untuk Internal PT.Pindad(Persero). Hubungi IT Support jika ada kendala.
             </p>
 
             <div class="flex justify-center mt-4 text-gray-500 text-sm">
@@ -169,7 +169,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21L8.89 10.5a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                 </svg>
-                IT Support: Ext. 1234
+                IT Support: 1234
             </div>
         </div>
     </div>
