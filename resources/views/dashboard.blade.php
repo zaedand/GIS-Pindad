@@ -179,7 +179,6 @@
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             // Initialize map
-            // Initialize map
             var map = L.map('map').setView([-8.173358, 112.684885], 17);
 
             // Tile Layer
@@ -276,12 +275,33 @@
             map.addControl(drawControl);
 
             map.on('draw:created', function (e) {
-                var layer = e.layer;
-                drawnItems.addLayer(layer);
+            var layer = e.layer;
+            drawnItems.addLayer(layer);
 
-                var geojson = layer.toGeoJSON();
-                console.log('GeoJSON hasil gambar:', JSON.stringify(geojson));
+            var geojson = layer.toGeoJSON();
+
+            fetch('/drawings', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify({
+                    geometry: geojson.geometry,
+                    properties: {
+                        name: 'Nama Area',
+                        description: 'Deskripsi jika perlu'
+                    }
+                })
+            }).then(response => response.json())
+            .then(data => {
+                alert('Gambar berhasil disimpan!');
+                console.log(data);
+            }).catch(error => {
+                console.error('Gagal menyimpan gambar:', error);
             });
+        });
+
 
             // Auto refresh functionality
             function refreshMap() {
