@@ -97,37 +97,41 @@ class NodeController extends Controller
      * Update the specified resource in storage.
      */
     public function update(Request $request, Node $node)
-    {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'ip' => ['required', 'ip', Rule::unique('nodes', 'ip_address')->ignore($node->id)],
-            'status' => 'required|in:online,offline,partial',
-            'latitude' => 'required|numeric|between:-90,90',
-            'longitude' => 'required|numeric|between:-180,180',
-            'description' => 'nullable|string'
-        ]);
+{
+    $validated = $request->validate([
+        'name' => 'required|string|max:255',
+        'ip' => ['required', 'ip', Rule::unique('nodes', 'ip_address')->ignore($node->id)],
+        'status' => 'required|in:online,offline,partial',
+        'latitude' => 'required|numeric|between:-90,90',
+        'longitude' => 'required|numeric|between:-180,180',
+        'description' => 'nullable|string'
+    ]);
 
-        $node->update([
-            'name' => $validated['name'],
-            'ip_address' => $validated['ip'],
-            'status' => $validated['status'],
-            'latitude' => $validated['latitude'],
-            'longitude' => $validated['longitude'],
-            'description' => $validated['description'] ?? null,
-        ]);
+    $node->update([
+        'name' => $validated['name'],
+        'ip_address' => $validated['ip'],
+        'status' => $validated['status'],
+        'latitude' => $validated['latitude'],
+        'longitude' => $validated['longitude'],
+        'description' => $validated['description'] ?? null,
+    ]);
 
-        return response()->json([
-            'id' => $node->id,
-            'name' => $node->name,
-            'ip' => $node->ip_address,
-            'status' => $node->status,
-            'coords' => $node->coords,
-            'lastPing' => $node->formatted_last_ping,
-            'uptime' => $node->formatted_uptime,
-            'responseTime' => $node->formatted_response_time,
-            'description' => $node->description
-        ]);
-    }
+    // ✅ Tambahkan ini
+    $node = $node->fresh();
+
+    return response()->json([
+        'id' => $node->id,
+        'name' => $node->name,
+        'ip' => $node->ip_address,
+        'status' => $node->status,
+        'coords' => $node->coords,
+        'lastPing' => $node->formatted_last_ping,
+        'uptime' => $node->formatted_uptime,
+        'responseTime' => $node->formatted_response_time,
+        'description' => $node->description
+    ]);
+}
+
 
     /**
      * Remove the specified resource from storage.
