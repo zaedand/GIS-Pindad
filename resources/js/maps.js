@@ -147,57 +147,326 @@ function getStatusColor(status) {
     }
 }
 
-async function createNode(nodeData) {
-    const response = await fetch('/api/nodes', {
-        method: 'POST',
-        headers: apiHeaders,
-        body: JSON.stringify(nodeData),
-    });
-    const newNode = await response.json();
-    nodes.push(newNode);
-    updateAll();
+
+// Toast function dengan styling yang lebih modern
+function showToast(message, type = 'success') {
+    const styles = {
+        success: {
+            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+            color: '#ffffff',
+            icon: '✅'
+        },
+        error: {
+            background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+            color: '#ffffff',
+            icon: '❌'
+        },
+        warning: {
+            background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+            color: '#ffffff',
+            icon: '⚠️'
+        },
+        info: {
+            background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+            color: '#ffffff',
+            icon: 'ℹ️'
+        }
+    };
+
+    const style = styles[type] || styles.success;
+    
+    Toastify({
+        text: `${style.icon} ${message}`,
+        duration: 3000,
+        close: true,
+        gravity: "top",
+        position: "right",
+        style: {
+            background: style.background,
+            color: style.color,
+            borderRadius: "12px",
+            padding: "16px 20px",
+            boxShadow: "0 10px 25px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.1)",
+            fontSize: "14px",
+            fontWeight: "500",
+            border: "none",
+            minWidth: "300px",
+            maxWidth: "400px",
+            backdropFilter: "blur(10px)",
+        },
+        onClick: function(){} // Dismiss on click
+    }).showToast();
 }
 
-async function updateNode(id, nodeData) {
-    const response = await fetch(`/api/nodes/${id}`, {
-        method: 'PUT',
-        headers: apiHeaders,
-        body: JSON.stringify(nodeData),
-    });
+// Modal konfirmasi dengan styling modern
+function showConfirmModal(message, onConfirm, onCancel = null) {
+    // Buat overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(5px);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: fadeIn 0.2s ease-out;
+    `;
 
-    if (!response.ok) {
-        const text = await response.text();
-        console.error('Gagal update node:', response.status, text);
-        return;
-    }
+    // Buat modal
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        background: white;
+        border-radius: 16px;
+        padding: 24px;
+        max-width: 400px;
+        width: 90%;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        animation: slideIn 0.3s ease-out;
+        position: relative;
+    `;
 
-    const updatedNode = await response.json(); // ✅ hanya dipanggil kalau status OK
-    const index = nodes.findIndex(node => node.id === id);
-    if (index !== -1) {
-        nodes[index] = updatedNode;
-        updateAll();
-    }
-}
+    modal.innerHTML = `
+        <div style="text-align: center;">
+            <div style="
+                width: 64px;
+                height: 64px;
+                background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+                border-radius: 50%;
+                margin: 0 auto 16px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 24px;
+            ">⚠️</div>
+            
+            <h3 style="
+                margin: 0 0 8px 0;
+                font-size: 18px;
+                font-weight: 600;
+                color: #1f2937;
+            ">Konfirmasi</h3>
+            
+            <p style="
+                margin: 0 0 24px 0;
+                color: #6b7280;
+                font-size: 14px;
+                line-height: 1.5;
+            ">${message}</p>
+            
+            <div style="
+                display: flex;
+                gap: 12px;
+                justify-content: center;
+            ">
+                <button id="cancelBtn" style="
+                    padding: 10px 20px;
+                    border: 2px solid #e5e7eb;
+                    background: white;
+                    color: #6b7280;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    font-weight: 500;
+                    transition: all 0.2s;
+                    min-width: 80px;
+                ">Batal</button>
+                
+                <button id="confirmBtn" style="
+                    padding: 10px 20px;
+                    border: none;
+                    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+                    color: white;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    font-weight: 500;
+                    transition: all 0.2s;
+                    min-width: 80px;
+                ">Hapus</button>
+            </div>
+        </div>
+    `;
 
-
-async function deleteNode(id) {
-    if (confirm('Yakin ingin menghapus node ini?')) {
-        const response = await fetch(`/api/nodes/${id}`, {
-            method: 'DELETE',
-            headers: {
-                'Accept': 'application/json'
+    // Tambahkan keyframes untuk animasi
+    if (!document.getElementById('modal-keyframes')) {
+        const style = document.createElement('style');
+        style.id = 'modal-keyframes';
+        style.textContent = `
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
             }
+            @keyframes slideIn {
+                from { transform: translateY(-50px); opacity: 0; }
+                to { transform: translateY(0); opacity: 1; }
+            }
+            @keyframes fadeOut {
+                from { opacity: 1; }
+                to { opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    // Event listeners
+    const confirmBtn = modal.querySelector('#confirmBtn');
+    const cancelBtn = modal.querySelector('#cancelBtn');
+
+    // Hover effects
+    confirmBtn.addEventListener('mouseenter', () => {
+        confirmBtn.style.transform = 'translateY(-1px)';
+        confirmBtn.style.boxShadow = '0 4px 12px rgba(239, 68, 68, 0.4)';
+    });
+    
+    confirmBtn.addEventListener('mouseleave', () => {
+        confirmBtn.style.transform = 'translateY(0)';
+        confirmBtn.style.boxShadow = 'none';
+    });
+
+    cancelBtn.addEventListener('mouseenter', () => {
+        cancelBtn.style.background = '#f9fafb';
+        cancelBtn.style.borderColor = '#d1d5db';
+        cancelBtn.style.transform = 'translateY(-1px)';
+    });
+    
+    cancelBtn.addEventListener('mouseleave', () => {
+        cancelBtn.style.background = 'white';
+        cancelBtn.style.borderColor = '#e5e7eb';
+        cancelBtn.style.transform = 'translateY(0)';
+    });
+
+    // Function untuk menutup modal
+    function closeModal() {
+        overlay.style.animation = 'fadeOut 0.2s ease-out';
+        setTimeout(() => {
+            document.body.removeChild(overlay);
+        }, 200);
+    }
+
+    // Event handlers
+    confirmBtn.addEventListener('click', () => {
+        closeModal();
+        if (onConfirm) onConfirm();
+    });
+
+    cancelBtn.addEventListener('click', () => {
+        closeModal();
+        if (onCancel) onCancel();
+    });
+
+    // Tutup modal ketika click overlay
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+            closeModal();
+            if (onCancel) onCancel();
+        }
+    });
+
+    // Tutup modal dengan ESC
+    document.addEventListener('keydown', function escHandler(e) {
+        if (e.key === 'Escape') {
+            closeModal();
+            if (onCancel) onCancel();
+            document.removeEventListener('keydown', escHandler);
+        }
+    });
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+}
+
+// Fungsi CRUD yang diperbaiki
+async function createNode(nodeData) {
+    try {
+        const response = await fetch('/api/nodes', {
+            method: 'POST',
+            headers: apiHeaders,
+            body: JSON.stringify(nodeData),
         });
 
         if (!response.ok) {
             const text = await response.text();
-            console.error('Gagal delete node:', response.status, text);
+            console.error('Gagal create device:', response.status, text);
+            showToast('Gagal menambahkan device!', 'error');
             return;
         }
 
-        nodes = nodes.filter(node => node.id !== id);
+        const newNode = await response.json();
+        nodes.push(newNode);
         updateAll();
+        showToast('Device berhasil ditambahkan!', 'success');
+    } catch (error) {
+        console.error('Error saat create device:', error);
+        showToast('Terjadi kesalahan saat menambahkan device!', 'error');
     }
+}
+
+async function updateNode(id, nodeData) {
+    try {
+        const response = await fetch(`/api/nodes/${id}`, {
+            method: 'PUT',
+            headers: apiHeaders,
+            body: JSON.stringify(nodeData),
+        });
+
+        if (!response.ok) {
+            const text = await response.text();
+            console.error('Gagal update device:', response.status, text);
+            showToast('Gagal memperbarui device!', 'error');
+            return;
+        }
+
+        const updatedNode = await response.json();
+        const index = nodes.findIndex(node => node.id === id);
+        if (index !== -1) {
+            nodes[index] = updatedNode;
+            updateAll();
+        }
+
+        showToast('Device berhasil diperbarui!', 'success');
+    } catch (error) {
+        console.error('Error saat update device:', error);
+        showToast('Terjadi kesalahan saat memperbarui device!', 'error');
+    }
+}
+
+async function deleteNode(id) {
+    showConfirmModal(
+        'Yakin ingin menghapus device ini? Tindakan ini tidak dapat dibatalkan.',
+        async () => {
+            try {
+                const response = await fetch(`/api/nodes/${id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    }
+                });
+
+                if (!response.ok) {
+                    const text = await response.text();
+                    console.error('Gagal delete device:', response.status, text);
+                    showToast('Gagal menghapus device!', 'error');
+                    return;
+                }
+
+                // Hapus node dari array lokal
+                nodes = nodes.filter(node => node.id !== id);
+                updateAll();
+
+                showToast('Device berhasil dihapus!', 'success');
+            } catch (error) {
+                console.error('Error saat delete device:', error);
+                showToast('Terjadi kesalahan saat menghapus device!', 'error');
+            }
+        }
+    );
 }
 
 
@@ -262,7 +531,7 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 function openAddModal() {
-    document.getElementById('modal-title').textContent = 'Tambah Node Baru';
+    document.getElementById('modal-title').textContent = 'Tambah Device Baru';
     document.getElementById('nodeForm').reset();
     editingNodeId = null;
     document.getElementById('nodeModal').style.display = 'block';

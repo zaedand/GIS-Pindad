@@ -2,7 +2,6 @@
 <x-app-layout>
     <x-slot name="header">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                {{ __('') }}
             Phone Monitoring System - Selamat datang {{ Auth::user()->name }}
         </h2>
     </x-slot>
@@ -170,7 +169,7 @@
             </div>
         </div>
     </div>
-
+<!-- 
     @push('scripts')
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
@@ -323,5 +322,5 @@
             }
         });
     </script>
-    @endpush
+    @endpush -->
 </x-app-layout>
