@@ -192,5 +192,7 @@
         </div>
     </div>
 
-
+@push('scripts')
+    @vite('resources/js/maps.js')
+@endpush
 </x-app-layout>

@@ -58,20 +58,36 @@ function initMap() {
         drawnItems.addLayer(layer);
         const geojson = layer.toGeoJSON();
 
+        // Buat ID unik, bisa pakai timestamp atau counter
+        const deviceId = 'device-' + Date.now();
+
+        // Simpan id di options agar mudah dipanggil kembali
+        layer.options.deviceId = deviceId;
+
+        // Tambahkan id ke elemen SVG saat layer ditambahkan ke map
+        layer.on('add', function () {
+            const el = layer.getElement(); // Ini akan ambil elemen SVG atau marker DOM
+            if (el) {
+                el.setAttribute('id', deviceId);
+                el.setAttribute('data-device-id', deviceId);
+                el.classList.add('device-shape'); // opsional: class untuk semua device
+            }
+        });
+
         if (layer instanceof L.Circle) {
             const latlng = layer.getLatLng();
             const radius = layer.getRadius();
-            fillFormAndOpenModal(latlng.lat, latlng.lng, `Radius: ${radius.toFixed(2)} meter`);
+            fillFormAndOpenModal(latlng.lat, latlng.lng, `Radius: ${radius.toFixed(2)} meter`, deviceId);
         } else if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
             const latlngs = layer.getLatLngs();
             let totalDistance = 0;
             for (let i = 1; i < latlngs.length; i++) {
                 totalDistance += latlngs[i - 1].distanceTo(latlngs[i]);
             }
-            fillFormAndOpenModal(latlngs[0].lat, latlngs[0].lng, `Length: ${totalDistance.toFixed(2)} meter`);
+            fillFormAndOpenModal(latlngs[0].lat, latlngs[0].lng, `Length: ${totalDistance.toFixed(2)} meter`, deviceId);
         } else if (layer instanceof L.Marker) {
             const latlng = layer.getLatLng();
-            fillFormAndOpenModal(latlng.lat, latlng.lng);
+            fillFormAndOpenModal(latlng.lat, latlng.lng, '', deviceId);
         }
 
         console.log('GeoJSON hasil gambar:', JSON.stringify(geojson));
@@ -106,24 +122,37 @@ function updateMapMarkers() {
     markers = [];
 
     nodes.forEach(node => {
-    const [lat, lng] = node.coords;
-    if (isNaN(lat) || isNaN(lng)) {
-        console.warn(`Invalid coords for node ID ${node.id}:`, node.coords);
-        return; // skip marker jika data tidak valid
-    }
+        const [lat, lng] = node.coords;
+        if (isNaN(lat) || isNaN(lng)) {
+            console.warn(`Invalid coords for node ID ${node.id}:`, node.coords);
+            return;
+        }
 
-    const color = getStatusColor(node.status);
-    const marker = L.circleMarker([lat, lng], {
-        radius: 12,
-        color,
-        fillColor: color,
-        fillOpacity: 0.8,
-        weight: 3
-    }).addTo(map);
+        const color = getStatusColor(node.status);
+
+        const marker = L.circleMarker([lat, lng], {
+            radius: 12,
+            color,
+            fillColor: color,
+            fillOpacity: 0.8,
+            weight: 3
+        });
+
+        // ✅ Tambahkan ID ke elemen path sebelum addTo(map)
+        marker.on('add', function () {
+            const el = marker.getElement();
+            if (el) {
+                el.setAttribute('id', `device-${node.id}`);
+                el.setAttribute('data-device-id', node.id);
+            }
+        });
+
+        marker.addTo(map);
 
         const popupContent = `
             <div style="font-family: sans-serif; padding: 10px;">
                 <h4>${node.name}</h4>
+                <div>Device Id : ${node.id}</div>
                 <div>Status: <strong style="color:${color};">${node.status}</strong></div>
                 <div>IP: <code>${node.ip}</code></div>
                 <div>Last Ping: ${node.lastPing}</div>
@@ -137,6 +166,7 @@ function updateMapMarkers() {
         markers.push(marker);
     });
 }
+
 
 function getStatusColor(status) {
     switch (status) {
@@ -587,9 +617,13 @@ function refreshMap() {
     updateAll();
 }
 
-document.getElementById('nodeModal').addEventListener('click', function (e) {
-    if (e.target === this) closeModal();
-});
+const modal = document.getElementById('nodeModal');
+if (modal) {
+    modal.addEventListener('click', function (e) {
+        if (e.target === this) closeModal();
+    });
+}
+
 
 document.getElementById('nodeForm').addEventListener('submit', function (e) {
     e.preventDefault();
@@ -633,6 +667,7 @@ Object.assign(window, {
     editNode,
     focusOnNode,
     deleteNode,
-    closeModal
+    closeModal,
+    refreshMap
 });
 
