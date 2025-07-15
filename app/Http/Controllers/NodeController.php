@@ -116,7 +116,7 @@ class NodeController extends Controller
         'description' => $validated['description'] ?? null,
     ]);
 
-    // ✅ Tambahkan ini
+
     $node = $node->fresh();
 
     return response()->json([
