@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->ipAddress('ip_address');
+            $table->string('endpoint');
             $table->enum('status', ['online', 'offline', 'partial'])->default('offline');
             $table->decimal('latitude', 10, 8);
             $table->decimal('longitude', 11, 8);

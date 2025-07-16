@@ -153,10 +153,12 @@ function updateMapMarkers() {
             <div style="font-family: sans-serif; padding: 10px;">
                 <h4>${node.name}</h4>
                 <div>Device Id : ${node.id}</div>
+                <div>Endpoint : ${node.endpoint}</div>
                 <div>Status: <strong style="color:${color};">${node.status}</strong></div>
                 <div>IP: <code>${node.ip}</code></div>
                 <div>Last Ping: ${node.lastPing}</div>
                 <div>Uptime: ${node.uptime}</div>
+                <div>Keterangan : ${node.description}</div>
                 <div style="margin-top: 10px;">
                     <button onclick="editNode(${node.id})" class="text-blue-600 text-xs">✏ Edit</button>
                     <button onclick="deleteNode(${node.id})" class="text-red-600 text-xs ml-2">🗑 Delete</button>
@@ -534,14 +536,16 @@ function updateNodesTable() {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${node.name}</td>
-            <td style="font-family: monospace;">${node.ip}</td>
+            <td style="font-family: monospace; text-align: center">${node.ip}</td>
+            <td style="font-family: monospace; text-align: center">${node.endpoint}</td>
             <td>
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" style="background-color:${color}20; color:${color};">
+                <span class=" text-align: center inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" style="background-color:${color}20; color:${color};">
                     <div class="w-2 h-2 rounded-full mr-1.5" style="background-color:${color};"></div>
                     ${node.status}
                 </span>
             </td>
-            <td>${lat.toFixed(4)}, ${lng.toFixed(4)}</td>
+            <td style="ext-align: center">${lat.toFixed(4)}, ${lng.toFixed(4)}</td>
+            <td style="font-family: monospace; text-align: left">${node.description}</td>
             <td>${node.uptime}</td>
             <td>
                 <div class="flex space-x-2">
@@ -576,6 +580,8 @@ function editNode(id) {
     document.getElementById('modal-title').textContent = 'Edit Node';
     document.getElementById('nodeName').value = node.name;
     document.getElementById('nodeIP').value = node.ip;
+    document.getElementById('nodeEndpoint').value = node.endpoint || '';
+    document.getElementById('nodeDescription').value = node.description;
     document.getElementById('nodeStatus').value = node.status;
     document.getElementById('nodeLatitude').value = lat;
     document.getElementById('nodeLongitude').value = lng;
@@ -641,9 +647,11 @@ document.getElementById('nodeForm').addEventListener('submit', function (e) {
     const nodeData = {
         name: formData.get('name'),
         ip: formData.get('ip'),
+        endpoint: formData.get('endpoint'),
         status: formData.get('status'),
         latitude: lat,
         longitude: lng,
+        description: formData.get('description'),
         coords: [lat, lng],
         lastPing: '1s ago',
         uptime: '99.9%'

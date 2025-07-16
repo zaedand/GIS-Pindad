@@ -113,8 +113,10 @@
                             <tr>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Gedung</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">IP Address</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Endpoint</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Device(koordinat)</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Keterangan</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Uptime</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                             </tr>
@@ -130,67 +132,82 @@
 
     <!-- Modal -->
     <div id="nodeModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
-        <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-                <div class="flex items-center justify-between mb-6">
-                    <h3 id="modal-title" class="text-lg font-semibold text-gray-900">Tambah Device Baru</h3>
-                    <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
-                        <i class="fas fa-times"></i>
-                    </button>
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <div class="flex items-center justify-between mb-6">
+                <h3 id="modal-title" class="text-lg font-semibold text-gray-900">Tambah Device Baru</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <form id="nodeForm">
+                <div class="space-y-4">
+
+                    <div>
+                        <label for="nodeName" class="block text-sm font-medium text-gray-700 mb-1">Nama Gedung</label>
+                        <input type="text" id="nodeName" name="name" required
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+
+                    <div>
+                        <label for="nodeIP" class="block text-sm font-medium text-gray-700 mb-1">IP Address</label>
+                        <input type="text" id="nodeIP" name="ip" required pattern="^(\d{1,3}\.){3}\d{1,3}$"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+
+                    <div>
+                        <label for="nodeEndpoint" class="block text-sm font-medium text-gray-700 mb-1">Endpoint</label>
+                        <input type="text" id="nodeEndpoint" name="endpoint" required
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+
+                    <div>
+                        <label for="nodeStatus" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                        <select id="nodeStatus" name="status" required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="online">Online</option>
+                            <option value="offline">Offline</option>
+                            <option value="partial">Partial</option>
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="nodeLatitude" class="block text-sm font-medium text-gray-700 mb-1">Latitude</label>
+                            <input type="number" id="nodeLatitude" name="latitude" step="any" required
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+                        <div>
+                            <label for="nodeLongitude" class="block text-sm font-medium text-gray-700 mb-1">Longitude</label>
+                            <input type="number" id="nodeLongitude" name="longitude" step="any" required
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="nodeDescription" class="block text-sm font-medium text-gray-700 mb-1">Keterangan</label>
+                        <textarea id="nodeDescription" name="description" rows="3"
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
+                    </div>
+
                 </div>
 
-                <form id="nodeForm">
-                    <div class="space-y-4">
-                        <div>
-                            <label for="nodeName" class="block text-sm font-medium text-gray-700 mb-1">Nama Gedung</label>
-                            <input type="text" id="nodeName" name="name" required
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                        </div>
-
-                        <div>
-                            <label for="nodeIP" class="block text-sm font-medium text-gray-700 mb-1">IP Address</label>
-                            <input type="text" id="nodeIP" name="ip" required pattern="^(\d{1,3}\.){3}\d{1,3}$"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                        </div>
-
-                        <div>
-                            <label for="nodeStatus" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                            <select id="nodeStatus" name="status" required
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                                <option value="online">Online</option>
-                                <option value="offline">Offline</option>
-                                <option value="partial">Partial</option>
-                            </select>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label for="nodeLatitude" class="block text-sm font-medium text-gray-700 mb-1">Latitude</label>
-                                <input type="number" id="nodeLatitude" name="latitude" step="any" required
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                            </div>
-                            <div>
-                                <label for="nodeLongitude" class="block text-sm font-medium text-gray-700 mb-1">Longitude</label>
-                                <input type="number" id="nodeLongitude" name="longitude" step="any" required
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="flex justify-end space-x-3 mt-6">
-                        <button type="button" onclick="closeModal()"
-                                class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
-                            Batal
-                        </button>
-                        <button type="submit"
-                                class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700">
-                            Simpan
-                        </button>
-                    </div>
-                </form>
-            </div>
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button type="button" onclick="closeModal()"
+                            class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                        Batal
+                    </button>
+                    <button type="submit"
+                            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700">
+                        Simpan
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
+</div>
+
 
 @push('scripts')
     @vite('resources/js/maps.js')

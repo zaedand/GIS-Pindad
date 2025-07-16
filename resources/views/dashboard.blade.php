@@ -69,7 +69,7 @@
 
                     <div id="map" class="h-96 rounded-xl overflow-hidden shadow-inner"></div>
 
-                    <div class="flex flex-wrap gap-4 mt-4 text-sm">
+                    <div id= "device-status" class="flex flex-wrap gap-4 mt-4 text-sm">
                         <div class="flex items-center gap-2">
                             <div class="w-3 h-3 bg-green-500 rounded-full shadow-lg"></div>
                             <span class="text-gray-700 font-medium">Online</span>
@@ -170,8 +170,16 @@
         </div>
     </div>
 
- 
-    @vite('resources/js/viewmap.js')
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script>
+    const socket = io("http://localhost:3000"); // ganti jika pakai IP LAN/VM
+
+    socket.on("device-status", function(data) {
+        console.log("Data realtime:", data);
+        // TODO: update status device di halaman
+    });
+</script>
+
 
 
 </x-app-layout>
