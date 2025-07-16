@@ -13,6 +13,7 @@ class Node extends Model
     protected $fillable = [
         'name',
         'ip_address',
+        'endpoint',
         'status',
         'latitude',
         'longitude',

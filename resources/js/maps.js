@@ -58,20 +58,36 @@ function initMap() {
         drawnItems.addLayer(layer);
         const geojson = layer.toGeoJSON();
 
+        // Buat ID unik, bisa pakai timestamp atau counter
+        const deviceId = 'device-' + Date.now();
+
+        // Simpan id di options agar mudah dipanggil kembali
+        layer.options.deviceId = deviceId;
+
+        // Tambahkan id ke elemen SVG saat layer ditambahkan ke map
+        layer.on('add', function () {
+            const el = layer.getElement(); // Ini akan ambil elemen SVG atau marker DOM
+            if (el) {
+                el.setAttribute('id', deviceId);
+                el.setAttribute('data-device-id', deviceId);
+                el.classList.add('device-shape'); // opsional: class untuk semua device
+            }
+        });
+
         if (layer instanceof L.Circle) {
             const latlng = layer.getLatLng();
             const radius = layer.getRadius();
-            fillFormAndOpenModal(latlng.lat, latlng.lng, `Radius: ${radius.toFixed(2)} meter`);
+            fillFormAndOpenModal(latlng.lat, latlng.lng, `Radius: ${radius.toFixed(2)} meter`, deviceId);
         } else if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
             const latlngs = layer.getLatLngs();
             let totalDistance = 0;
             for (let i = 1; i < latlngs.length; i++) {
                 totalDistance += latlngs[i - 1].distanceTo(latlngs[i]);
             }
-            fillFormAndOpenModal(latlngs[0].lat, latlngs[0].lng, `Length: ${totalDistance.toFixed(2)} meter`);
+            fillFormAndOpenModal(latlngs[0].lat, latlngs[0].lng, `Length: ${totalDistance.toFixed(2)} meter`, deviceId);
         } else if (layer instanceof L.Marker) {
             const latlng = layer.getLatLng();
-            fillFormAndOpenModal(latlng.lat, latlng.lng);
+            fillFormAndOpenModal(latlng.lat, latlng.lng, '', deviceId);
         }
 
         console.log('GeoJSON hasil gambar:', JSON.stringify(geojson));
@@ -106,28 +122,43 @@ function updateMapMarkers() {
     markers = [];
 
     nodes.forEach(node => {
-    const [lat, lng] = node.coords;
-    if (isNaN(lat) || isNaN(lng)) {
-        console.warn(`Invalid coords for node ID ${node.id}:`, node.coords);
-        return; // skip marker jika data tidak valid
-    }
+        const [lat, lng] = node.coords;
+        if (isNaN(lat) || isNaN(lng)) {
+            console.warn(`Invalid coords for node ID ${node.id}:`, node.coords);
+            return;
+        }
 
-    const color = getStatusColor(node.status);
-    const marker = L.circleMarker([lat, lng], {
-        radius: 12,
-        color,
-        fillColor: color,
-        fillOpacity: 0.8,
-        weight: 3
-    }).addTo(map);
+        const color = getStatusColor(node.status);
+
+        const marker = L.circleMarker([lat, lng], {
+            radius: 12,
+            color,
+            fillColor: color,
+            fillOpacity: 0.8,
+            weight: 3
+        });
+
+        // ✅ Tambahkan ID ke elemen path sebelum addTo(map)
+        marker.on('add', function () {
+            const el = marker.getElement();
+            if (el) {
+                el.setAttribute('id', `device-${node.id}`);
+                el.setAttribute('data-device-id', node.id);
+            }
+        });
+
+        marker.addTo(map);
 
         const popupContent = `
             <div style="font-family: sans-serif; padding: 10px;">
                 <h4>${node.name}</h4>
+                <div>Device Id : ${node.id}</div>
+                <div>Endpoint : ${node.endpoint}</div>
                 <div>Status: <strong style="color:${color};">${node.status}</strong></div>
                 <div>IP: <code>${node.ip}</code></div>
                 <div>Last Ping: ${node.lastPing}</div>
                 <div>Uptime: ${node.uptime}</div>
+                <div>Keterangan : ${node.description}</div>
                 <div style="margin-top: 10px;">
                     <button onclick="editNode(${node.id})" class="text-blue-600 text-xs">✏ Edit</button>
                     <button onclick="deleteNode(${node.id})" class="text-red-600 text-xs ml-2">🗑 Delete</button>
@@ -138,6 +169,7 @@ function updateMapMarkers() {
     });
 }
 
+
 function getStatusColor(status) {
     switch (status) {
         case 'online': return '#10b981';
@@ -147,57 +179,326 @@ function getStatusColor(status) {
     }
 }
 
-async function createNode(nodeData) {
-    const response = await fetch('/api/nodes', {
-        method: 'POST',
-        headers: apiHeaders,
-        body: JSON.stringify(nodeData),
-    });
-    const newNode = await response.json();
-    nodes.push(newNode);
-    updateAll();
+
+// Toast function dengan styling yang lebih modern
+function showToast(message, type = 'success') {
+    const styles = {
+        success: {
+            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+            color: '#ffffff',
+            icon: '✅'
+        },
+        error: {
+            background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+            color: '#ffffff',
+            icon: '❌'
+        },
+        warning: {
+            background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+            color: '#ffffff',
+            icon: '⚠️'
+        },
+        info: {
+            background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+            color: '#ffffff',
+            icon: 'ℹ️'
+        }
+    };
+
+    const style = styles[type] || styles.success;
+    
+    Toastify({
+        text: `${style.icon} ${message}`,
+        duration: 3000,
+        close: true,
+        gravity: "top",
+        position: "right",
+        style: {
+            background: style.background,
+            color: style.color,
+            borderRadius: "12px",
+            padding: "16px 20px",
+            boxShadow: "0 10px 25px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.1)",
+            fontSize: "14px",
+            fontWeight: "500",
+            border: "none",
+            minWidth: "300px",
+            maxWidth: "400px",
+            backdropFilter: "blur(10px)",
+        },
+        onClick: function(){} // Dismiss on click
+    }).showToast();
 }
 
-async function updateNode(id, nodeData) {
-    const response = await fetch(`/api/nodes/${id}`, {
-        method: 'PUT',
-        headers: apiHeaders,
-        body: JSON.stringify(nodeData),
-    });
+// Modal konfirmasi dengan styling modern
+function showConfirmModal(message, onConfirm, onCancel = null) {
+    // Buat overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(5px);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: fadeIn 0.2s ease-out;
+    `;
 
-    if (!response.ok) {
-        const text = await response.text();
-        console.error('Gagal update node:', response.status, text);
-        return;
-    }
+    // Buat modal
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        background: white;
+        border-radius: 16px;
+        padding: 24px;
+        max-width: 400px;
+        width: 90%;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        animation: slideIn 0.3s ease-out;
+        position: relative;
+    `;
 
-    const updatedNode = await response.json(); // ✅ hanya dipanggil kalau status OK
-    const index = nodes.findIndex(node => node.id === id);
-    if (index !== -1) {
-        nodes[index] = updatedNode;
-        updateAll();
-    }
-}
+    modal.innerHTML = `
+        <div style="text-align: center;">
+            <div style="
+                width: 64px;
+                height: 64px;
+                background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+                border-radius: 50%;
+                margin: 0 auto 16px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 24px;
+            ">⚠️</div>
+            
+            <h3 style="
+                margin: 0 0 8px 0;
+                font-size: 18px;
+                font-weight: 600;
+                color: #1f2937;
+            ">Konfirmasi</h3>
+            
+            <p style="
+                margin: 0 0 24px 0;
+                color: #6b7280;
+                font-size: 14px;
+                line-height: 1.5;
+            ">${message}</p>
+            
+            <div style="
+                display: flex;
+                gap: 12px;
+                justify-content: center;
+            ">
+                <button id="cancelBtn" style="
+                    padding: 10px 20px;
+                    border: 2px solid #e5e7eb;
+                    background: white;
+                    color: #6b7280;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    font-weight: 500;
+                    transition: all 0.2s;
+                    min-width: 80px;
+                ">Batal</button>
+                
+                <button id="confirmBtn" style="
+                    padding: 10px 20px;
+                    border: none;
+                    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+                    color: white;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    font-weight: 500;
+                    transition: all 0.2s;
+                    min-width: 80px;
+                ">Hapus</button>
+            </div>
+        </div>
+    `;
 
-
-async function deleteNode(id) {
-    if (confirm('Yakin ingin menghapus node ini?')) {
-        const response = await fetch(`/api/nodes/${id}`, {
-            method: 'DELETE',
-            headers: {
-                'Accept': 'application/json'
+    // Tambahkan keyframes untuk animasi
+    if (!document.getElementById('modal-keyframes')) {
+        const style = document.createElement('style');
+        style.id = 'modal-keyframes';
+        style.textContent = `
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
             }
+            @keyframes slideIn {
+                from { transform: translateY(-50px); opacity: 0; }
+                to { transform: translateY(0); opacity: 1; }
+            }
+            @keyframes fadeOut {
+                from { opacity: 1; }
+                to { opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    // Event listeners
+    const confirmBtn = modal.querySelector('#confirmBtn');
+    const cancelBtn = modal.querySelector('#cancelBtn');
+
+    // Hover effects
+    confirmBtn.addEventListener('mouseenter', () => {
+        confirmBtn.style.transform = 'translateY(-1px)';
+        confirmBtn.style.boxShadow = '0 4px 12px rgba(239, 68, 68, 0.4)';
+    });
+    
+    confirmBtn.addEventListener('mouseleave', () => {
+        confirmBtn.style.transform = 'translateY(0)';
+        confirmBtn.style.boxShadow = 'none';
+    });
+
+    cancelBtn.addEventListener('mouseenter', () => {
+        cancelBtn.style.background = '#f9fafb';
+        cancelBtn.style.borderColor = '#d1d5db';
+        cancelBtn.style.transform = 'translateY(-1px)';
+    });
+    
+    cancelBtn.addEventListener('mouseleave', () => {
+        cancelBtn.style.background = 'white';
+        cancelBtn.style.borderColor = '#e5e7eb';
+        cancelBtn.style.transform = 'translateY(0)';
+    });
+
+    // Function untuk menutup modal
+    function closeModal() {
+        overlay.style.animation = 'fadeOut 0.2s ease-out';
+        setTimeout(() => {
+            document.body.removeChild(overlay);
+        }, 200);
+    }
+
+    // Event handlers
+    confirmBtn.addEventListener('click', () => {
+        closeModal();
+        if (onConfirm) onConfirm();
+    });
+
+    cancelBtn.addEventListener('click', () => {
+        closeModal();
+        if (onCancel) onCancel();
+    });
+
+    // Tutup modal ketika click overlay
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+            closeModal();
+            if (onCancel) onCancel();
+        }
+    });
+
+    // Tutup modal dengan ESC
+    document.addEventListener('keydown', function escHandler(e) {
+        if (e.key === 'Escape') {
+            closeModal();
+            if (onCancel) onCancel();
+            document.removeEventListener('keydown', escHandler);
+        }
+    });
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+}
+
+// Fungsi CRUD yang diperbaiki
+async function createNode(nodeData) {
+    try {
+        const response = await fetch('/api/nodes', {
+            method: 'POST',
+            headers: apiHeaders,
+            body: JSON.stringify(nodeData),
         });
 
         if (!response.ok) {
             const text = await response.text();
-            console.error('Gagal delete node:', response.status, text);
+            console.error('Gagal create device:', response.status, text);
+            showToast('Gagal menambahkan device!', 'error');
             return;
         }
 
-        nodes = nodes.filter(node => node.id !== id);
+        const newNode = await response.json();
+        nodes.push(newNode);
         updateAll();
+        showToast('Device berhasil ditambahkan!', 'success');
+    } catch (error) {
+        console.error('Error saat create device:', error);
+        showToast('Terjadi kesalahan saat menambahkan device!', 'error');
     }
+}
+
+async function updateNode(id, nodeData) {
+    try {
+        const response = await fetch(`/api/nodes/${id}`, {
+            method: 'PUT',
+            headers: apiHeaders,
+            body: JSON.stringify(nodeData),
+        });
+
+        if (!response.ok) {
+            const text = await response.text();
+            console.error('Gagal update device:', response.status, text);
+            showToast('Gagal memperbarui device!', 'error');
+            return;
+        }
+
+        const updatedNode = await response.json();
+        const index = nodes.findIndex(node => node.id === id);
+        if (index !== -1) {
+            nodes[index] = updatedNode;
+            updateAll();
+        }
+
+        showToast('Device berhasil diperbarui!', 'success');
+    } catch (error) {
+        console.error('Error saat update device:', error);
+        showToast('Terjadi kesalahan saat memperbarui device!', 'error');
+    }
+}
+
+async function deleteNode(id) {
+    showConfirmModal(
+        'Yakin ingin menghapus device ini? Tindakan ini tidak dapat dibatalkan.',
+        async () => {
+            try {
+                const response = await fetch(`/api/nodes/${id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    }
+                });
+
+                if (!response.ok) {
+                    const text = await response.text();
+                    console.error('Gagal delete device:', response.status, text);
+                    showToast('Gagal menghapus device!', 'error');
+                    return;
+                }
+
+                // Hapus node dari array lokal
+                nodes = nodes.filter(node => node.id !== id);
+                updateAll();
+
+                showToast('Device berhasil dihapus!', 'success');
+            } catch (error) {
+                console.error('Error saat delete device:', error);
+                showToast('Terjadi kesalahan saat menghapus device!', 'error');
+            }
+        }
+    );
 }
 
 
@@ -235,14 +536,16 @@ function updateNodesTable() {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${node.name}</td>
-            <td style="font-family: monospace;">${node.ip}</td>
+            <td style="font-family: monospace; text-align: center">${node.ip}</td>
+            <td style="font-family: monospace; text-align: center">${node.endpoint}</td>
             <td>
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" style="background-color:${color}20; color:${color};">
+                <span class=" text-align: center inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" style="background-color:${color}20; color:${color};">
                     <div class="w-2 h-2 rounded-full mr-1.5" style="background-color:${color};"></div>
                     ${node.status}
                 </span>
             </td>
-            <td>${lat.toFixed(4)}, ${lng.toFixed(4)}</td>
+            <td style="ext-align: center">${lat.toFixed(4)}, ${lng.toFixed(4)}</td>
+            <td style="font-family: monospace; text-align: left">${node.description}</td>
             <td>${node.uptime}</td>
             <td>
                 <div class="flex space-x-2">
@@ -262,7 +565,7 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 function openAddModal() {
-    document.getElementById('modal-title').textContent = 'Tambah Node Baru';
+    document.getElementById('modal-title').textContent = 'Tambah Device Baru';
     document.getElementById('nodeForm').reset();
     editingNodeId = null;
     document.getElementById('nodeModal').style.display = 'block';
@@ -277,6 +580,8 @@ function editNode(id) {
     document.getElementById('modal-title').textContent = 'Edit Node';
     document.getElementById('nodeName').value = node.name;
     document.getElementById('nodeIP').value = node.ip;
+    document.getElementById('nodeEndpoint').value = node.endpoint || '';
+    document.getElementById('nodeDescription').value = node.description;
     document.getElementById('nodeStatus').value = node.status;
     document.getElementById('nodeLatitude').value = lat;
     document.getElementById('nodeLongitude').value = lng;
@@ -318,9 +623,13 @@ function refreshMap() {
     updateAll();
 }
 
-document.getElementById('nodeModal').addEventListener('click', function (e) {
-    if (e.target === this) closeModal();
-});
+const modal = document.getElementById('nodeModal');
+if (modal) {
+    modal.addEventListener('click', function (e) {
+        if (e.target === this) closeModal();
+    });
+}
+
 
 document.getElementById('nodeForm').addEventListener('submit', function (e) {
     e.preventDefault();
@@ -338,9 +647,11 @@ document.getElementById('nodeForm').addEventListener('submit', function (e) {
     const nodeData = {
         name: formData.get('name'),
         ip: formData.get('ip'),
+        endpoint: formData.get('endpoint'),
         status: formData.get('status'),
         latitude: lat,
         longitude: lng,
+        description: formData.get('description'),
         coords: [lat, lng],
         lastPing: '1s ago',
         uptime: '99.9%'
@@ -364,6 +675,7 @@ Object.assign(window, {
     editNode,
     focusOnNode,
     deleteNode,
-    closeModal
+    closeModal,
+    refreshMap
 });
 

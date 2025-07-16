@@ -2,7 +2,6 @@
 <x-app-layout>
     <x-slot name="header">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                {{ __('') }}
             Phone Monitoring System - Selamat datang {{ Auth::user()->name }}
         </h2>
     </x-slot>
@@ -70,7 +69,7 @@
 
                     <div id="dashboard-map" class="h-96 rounded-xl overflow-hidden shadow-inner"></div>
 
-                    <div class="flex flex-wrap gap-4 mt-4 text-sm">
+                    <div id= "device-status" class="flex flex-wrap gap-4 mt-4 text-sm">
                         <div class="flex items-center gap-2">
                             <div class="w-3 h-3 bg-green-500 rounded-full shadow-lg"></div>
                             <span class="text-gray-700 font-medium">Online</span>
@@ -171,9 +170,20 @@
         </div>
     </div>
 
+
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script>
+    const socket = io("http://localhost:3000"); // ganti jika pakai IP LAN/VM
+
+    socket.on("device-status", function(data) {
+        console.log("Data realtime:", data);
+        // TODO: update status device di halaman
+    });
+</script>
+
+
 @push('scripts')
     <script src="{{ asset('js/dashMap.js') }}"></script>
 @endpush
-
 
 </x-app-layout>
