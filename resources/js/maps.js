@@ -1,3 +1,5 @@
+import { io } from 'socket.io-client';
+
 let map;
 let markers = [];
 let nodes = [];
@@ -8,6 +10,42 @@ const apiHeaders = {
     'Accept': 'application/json',
     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
 };
+
+
+
+function getStatusColor(status) {
+  switch (status) {
+    case 'online': return '#10b981';    // hijau
+    case 'offline': return '#ef4444';   // merah
+    case 'partial': return '#f59e0b';   // kuning
+    default: return '#6b7280';          // abu-abu
+  }
+}
+
+// Inisialisasi socket.io
+const socket = io('http://localhost:3000');
+
+socket.on('connect', () => {
+  console.log('Terhubung ke server Socket.IO');
+});
+
+socket.on('server:welcome', data => {
+  console.log(data.message);
+});
+
+// Event utama: update status device dari server
+socket.on('device:status-update', devices => {
+  console.log('Update status diterima:', devices);
+
+  devices.forEach(device => {
+    const el = document.querySelector(`[data-device-id="device-${device.id}"]`);
+    if (el) {
+      const color = getStatusColor(device.status);
+      el.setAttribute('stroke', color);
+      el.setAttribute('fill', color);
+    }
+  });
+});
 
 
 async function fetchNodes() {
@@ -170,14 +208,14 @@ function updateMapMarkers() {
 }
 
 
-function getStatusColor(status) {
-    switch (status) {
-        case 'online': return '#10b981';
-        case 'offline': return '#ef4444';
-        case 'partial': return '#f59e0b';
-        default: return '#6b7280';
-    }
-}
+// function getStatusColor(status) {
+//     switch (status) {
+//         case 'online': return '#10b981';
+//         case 'offline': return '#ef4444';
+//         case 'partial': return '#f59e0b';
+//         default: return '#6b7280';
+//     }
+// }
 
 
 // Toast function dengan styling yang lebih modern
@@ -577,7 +615,7 @@ function editNode(id) {
 
     const [lat, lng] = getLatLngFromCoords(node.coords);
 
-    document.getElementById('modal-title').textContent = 'Edit Node';
+    document.getElementById('modal-title').textContent = 'Edit Device';
     document.getElementById('nodeName').value = node.name;
     document.getElementById('nodeIP').value = node.ip;
     document.getElementById('nodeEndpoint').value = node.endpoint || '';

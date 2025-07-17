@@ -11,3 +11,4 @@ Route::get('/user', function (Request $request) {
 Route::apiResource('nodes', NodeController::class)->parameters([
     'nodes' => 'node'
 ]);
+Route::put('/nodes/{node}/status', [NodeController::class, 'updateStatus']);
