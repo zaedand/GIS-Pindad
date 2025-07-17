@@ -67,7 +67,7 @@
                         </button>
                     </div>
 
-                    <div id="map" class="h-96 rounded-xl overflow-hidden shadow-inner"></div>
+                    <div id="dashboard-map" class="h-96 rounded-xl overflow-hidden shadow-inner"></div>
 
                     <div id= "device-status" class="flex flex-wrap gap-4 mt-4 text-sm">
                         <div class="flex items-center gap-2">
@@ -170,6 +170,7 @@
         </div>
     </div>
 
+
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 <script>
     const socket = io("http://localhost:3000"); // ganti jika pakai IP LAN/VM
@@ -181,5 +182,8 @@
 </script>
 
 
+@push('scripts')
+    <script src="{{ asset('js/dashMap.js') }}"></script>
+@endpush
 
 </x-app-layout>

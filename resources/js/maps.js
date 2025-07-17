@@ -142,7 +142,7 @@ function fillFormAndOpenModal(lat, lng, ipPlaceholder = '') {
         if (ipPlaceholder) {
             document.getElementById('nodeIP').value = ipPlaceholder;
         }
-    }, 100); 
+    }, 100);
 }
 
 

@@ -90,6 +90,7 @@ class NodeController extends Controller
     }
 
     public function update(Request $request, Node $node)
+
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -100,6 +101,7 @@ class NodeController extends Controller
             'longitude' => 'required|numeric|between:-180,180',
             'description' => 'nullable|string',
         ]);
+
 
         $node->update([
             'name' => $validated['name'],
