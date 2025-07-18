@@ -37,7 +37,7 @@ class NodeController extends Controller
             'name' => 'required|string|max:255',
             'ip' => 'required|ip|unique:nodes,ip_address',
             'endpoint' => 'nullable|string|max:255',
-            'status' => 'required|in:online,offline,partial',
+            'status' => 'nullable|in:online,offline,partial',
             'latitude' => 'required|numeric|between:-90,90',
             'longitude' => 'required|numeric|between:-180,180',
             'description' => 'nullable|string',
@@ -47,7 +47,7 @@ class NodeController extends Controller
             'name' => $validated['name'],
             'ip_address' => $validated['ip'],
             'endpoint' => $validated['endpoint'] ?? null,
-            'status' => $validated['status'],
+            'status' => 'offline', // atau null
             'latitude' => $validated['latitude'],
             'longitude' => $validated['longitude'],
             'description' => $validated['description'],
@@ -96,7 +96,7 @@ class NodeController extends Controller
             'name' => 'required|string|max:255',
             'ip' => ['required', 'ip', Rule::unique('nodes', 'ip_address')->ignore($node->id)],
             'endpoint' => 'nullable|string|max:255',
-            'status' => 'required|in:online,offline,partial',
+            'status' => 'nullable|in:online,offline,partial',
             'latitude' => 'required|numeric|between:-90,90',
             'longitude' => 'required|numeric|between:-180,180',
             'description' => 'nullable|string',
@@ -138,7 +138,7 @@ class NodeController extends Controller
     public function updateStatus(Request $request, Node $node)
     {
         $validated = $request->validate([
-            'status' => 'required|in:online,offline,partial',
+            'status' => 'nullable|in:online,offline,partial',
             'response_time' => 'nullable|integer|min:0',
         ]);
 
