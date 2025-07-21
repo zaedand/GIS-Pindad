@@ -208,5 +208,11 @@
     </div>
 </div>
 
+@push('scripts')
+    <script src="{{ asset('js/maps.js') }}"></script>
+@endpush
 
+@push('scripts')
+    @vite('resources/js/maps.js')
+@endpush
 </x-app-layout>

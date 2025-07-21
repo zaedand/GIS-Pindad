@@ -21,7 +21,7 @@ class Node extends Model
         'uptime_percentage',
         'response_time',
         'description',
-        'is_active',
+        'is_active'
     ];
 
     protected $casts = [
@@ -30,27 +30,33 @@ class Node extends Model
         'uptime_percentage' => 'decimal:2',
         'is_active' => 'boolean',
         'last_ping' => 'datetime',
-        'response_time' => 'integer',
+        'response_time' => 'integer'
     ];
 
     /**
-     * Scope for only active nodes
+     * Get the formatted last ping time
      */
-    public function scopeActive($query)
+    public function getFormattedLastPingAttribute()
     {
-        return $query->where('is_active', true);
+        if (!$this->last_ping) {
+            return 'Never';
+        }
+
+        $diff = Carbon::now()->diffInSeconds($this->last_ping);
+
+        if ($diff < 60) {
+            return $diff . 's ago';
+        } elseif ($diff < 3600) {
+            return floor($diff / 60) . 'm ago';
+        } elseif ($diff < 86400) {
+            return floor($diff / 3600) . 'h ago';
+        } else {
+            return floor($diff / 86400) . 'd ago';
+        }
     }
 
     /**
-     * Scope to filter by status
-     */
-    public function scopeByStatus($query, $status)
-    {
-        return $query->where('status', $status);
-    }
-
-    /**
-     * Get coordinate array
+     * Get the coordinates as array
      */
     public function getCoordsAttribute()
     {
@@ -58,34 +64,23 @@ class Node extends Model
     }
 
     /**
-     * Human-readable ping time
-     */
-    public function getFormattedLastPingAttribute()
-    {
-        if (!$this->last_ping) return 'Never';
-
-        $diff = Carbon::now()->diffInSeconds($this->last_ping);
-
-        if ($diff < 60) return $diff . 's ago';
-        if ($diff < 3600) return floor($diff / 60) . 'm ago';
-        if ($diff < 86400) return floor($diff / 3600) . 'h ago';
-
-        return floor($diff / 86400) . 'd ago';
-    }
-
-    /**
-     * Human-readable response time
+     * Get the response time formatted
      */
     public function getFormattedResponseTimeAttribute()
     {
-        if (!$this->response_time) return 'N/A';
-        if ($this->status === 'offline') return 'Timeout';
+        if (!$this->response_time) {
+            return 'N/A';
+        }
+
+        if ($this->status === 'offline') {
+            return 'Timeout';
+        }
 
         return $this->response_time . 'ms';
     }
 
     /**
-     * Human-readable uptime
+     * Get the uptime formatted
      */
     public function getFormattedUptimeAttribute()
     {
@@ -93,7 +88,7 @@ class Node extends Model
     }
 
     /**
-     * Update ping information (for status check)
+     * Update node ping status
      */
     public function updatePing($responseTime, $success = true)
     {
@@ -101,7 +96,7 @@ class Node extends Model
         $this->response_time = $responseTime;
         $this->status = $success ? 'online' : 'offline';
 
-        // Basic uptime tracking (dummy algorithm)
+        // Update uptime percentage (simplified calculation)
         if ($success) {
             $this->uptime_percentage = min(100, $this->uptime_percentage + 0.1);
         } else {
@@ -109,5 +104,21 @@ class Node extends Model
         }
 
         $this->save();
+    }
+
+    /**
+     * Scope for active nodes
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    /**
+     * Scope for specific status
+     */
+    public function scopeByStatus($query, $status)
+    {
+        return $query->where('status', $status);
     }
 }

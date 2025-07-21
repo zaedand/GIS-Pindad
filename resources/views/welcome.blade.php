@@ -49,7 +49,7 @@
 <section class="py-12 px-4 lg:px-8">
     <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
         <div>
-            <h2 class="text-3xl md:text-4xl font-bold mb-4 text-corporate">Sistem Monitoring Telepon Internal <span class="text-primary">PT. Pindad</span></h2>
+            <h2 class="text-3xl md:text-4xl font-bold mb-4 text-corporate">Sistem Monitoring Telepon Internal <span class="text-primary">Perusahaan</span></h2>
 
             <div class="bg-white border border-gray-200 rounded-xl shadow p-6 w-full max-w-md">
                 <h3 class="text-lg font-semibold mb-4 text-corporate">Akses Sistem</h3>
