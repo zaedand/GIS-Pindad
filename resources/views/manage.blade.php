@@ -7,7 +7,48 @@
         </h2>
     </x-slot>
 
+    <!-- Statistics Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white/95 backdrop-blur-md p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center text-white">
+                            <i class="fas fa-phone text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="text-4xl font-bold text-gray-800 mb-2" id="total-phones">0</div>
+                    <div class="text-gray-600 text-sm uppercase tracking-wide">Total Telepon</div>
+                </div>
 
+                <div class="bg-white/95 backdrop-blur-md p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl flex items-center justify-center text-white">
+                            <i class="fas fa-check-circle text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="text-4xl font-bold text-gray-800 mb-2" id="online-phones">0</div>
+                    <div class="text-gray-600 text-sm uppercase tracking-wide">Online</div>
+                </div>
+
+                <div class="bg-white/95 backdrop-blur-md p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="w-12 h-12 bg-gradient-to-br from-red-500 to-orange-500 rounded-xl flex items-center justify-center text-white">
+                            <i class="fas fa-exclamation-triangle text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="text-4xl font-bold text-gray-800 mb-2 animate-pulse" id="offline-phones">0</div>
+                    <div class="text-gray-600 text-sm uppercase tracking-wide">Offline</div>
+                </div>
+
+                <div class="bg-white/95 backdrop-blur-md p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="w-12 h-12 bg-gradient-to-br from-yellow-500 to-pink-500 rounded-xl flex items-center justify-center text-white">
+                            <i class="fas fa-clock text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="text-4xl font-bold text-gray-800 mb-2" id="in-use-phones">0</div>
+                    <div class="text-gray-600 text-sm uppercase tracking-wide">In Use</div>
+                </div>
+            </div>
         <!-- Main Content -->
         <main class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
 
@@ -101,12 +142,15 @@
             </div>
 
 
-            <!-- Nodes Management Table -->
+            <!-- Device Management Table -->
             <div class="bg-white rounded-xl shadow-sm p-6">
                 <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                     <i class="fas fa-table text-blue-600 mr-2"></i>
                     Manajemen Device
                 </h3>
+                <div class="mt-4">
+
+
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
@@ -163,14 +207,15 @@
                     </div>
 
                     <div>
+                    <div>
                         <label for="nodeStatus" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                        <select id="nodeStatus" name="status" required
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                            <option value="online">Online</option>
-                            <option value="offline">Offline</option>
-                            <option value="partial">Partial</option>
+                        <select id="nodeStatus" name="status_display" disabled
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600">
+                            <option value="offline" selected>Offline</option>
                         </select>
+                        <input type="hidden" name="status" value="offline">
                     </div>
+
 
                     <div class="grid grid-cols-2 gap-4">
                         <div>

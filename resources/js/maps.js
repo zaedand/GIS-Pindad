@@ -33,11 +33,16 @@ socket.on("connect", () => {
 });
 
 // Versi benar dan efisien
-socket.on("device-status", (statusData) => {
-    latestStatus = statusData;
-    applyLiveStatus();     // update status di array nodes
-    updateNodesTable();    // render ulang tabel HTML
+document.addEventListener('DOMContentLoaded', () => {
+    socket.on("device-status", statusData => {
+        latestStatus = statusData;
+        applyLiveStatus();
+        updateNodesTable();
+        updateStatusList();
+        updateRealtimeStats(statusData);
+    });
 });
+
 
 async function fetchNodes() {
     const response = await fetch('/api/nodes');
@@ -45,19 +50,54 @@ async function fetchNodes() {
     applyLiveStatus();     // pastikan status langsung sinkron
     updateNodesTable();
     updateMapMarkers();
+    updateRealtimeStats(latestStatus);
+
 }
 
-function normalizeStatus(rawStatus) {
-  if (!rawStatus) return 'unknown';
-
-  const lower = rawStatus.toLowerCase();
-
-  if (lower.includes('unavailable')) return 'offline';
-  if (lower.includes('not in use')) return 'online';
-  if (lower.includes('in use')) return 'partial';
-
-  return 'unknown';
+function normalizeStatus(status) {
+    if (!status) return 'offline';
+    const lower = status.toLowerCase();
+    if (lower.includes('not in use')) return 'online';
+    if (lower.includes('in use')) return 'partial';
+    if (lower.includes('unavailable') || lower.includes('0 of')) return 'offline';
+    return 'unknown';
 }
+
+function updateRealtimeStats(statusData) {
+    const total = statusData.length;
+    const online = statusData.filter(s => normalizeStatus(s.status) === 'online').length;
+    const offline = statusData.filter(s => normalizeStatus(s.status) === 'offline').length;
+    const inUse = statusData.filter(s => normalizeStatus(s.status) === 'partial').length;
+
+    console.log({ total, online, offline, inUse }); // Debug
+
+    const setText = (id, val) => {
+        const el = document.getElementById(id);
+        if (!el) {
+            console.warn('Elemen tidak ditemukan:', id);
+            return;
+        }
+        el.textContent = val;
+    };
+
+    setText('total-phones', total);
+    setText('online-phones', online);
+    setText('offline-phones', offline);
+    setText('in-use-phones', inUse);
+}
+// dummy data
+// setTimeout(() => {
+//     const dummyStatus = [
+//         { endpoint: '1001', status: 'Not in use' },
+//         { endpoint: '1002', status: 'In use' },
+//         { endpoint: '1003', status: 'Unavailable' },
+//         { endpoint: '1004', status: '0 of 1' }
+//     ];
+
+//     console.log("Simulasi dummy status:", dummyStatus);
+//     updateRealtimeStats(dummyStatus);
+// }, 2000); // setelah 2 detik
+
 
 function formatDisplayStatus(status) {
   switch (status) {
@@ -588,25 +628,26 @@ function updateNodesTable() {
 
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td>${node.name}</td>
-            <td style="font-family: monospace; text-align: center">${node.ip}</td>
-            <td style="font-family: monospace; text-align: center">${node.endpoint}</td>
-            <td>
-                <span class=" text-align: center inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" style="background-color:${color}20; color:${color};">
+            <td class="px-4 py-2 text-left">${node.name}</td>
+            <td class="px-4 py-2 text-left font-mono">${node.ip}</td>
+            <td class="px-4 py-2 text-left font-mono">${node.endpoint}</td>
+            <td class="px-4 py-2 text-left">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" style="background-color:${color}20; color:${color};">
                     <div class="w-2 h-2 rounded-full mr-1.5" style="background-color:${color};"></div>
                     ${statusText}
                 </span>
             </td>
-            <td style="ext-align: center">${lat.toFixed(4)}, ${lng.toFixed(4)}</td>
-            <td style="font-family: monospace; text-align: left">${node.description}</td>
-            <td>${node.uptime}</td>
-            <td>
+            <td class="px-4 py-2 text-left">${lat.toFixed(4)}, ${lng.toFixed(4)}</td>
+            <td class="px-4 py-2 text-left font-mono">${node.description}</td>
+            <td class="px-4 py-2 text-left">${node.uptime}</td>
+            <td class="px-4 py-2 text-left">
                 <div class="flex space-x-2">
                     <button onclick="editNode(${node.id})" class="text-indigo-600"><i class="fas fa-edit"></i></button>
                     <button onclick="deleteNode(${node.id})" class="text-red-600"><i class="fas fa-trash"></i></button>
                     <button onclick="focusOnNode(${node.id})" class="text-green-600"><i class="fas fa-search"></i></button>
                 </div>
-            </td>`;
+            </td>
+        `;
         tableBody.appendChild(row);
     });
 }
@@ -664,17 +705,11 @@ function updateAll() {
 }
 
 function refreshMap() {
-    nodes.forEach(node => {
-        if (Math.random() > 0.8) {
-            const statuses = ['online', 'offline', 'partial'];
-            node.status = statuses[Math.floor(Math.random() * statuses.length)];
-            node.lastPing = node.status === 'online' ?
-                Math.floor(Math.random() * 5) + 's ago' :
-                Math.floor(Math.random() * 10) + 'm ago';
-        }
-    });
-    updateAll();
+    updateMapMarkers();     
+    updateStatusList();     
 }
+
+
 
 const modal = document.getElementById('nodeModal');
 if (modal) {

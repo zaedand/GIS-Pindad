@@ -17,7 +17,7 @@
                             <i class="fas fa-phone text-xl"></i>
                         </div>
                     </div>
-                    <div class="text-4xl font-bold text-gray-800 mb-2" id="total-phones">{{ $totalPhones ?? 24 }}</div>
+                    <div class="text-4xl font-bold text-gray-800 mb-2" id="total-phones">0</div>
                     <div class="text-gray-600 text-sm uppercase tracking-wide">Total Telepon</div>
                 </div>
 
@@ -27,7 +27,7 @@
                             <i class="fas fa-check-circle text-xl"></i>
                         </div>
                     </div>
-                    <div class="text-4xl font-bold text-gray-800 mb-2" id="online-phones">{{ $onlinePhones ?? 21 }}</div>
+                    <div class="text-4xl font-bold text-gray-800 mb-2" id="online-phones">0</div>
                     <div class="text-gray-600 text-sm uppercase tracking-wide">Online</div>
                 </div>
 
@@ -37,7 +37,7 @@
                             <i class="fas fa-exclamation-triangle text-xl"></i>
                         </div>
                     </div>
-                    <div class="text-4xl font-bold text-gray-800 mb-2 animate-pulse" id="offline-phones">{{ $offlinePhones ?? 3 }}</div>
+                    <div class="text-4xl font-bold text-gray-800 mb-2 animate-pulse" id="offline-phones">0</div>
                     <div class="text-gray-600 text-sm uppercase tracking-wide">Offline</div>
                 </div>
 
@@ -47,8 +47,8 @@
                             <i class="fas fa-clock text-xl"></i>
                         </div>
                     </div>
-                    <div class="text-4xl font-bold text-gray-800 mb-2" id="avg-response">{{ $avgResponse ?? '45ms' }}</div>
-                    <div class="text-gray-600 text-sm uppercase tracking-wide">Avg Response</div>
+                    <div class="text-4xl font-bold text-gray-800 mb-2" id="in-use-phones">0</div>
+                    <div class="text-gray-600 text-sm uppercase tracking-wide">In Use</div>
                 </div>
             </div>
 
@@ -67,7 +67,7 @@
                         </button>
                     </div>
 
-                    <div id="dashboard-map" class="h-96 rounded-xl overflow-hidden shadow-inner"></div>
+                    <div id="map" class="h-96 rounded-xl overflow-hidden shadow-inner"></div>
 
                     <div id= "device-status" class="flex flex-wrap gap-4 mt-4 text-sm">
                         <div class="flex items-center gap-2">
@@ -169,21 +169,5 @@
             </div>
         </div>
     </div>
-
-
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-<script>
-    const socket = io("http://localhost:3000"); // ganti jika pakai IP LAN/VM
-
-    socket.on("device-status", function(data) {
-        console.log("Data realtime:", data);
-        // TODO: update status device di halaman
-    });
-</script>
-
-
-@push('scripts')
-    <script src="{{ asset('js/dashMap.js') }}"></script>
-@endpush
 
 </x-app-layout>
