@@ -44,7 +44,7 @@
                         </div>
                         <div class="flex items-center gap-2">
                             <div class="w-3 h-3 bg-yellow-500 rounded-full shadow-lg"></div>
-                            <span class="text-gray-700 font-medium">Partial</span>
+                            <span class="text-gray-700 font-medium">In Use</span>
                         </div>
                     </div>
                 </div>

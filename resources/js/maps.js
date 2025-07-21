@@ -1,7 +1,10 @@
+import { io } from 'socket.io-client';
+
 let map;
 let markers = [];
 let nodes = [];
 let editingNodeId = null;
+let latestStatus = []; // akan diisi dari server socket.io
 
 const apiHeaders = {
     'Content-Type': 'application/json',
@@ -10,10 +13,68 @@ const apiHeaders = {
 };
 
 
+
+function getStatusColor(status) {
+  switch (status) {
+    case 'online': return '#10b981';    // hijau
+    case 'offline': return '#ef4444';   // merah
+    case 'partial': return '#f59e0b';   // kuning
+    default: return '#6b7280';          // abu-abu
+  }
+}
+
+
+// Sesuaikan URL dengan Node.js server kamu
+const socket = io("http://localhost:3000");
+
+
+socket.on("connect", () => {
+    console.log("Terhubung ke server Socket.IO:", socket.id);
+});
+
+// Versi benar dan efisien
+socket.on("device-status", (statusData) => {
+    latestStatus = statusData;
+    applyLiveStatus();     // update status di array nodes
+    updateNodesTable();    // render ulang tabel HTML
+});
+
 async function fetchNodes() {
     const response = await fetch('/api/nodes');
     nodes = await response.json();
-    updateAll();
+    applyLiveStatus();     // pastikan status langsung sinkron
+    updateNodesTable();
+    updateMapMarkers();
+}
+
+function normalizeStatus(rawStatus) {
+  if (!rawStatus) return 'unknown';
+
+  const lower = rawStatus.toLowerCase();
+
+  if (lower.includes('unavailable')) return 'offline';
+  if (lower.includes('not in use')) return 'online';
+  if (lower.includes('in use')) return 'partial';
+
+  return 'unknown';
+}
+
+function formatDisplayStatus(status) {
+  switch (status) {
+    case 'online': return 'Online';
+    case 'offline': return 'Offline';
+    case 'partial': return 'In Use';
+    default: return 'Unknown';
+  }
+}
+
+function applyLiveStatus() {
+  nodes.forEach(node => {
+    const found = latestStatus.find(item => item.endpoint === node.endpoint);
+    if (found) {
+      node.status = normalizeStatus(found.status);      // e.g. 'offline'
+    }
+  });
 }
 
 
@@ -129,6 +190,7 @@ function updateMapMarkers() {
         }
 
         const color = getStatusColor(node.status);
+        const statusText = formatDisplayStatus(node.status);
 
         const marker = L.circleMarker([lat, lng], {
             radius: 12,
@@ -154,7 +216,7 @@ function updateMapMarkers() {
                 <h4>${node.name}</h4>
                 <div>Device Id : ${node.id}</div>
                 <div>Endpoint : ${node.endpoint}</div>
-                <div>Status: <strong style="color:${color};">${node.status}</strong></div>
+                <div>Status: <strong style="color:${color};">${statusText}</strong></div>
                 <div>IP: <code>${node.ip}</code></div>
                 <div>Last Ping: ${node.lastPing}</div>
                 <div>Uptime: ${node.uptime}</div>
@@ -170,17 +232,7 @@ function updateMapMarkers() {
 }
 
 
-function getStatusColor(status) {
-    switch (status) {
-        case 'online': return '#10b981';
-        case 'offline': return '#ef4444';
-        case 'partial': return '#f59e0b';
-        default: return '#6b7280';
-    }
-}
-
-
-// Toast function dengan styling yang lebih modern
+// Toast function 
 function showToast(message, type = 'success') {
     const styles = {
         success: {
@@ -532,6 +584,7 @@ function updateNodesTable() {
     nodes.forEach(node => {
         const [lat, lng] = getLatLngFromCoords(node.coords);
         const color = getStatusColor(node.status);
+        const statusText = formatDisplayStatus(node.status);
 
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -541,7 +594,7 @@ function updateNodesTable() {
             <td>
                 <span class=" text-align: center inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" style="background-color:${color}20; color:${color};">
                     <div class="w-2 h-2 rounded-full mr-1.5" style="background-color:${color};"></div>
-                    ${node.status}
+                    ${statusText}
                 </span>
             </td>
             <td style="ext-align: center">${lat.toFixed(4)}, ${lng.toFixed(4)}</td>
@@ -577,7 +630,7 @@ function editNode(id) {
 
     const [lat, lng] = getLatLngFromCoords(node.coords);
 
-    document.getElementById('modal-title').textContent = 'Edit Node';
+    document.getElementById('modal-title').textContent = 'Edit Device';
     document.getElementById('nodeName').value = node.name;
     document.getElementById('nodeIP').value = node.ip;
     document.getElementById('nodeEndpoint').value = node.endpoint || '';

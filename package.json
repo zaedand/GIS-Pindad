@@ -20,6 +20,8 @@
     },
     "dependencies": {
         "leaflet": "^1.9.4",
-        "leaflet-draw": "^1.0.4"
+        "leaflet-draw": "^1.0.4",
+        "socket.io": "^4.8.1",
+        "socket.io-client": "^4.8.1"
     }
 }
