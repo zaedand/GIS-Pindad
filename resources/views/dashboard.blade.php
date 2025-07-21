@@ -171,19 +171,4 @@
     </div>
 
 
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-<script>
-    const socket = io("http://localhost:3000"); // ganti jika pakai IP LAN/VM
-
-    socket.on("device-status", function(data) {
-        console.log("Data realtime:", data);
-        // TODO: update status device di halaman
-    });
-</script>
-
-
-@push('scripts')
-    <script src="{{ asset('js/dashMap.js') }}"></script>
-@endpush
-
 </x-app-layout>

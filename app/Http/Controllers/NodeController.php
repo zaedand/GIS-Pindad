@@ -8,6 +8,7 @@ use Illuminate\Validation\Rule;
 
 class NodeController extends Controller
 {
+    // Ambil semua node aktif untuk tampilan peta atau list
     public function index()
     {
         $nodes = Node::active()->get()->map(function ($node) {
@@ -31,6 +32,7 @@ class NodeController extends Controller
         return response()->json($nodes);
     }
 
+    // Simpan node baru
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -56,41 +58,17 @@ class NodeController extends Controller
             'last_ping' => $validated['status'] === 'online' ? now() : null,
         ]);
 
-        return response()->json([
-            'id' => $node->id,
-            'name' => $node->name,
-            'ip' => $node->ip_address,
-            'endpoint' => $node->endpoint,
-            'status' => $node->status,
-            'coords' => $node->coords,
-            'lastPing' => $node->formatted_last_ping,
-            'uptime' => $node->formatted_uptime,
-            'responseTime' => $node->formatted_response_time,
-            'description' => $node->description,
-        ], 201);
+        return response()->json($this->formatNode($node), 201);
     }
 
+    // Tampilkan satu node
     public function show(Node $node)
     {
-        return response()->json([
-            'id' => $node->id,
-            'name' => $node->name,
-            'ip' => $node->ip_address,
-            'endpoint' => $node->endpoint,
-            'status' => $node->status,
-            'coords' => $node->coords,
-            'lastPing' => $node->formatted_last_ping,
-            'uptime' => $node->formatted_uptime,
-            'responseTime' => $node->formatted_response_time,
-            'description' => $node->description,
-            'last_ping_raw' => $node->last_ping,
-            'uptime_percentage' => $node->uptime_percentage,
-            'response_time_raw' => $node->response_time,
-        ]);
+        return response()->json($this->formatNode($node));
     }
 
+    // Update data node
     public function update(Request $request, Node $node)
-
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -102,7 +80,6 @@ class NodeController extends Controller
             'description' => 'nullable|string',
         ]);
 
-
         $node->update([
             'name' => $validated['name'],
             'ip_address' => $validated['ip'],
@@ -113,28 +90,17 @@ class NodeController extends Controller
             'description' => $validated['description'] ?? null,
         ]);
 
-        $node = $node->fresh();
-
-        return response()->json([
-            'id' => $node->id,
-            'name' => $node->name,
-            'ip' => $node->ip_address,
-            'endpoint' => $node->endpoint,
-            'status' => $node->status,
-            'coords' => $node->coords,
-            'lastPing' => $node->formatted_last_ping,
-            'uptime' => $node->formatted_uptime,
-            'responseTime' => $node->formatted_response_time,
-            'description' => $node->description,
-        ]);
+        return response()->json($this->formatNode($node->fresh()));
     }
 
+    // Hapus node
     public function destroy(Node $node)
     {
         $node->delete();
         return response()->json(['message' => 'Node deleted successfully']);
     }
 
+    // Update status khusus dari Socket.IO atau monitoring eksternal
     public function updateStatus(Request $request, Node $node)
     {
         $validated = $request->validate([
@@ -156,6 +122,7 @@ class NodeController extends Controller
         ]);
     }
 
+    // Statistik untuk dashboard
     public function getStats()
     {
         $stats = [
@@ -168,5 +135,25 @@ class NodeController extends Controller
         ];
 
         return response()->json($stats);
+    }
+
+    // Format helper
+    protected function formatNode(Node $node)
+    {
+        return [
+            'id' => $node->id,
+            'name' => $node->name,
+            'ip' => $node->ip_address,
+            'endpoint' => $node->endpoint,
+            'status' => $node->status,
+            'coords' => $node->coords,
+            'lastPing' => $node->formatted_last_ping,
+            'uptime' => $node->formatted_uptime,
+            'responseTime' => $node->formatted_response_time,
+            'description' => $node->description,
+            'last_ping_raw' => $node->last_ping,
+            'uptime_percentage' => $node->uptime_percentage,
+            'response_time_raw' => $node->response_time,
+        ];
     }
 }
