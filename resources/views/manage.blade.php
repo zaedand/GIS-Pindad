@@ -254,7 +254,7 @@
 </div>
 
 @push('scripts')
-    <script src="{{ asset('js/maps.js') }}"></script>
+    @vite('resources/js/maps.js')
 @endpush
 
 

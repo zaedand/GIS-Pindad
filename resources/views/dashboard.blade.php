@@ -51,11 +51,10 @@
                     <div class="text-gray-600 text-sm uppercase tracking-wide">In Use</div>
                 </div>
             </div>
-
             <!-- Main Content -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
                 <!-- Map Section -->
-                <div class="lg:col-span-2 bg-white/95 backdrop-blur-md rounded-2xl p-6 shadow-lg">
+                <div class="lg:col-span-3 bg-white/95 backdrop-blur-md rounded-2xl p-6 shadow-lg">
                     <div class="flex justify-between items-center mb-6">
                         <h2 class="text-xl font-semibold text-gray-800 flex items-center gap-2">
                             <i class="fas fa-map-marker-alt text-indigo-500"></i>
@@ -67,7 +66,7 @@
                         </button>
                     </div>
 
-                    <div id="map" class="h-96 rounded-xl overflow-hidden shadow-inner"></div>
+                    <div id="map" class="h-[60dvh] rounded-xl overflow-hidden shadow-inner"></div>
 
                     <div id= "device-status" class="flex flex-wrap gap-4 mt-4 text-sm">
                         <div class="flex items-center gap-2">
@@ -84,58 +83,8 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- Phone Status List -->
-                <div class="bg-white/95 backdrop-blur-md rounded-2xl p-6 shadow-lg">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                        <i class="fas fa-list text-indigo-500"></i>
-                        Status Real-time
-                    </h3>
-
-                    <div class="space-y-2 max-h-96 overflow-y-auto" id="phone-status-list">
-                        <!-- Phone status items will be populated here -->
-                        <div class="flex items-center gap-4 p-3 rounded-xl hover:bg-indigo-50 transition-all duration-300 cursor-pointer">
-                            <div class="w-3 h-3 bg-green-500 rounded-full shadow-lg animate-pulse"></div>
-                            <div class="flex-1">
-                                <div class="font-semibold text-gray-800">Gedung A</div>
-                                <div class="text-sm text-gray-600">192.168.1.101</div>
-                                <div class="text-xs text-gray-500">Last ping: 2s ago</div>
-                            </div>
-                            <div class="text-right text-xs text-gray-500">
-                                <div class="font-medium">42ms</div>
-                                <div>99.8%</div>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center gap-4 p-3 rounded-xl hover:bg-indigo-50 transition-all duration-300 cursor-pointer">
-                            <div class="w-3 h-3 bg-red-500 rounded-full shadow-lg animate-blink"></div>
-                            <div class="flex-1">
-                                <div class="font-semibold text-gray-800">Gedung B</div>
-                                <div class="text-sm text-gray-600">192.168.1.102</div>
-                                <div class="text-xs text-gray-500">Last ping: 5m ago</div>
-                            </div>
-                            <div class="text-right text-xs text-gray-500">
-                                <div class="font-medium text-red-500">Timeout</div>
-                                <div>85.2%</div>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center gap-4 p-3 rounded-xl hover:bg-indigo-50 transition-all duration-300 cursor-pointer">
-                            <div class="w-3 h-3 bg-green-500 rounded-full shadow-lg animate-pulse"></div>
-                            <div class="flex-1">
-                                <div class="font-semibold text-gray-800">Gedung C</div>
-                                <div class="text-sm text-gray-600">192.168.1.103</div>
-                                <div class="text-xs text-gray-500">Last ping: 1s ago</div>
-                            </div>
-                            <div class="text-right text-xs text-gray-500">
-                                <div class="font-medium">38ms</div>
-                                <div>99.9%</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
-
+                
             <!-- Activity Log -->
             <div class="bg-white/95 backdrop-blur-md rounded-2xl p-6 shadow-lg">
                 <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
@@ -169,5 +118,9 @@
             </div>
         </div>
     </div>
+
+@push('scripts')
+    @vite('resources/js/dashMap.js')
+@endpush
 
 </x-app-layout>
