@@ -9,46 +9,54 @@
     <div class="py-8">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-            <!-- Statistics Grid -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <div class="bg-white/95 backdrop-blur-md p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-                    <div class="flex justify-between items-center mb-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center text-white">
-                            <i class="fas fa-phone text-xl"></i>
+            <!-- Stats Overview -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white/90 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/20">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Total Telepon</p>
+                            <p class="text-3xl font-bold text-gray-900" id="total-phones">0</p>
+                        </div>
+                        <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
+                            <i class="fas fa-phone text-white"></i>
                         </div>
                     </div>
-                    <div class="text-4xl font-bold text-gray-800 mb-2" id="total-phones">0</div>
-                    <div class="text-gray-600 text-sm uppercase tracking-wide">Total Telepon</div>
                 </div>
 
-                <div class="bg-white/95 backdrop-blur-md p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-                    <div class="flex justify-between items-center mb-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl flex items-center justify-center text-white">
-                            <i class="fas fa-check-circle text-xl"></i>
+                <div class="bg-white/90 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/20">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Online</p>
+                            <p class="text-3xl font-bold text-green-600" id="online-phones">0</p>
+                        </div>
+                        <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center">
+                            <i class="fas fa-check-circle text-white"></i>
                         </div>
                     </div>
-                    <div class="text-4xl font-bold text-gray-800 mb-2" id="online-phones">0</div>
-                    <div class="text-gray-600 text-sm uppercase tracking-wide">Online</div>
                 </div>
 
-                <div class="bg-white/95 backdrop-blur-md p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-                    <div class="flex justify-between items-center mb-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-red-500 to-orange-500 rounded-xl flex items-center justify-center text-white">
-                            <i class="fas fa-exclamation-triangle text-xl"></i>
+                <div class="bg-white/90 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/20">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Offline</p>
+                            <p class="text-3xl font-bold text-red-600 animate-blink" id="offline-phones">0</p>
+                        </div>
+                        <div class="w-12 h-12 bg-gradient-to-br from-red-500 to-pink-600 rounded-xl flex items-center justify-center">
+                            <i class="fas fa-exclamation-triangle text-white"></i>
                         </div>
                     </div>
-                    <div class="text-4xl font-bold text-gray-800 mb-2 animate-pulse" id="offline-phones">0</div>
-                    <div class="text-gray-600 text-sm uppercase tracking-wide">Offline</div>
                 </div>
 
-                <div class="bg-white/95 backdrop-blur-md p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-                    <div class="flex justify-between items-center mb-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-yellow-500 to-pink-500 rounded-xl flex items-center justify-center text-white">
-                            <i class="fas fa-clock text-xl"></i>
+                <div class="bg-white/90 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/20">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">In Use</p>
+                            <p class="text-3xl font-bold text-yellow-600" id="in-use-phones">0</p>
+                        </div>
+                        <div class="w-12 h-12 bg-gradient-to-br from-yellow-500 to-pink-500 rounded-xl flex items-center justify-center">
+                            <i class="fas fa-clock text-white"></i>
                         </div>
                     </div>
-                    <div class="text-4xl font-bold text-gray-800 mb-2" id="in-use-phones">0</div>
-                    <div class="text-gray-600 text-sm uppercase tracking-wide">In Use</div>
                 </div>
             </div>
             <!-- Main Content -->
@@ -84,7 +92,7 @@
                     </div>
                 </div>
             </div>
-                
+
             <!-- Activity Log -->
             <div class="bg-white/95 backdrop-blur-md rounded-2xl p-6 shadow-lg">
                 <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">

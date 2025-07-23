@@ -13,7 +13,7 @@
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
 
-         <!-- Toastify CSS -->
+        <!-- Toastify CSS -->
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
 
         <!-- Toastify JS -->
@@ -40,25 +40,27 @@
         <!-- Tailwind CDN -->
         <script src="https://cdn.tailwindcss.com"></script>
 
-<!-- Tailwind Config (setelah script di atas) -->
-<script>
-    tailwind.config = {
-        theme: {
-            extend: {
-                animation: {
-                    'pulse-slow': 'pulse 2s infinite',
-                    'blink': 'blink 1s infinite'
-                },
-                keyframes: {
-                    blink: {
-                        '0%, 50%': { opacity: '1' },
-                        '51%, 100%': { opacity: '0.3' }
+        <!-- Tailwind Config (setelah script di atas) -->
+        <script>
+            tailwind.config = {
+                theme: {
+                    extend: {
+                        animation: {
+                            'pulse-slow': 'pulse 2s infinite',
+                            'blink': 'blink 1s infinite',
+                            'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                            'bounce-slow': 'bounce 2s infinite'
+                        },
+                        keyframes: {
+                            blink: {
+                                '0%, 50%': { opacity: '1' },
+                                '51%, 100%': { opacity: '0.3' }
+                            }
+                        }
                     }
                 }
             }
-        }
-    }
-</script>
+        </script>
 
         <style>
             @keyframes blink {
