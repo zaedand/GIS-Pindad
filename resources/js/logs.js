@@ -1,4 +1,114 @@
 // resources/js/logs.js
+import { io } from 'socket.io-client';
+
+let socket;
+let devices = [];
+let disconnectLogs = [];
+
+// Ambil data awal dan koneksi socket
+document.addEventListener('DOMContentLoaded', async () => {
+    const res = await fetch('/api/nodes');
+    devices = await res.json();
+
+    socket = io('http://localhost:3000');
+
+    socket.on("device-status", statusList => {
+        trackStatusChange(statusList);
+        renderActivityLog();
+    });
+
+    document.getElementById('activity-filter')?.addEventListener('change', renderActivityLog);
+});
+
+function trackStatusChange(newStatusList) {
+    const now = new Date();
+
+    newStatusList.forEach(newDevice => {
+        const existing = devices.find(d => d.endpoint === newDevice.endpoint);
+        if (!existing) {
+            // Perangkat baru
+            devices.push({
+                endpoint: newDevice.endpoint,
+                status: newDevice.status,
+                timestamp: newDevice.timestamp
+            });
+            return;
+        }
+
+        const prevStatus = normalizeStatus(existing.status);
+        const currStatus = normalizeStatus(newDevice.status);
+
+        // Jika status berubah dari online → offline
+        if (prevStatus === 'online' && currStatus === 'offline') {
+            disconnectLogs.push({
+                endpoint: newDevice.endpoint,
+                status: 'offline',
+                time: now.toISOString(),
+                description: 'Telepon tidak merespons',
+            });
+        }
+
+        // Jika status berubah dari offline → online
+        if (prevStatus === 'offline' && currStatus === 'online') {
+            disconnectLogs.push({
+                endpoint: newDevice.endpoint,
+                status: 'online',
+                time: now.toISOString(),
+                description: 'Telepon kembali online',
+            });
+        }
+
+        // Update status terakhir
+        existing.status = newDevice.status;
+        existing.timestamp = newDevice.timestamp;
+    });
+}
+
+function normalizeStatus(status) {
+    const s = status.toLowerCase();
+    if (s.includes('online')) return 'online';
+    if (s.includes('in use')) return 'online';
+    return 'offline'; // semua selain online dianggap offline
+}
+
+function renderActivityLog() {
+    const container = document.getElementById("activity-log");
+    const filter = document.getElementById("activity-filter")?.value || 'all';
+
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    const logsToShow = disconnectLogs.filter(log => {
+        if (filter === 'all') return true;
+        return log.status === filter;
+    });
+
+    if (logsToShow.length === 0) {
+        container.innerHTML = `<div class="text-center text-gray-500 text-sm">Belum ada aktivitas ${filter !== 'all' ? `(${filter})` : ''}.</div>`;
+        return;
+    }
+
+    logsToShow.slice().reverse().forEach(log => {
+        const item = document.createElement('div');
+        item.className = 'p-4 rounded-xl shadow-sm border border-gray-200 bg-white flex justify-between items-start gap-4';
+
+        item.innerHTML = `
+            <div>
+                <div class="font-semibold text-gray-800">
+                    Endpoint <span class="text-indigo-600">${log.endpoint}</span> ${log.status === 'offline' ? 'tidak merespons' : 'kembali aktif'}
+                </div>
+                <div class="text-sm text-gray-500">${log.description}</div>
+            </div>
+            <div class="text-sm text-gray-400 whitespace-nowrap">
+                ${new Date(log.time).toLocaleString()}
+            </div>
+        `;
+
+        container.appendChild(item);
+    });
+}
+
 class PhoneMonitoring {
     constructor() {
         this.phoneData = [
@@ -21,7 +131,7 @@ class PhoneMonitoring {
 
     init() {
         this.generateActivityLog();
-        this.initDashboard();
+        this.initLogboard();
         this.simulateUpdates();
     }
 
@@ -229,7 +339,7 @@ class PhoneMonitoring {
         `;
     }
 
-    initDashboard() {
+    initLogboard() {
         const phoneGrid = document.getElementById('phone-grid');
         const activityLog = document.getElementById('activity-log');
 
@@ -254,7 +364,7 @@ class PhoneMonitoring {
                     randomPhone.downtime = 0;
                 }
 
-                this.initDashboard();
+                this.initLogboard();
 
             }
         }, 5000);
@@ -283,3 +393,4 @@ window.filterActivities = function () {
 document.addEventListener('DOMContentLoaded', function() {
     phoneMonitoring = new PhoneMonitoring();
 });
+

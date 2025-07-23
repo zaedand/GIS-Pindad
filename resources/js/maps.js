@@ -109,13 +109,29 @@ function formatDisplayStatus(status) {
 }
 
 function applyLiveStatus() {
-  nodes.forEach(node => {
-    const found = latestStatus.find(item => item.endpoint === node.endpoint);
-    if (found) {
-      node.status = normalizeStatus(found.status);      // e.g. 'offline'
-    }
-  });
+    if (!latestStatus) return;
+
+    latestStatus.forEach(update => {
+        const node = nodes.find(n => n.endpoint === update.endpoint);
+
+        if (!node) return;
+
+        node.status = normalizeStatus(update.status);
+        node.last_ping_raw = update.timestamp || new Date().toISOString();
+
+        const color = getStatusColor(node.status);
+
+        // Update marker jika ada
+        if (markers[update.endpoint]) {
+            markers[update.endpoint].setStyle({
+                color,
+                fillColor: color
+            });
+            markers[update.endpoint].setPopupContent(getPopupContent(node, color));
+        }
+    });
 }
+
 
 
 function initMap() {
@@ -259,7 +275,7 @@ function updateMapMarkers() {
                 <div>Status: <strong style="color:${color};">${statusText}</strong></div>
                 <div>IP: <code>${node.ip}</code></div>
                 <div>Last Ping: ${node.lastPing}</div>
-                <div>Uptime: ${node.uptime}</div>
+                <div>Last Seen: ${node.last_ping_raw}</div>
                 <div>Keterangan : ${node.description}</div>
                 <div style="margin-top: 10px;">
                     <button onclick="editNode(${node.id})" class="text-blue-600 text-xs">✏ Edit</button>
@@ -608,11 +624,11 @@ function updateStatusList() {
             <div class="flex-1">
                 <div class="font-semibold text-gray-800">${node.name}</div>
                 <div class="text-sm text-gray-600">${node.ip}</div>
-                <div class="text-xs text-gray-500">Last ping: ${node.lastPing}</div>
+                <div class="text-xs text-gray-500">Last ping: ${node.last_ping_raw}</div>
             </div>
             <div class="text-right text-xs text-gray-500">
                 <div class="font-medium">${node.responseTime || '42ms'}</div>
-                <div>${node.uptime}</div>
+                <div>${node.last_ping_raw}</div>
             </div>`;
         statusList.appendChild(statusItem);
     });
@@ -639,7 +655,7 @@ function updateNodesTable() {
             </td>
             <td class="px-4 py-2 text-left">${lat.toFixed(4)}, ${lng.toFixed(4)}</td>
             <td class="px-4 py-2 text-left font-mono">${node.description}</td>
-            <td class="px-4 py-2 text-left">${node.uptime}</td>
+            <td class="px-4 py-2 text-left">${node.last_ping_raw}</td>
             <td class="px-4 py-2 text-left">
                 <div class="flex space-x-2">
                     <button onclick="editNode(${node.id})" class="text-indigo-600"><i class="fas fa-edit"></i></button>
