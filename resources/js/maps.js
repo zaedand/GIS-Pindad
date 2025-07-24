@@ -85,19 +85,6 @@ function updateRealtimeStats(statusData) {
     setText('offline-phones', offline);
     setText('in-use-phones', inUse);
 }
-// dummy data
-// setTimeout(() => {
-//     const dummyStatus = [
-//         { endpoint: '1001', status: 'Not in use' },
-//         { endpoint: '1002', status: 'In use' },
-//         { endpoint: '1003', status: 'Unavailable' },
-//         { endpoint: '1004', status: '0 of 1' }
-//     ];
-
-//     console.log("Simulasi dummy status:", dummyStatus);
-//     updateRealtimeStats(dummyStatus);
-// }, 2000); // setelah 2 detik
-
 
 function formatDisplayStatus(status) {
   switch (status) {
@@ -288,7 +275,7 @@ function updateMapMarkers() {
 }
 
 
-// Toast function 
+// Toast function
 function showToast(message, type = 'success') {
     const styles = {
         success: {
@@ -314,7 +301,7 @@ function showToast(message, type = 'success') {
     };
 
     const style = styles[type] || styles.success;
-    
+
     Toastify({
         text: `${style.icon} ${message}`,
         duration: 3000,
@@ -384,21 +371,21 @@ function showConfirmModal(message, onConfirm, onCancel = null) {
                 justify-content: center;
                 font-size: 24px;
             ">⚠️</div>
-            
+
             <h3 style="
                 margin: 0 0 8px 0;
                 font-size: 18px;
                 font-weight: 600;
                 color: #1f2937;
             ">Konfirmasi</h3>
-            
+
             <p style="
                 margin: 0 0 24px 0;
                 color: #6b7280;
                 font-size: 14px;
                 line-height: 1.5;
             ">${message}</p>
-            
+
             <div style="
                 display: flex;
                 gap: 12px;
@@ -416,7 +403,7 @@ function showConfirmModal(message, onConfirm, onCancel = null) {
                     transition: all 0.2s;
                     min-width: 80px;
                 ">Batal</button>
-                
+
                 <button id="confirmBtn" style="
                     padding: 10px 20px;
                     border: none;
@@ -463,7 +450,7 @@ function showConfirmModal(message, onConfirm, onCancel = null) {
         confirmBtn.style.transform = 'translateY(-1px)';
         confirmBtn.style.boxShadow = '0 4px 12px rgba(239, 68, 68, 0.4)';
     });
-    
+
     confirmBtn.addEventListener('mouseleave', () => {
         confirmBtn.style.transform = 'translateY(0)';
         confirmBtn.style.boxShadow = 'none';
@@ -474,7 +461,7 @@ function showConfirmModal(message, onConfirm, onCancel = null) {
         cancelBtn.style.borderColor = '#d1d5db';
         cancelBtn.style.transform = 'translateY(-1px)';
     });
-    
+
     cancelBtn.addEventListener('mouseleave', () => {
         cancelBtn.style.background = 'white';
         cancelBtn.style.borderColor = '#e5e7eb';
@@ -721,8 +708,8 @@ function updateAll() {
 }
 
 function refreshMap() {
-    updateMapMarkers();     
-    updateStatusList();     
+    updateMapMarkers();
+    updateStatusList();
 }
 
 
