@@ -117,6 +117,8 @@ function handleStatusUpdate(statusData) {
 function updateNodeStatus(statusUpdate) {
     const { endpoint, status, timestamp } = statusUpdate;
 
+    console.log(`Processing status update for ${endpoint}: "${status}"`);
+
     // Find existing node
     let node = nodes.find(n => n.endpoint === endpoint);
 
@@ -149,9 +151,9 @@ function updateNodeStatus(statusUpdate) {
     node.last_ping_raw = timestamp || new Date().toISOString();
     node.lastPing = new Date(node.last_ping_raw).toLocaleTimeString('id-ID');
 
-    // Log status changes
+    // Log status changes with more detail
     if (oldStatus !== newStatus) {
-        console.log(`Node ${endpoint} status changed: ${oldStatus} → ${newStatus}`);
+        console.log(`Node ${endpoint} status changed: ${oldStatus} → ${newStatus} (original: "${status}")`);
     }
 }
 
@@ -288,20 +290,48 @@ function createStatusListItem(node) {
     `;
 }
 
-// Status normalization function - matches backend data format
+// FIXED: Status normalization function - properly handles backend data format
 function normalizeStatus(status) {
     if (!status) return 'offline';
 
-    const statusStr = status.toString().toLowerCase();
+    const statusStr = status.toString().toLowerCase().trim();
+    
+    console.log(`Normalizing status: "${statusStr}"`);
 
-    // Handle specific backend status formats
-    if (statusStr.includes('not in use') || statusStr.includes('available')) return 'online';
-    if (statusStr.includes('in use')) return 'partial';
-    if (statusStr.includes('unavailable') || statusStr.includes('0 of') || statusStr === 'offline') return 'offline';
-    if (statusStr === 'online') return 'online';
-    if (statusStr.includes('partial')) return 'partial';
+    // Handle "unavailable" or "0 of X" patterns - these are OFFLINE
+    if (statusStr.includes('unavailable') || 
+        statusStr.includes('0 of') || 
+        statusStr === 'offline') {
+        console.log(`→ Mapped to: offline`);
+        return 'offline';
+    }
+
+    // Handle "not in use" patterns - these are ONLINE (available for calls)
+    if (statusStr.includes('not in use')) {
+        console.log(`→ Mapped to: online`);
+        return 'online';
+    }
+
+    // Handle "in use" patterns - these are PARTIAL (busy/occupied)
+    if (statusStr.includes('in use')) {
+        console.log(`→ Mapped to: partial`);
+        return 'partial';
+    }
+
+    // Handle other available patterns
+    if (statusStr.includes('available') || statusStr === 'online') {
+        console.log(`→ Mapped to: online`);
+        return 'online';
+    }
+
+    // Handle explicit partial status
+    if (statusStr.includes('partial') || statusStr.includes('busy')) {
+        console.log(`→ Mapped to: partial`);
+        return 'partial';
+    }
 
     // Default to offline for unknown status
+    console.log(`→ Unknown status, mapped to: offline`);
     return 'offline';
 }
 

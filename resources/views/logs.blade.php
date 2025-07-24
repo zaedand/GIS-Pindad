@@ -39,7 +39,7 @@
             <div class="flex items-center gap-2 text-sm">
                 <i class="fas fa-info-circle text-blue-500"></i>
                 <span class="text-blue-700 font-medium">Menampilkan: <span id="filter-status">Semua telepon</span></span>
-                <span class="text-blue-600">(<span id="filtered-count">8</span> dari <span id="total-count">8</span> telepon)</span>
+                <span class="text-blue-600">(<span id="filterPhones">0</span> dari <span id="total-phones">0</span> telepon)</span>
             </div>
         </div>
 
@@ -71,7 +71,6 @@
                     <option value="all">Semua Aktivitas</option>
                     <option value="offline">Hanya Offline</option>
                     <option value="online">Hanya Online</option>
-                    <option value="maintenance">Maintenance</option>
                 </select>
             </div>
         </div>
@@ -80,12 +79,6 @@
             <!-- Activity items will be generated here -->
         </div>
 
-        <div class="mt-6 text-center">
-            <button class="px-6 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl hover:from-indigo-600 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg">
-                <i class="fas fa-refresh mr-2"></i>
-                Muat Lebih Banyak
-            </button>
-        </div>
     </div>
 
 @push('scripts')

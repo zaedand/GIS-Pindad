@@ -6,6 +6,7 @@ let nodes = [];
 let disconnectLogs = [];
 let latestStatus = [];
 let markers = {};
+let previousStatusMap = {}; // Track previous status
 
 const apiHeaders = {
     'Content-Type': 'application/json',
@@ -39,10 +40,15 @@ async function fetchNodes() {
         nodes = await response.json();
         console.log('Loaded nodes:', nodes);
 
+        // Initialize previous status map with current node status
+        nodes.forEach(node => {
+            if (node.endpoint) {
+                previousStatusMap[node.endpoint] = normalizeStatus(node.status || 'offline');
+            }
+        });
+
         // Apply any existing live status
         applyLiveStatus();
-        updateNodesTable();
-        updateMapMarkers();
         updateRealtimeStats(latestStatus);
 
     } catch (error) {
@@ -60,11 +66,13 @@ function initializeSocket() {
     socket.on('device-status', statusList => {
         console.log('Received device status:', statusList);
         latestStatus = statusList;
+        
+        // Track status changes BEFORE applying live status
         trackStatusChange(statusList);
+        
+        // Apply live status updates
         applyLiveStatus();
-        updateNodesTable();
         updateRealtimeStats(statusList);
-        renderActivityLog();
     });
 
     socket.on('disconnect', () => {
@@ -82,15 +90,18 @@ function setupEventListeners() {
 
 function normalizeStatus(status) {
     if (!status) return 'offline';
-    const lower = status.toLowerCase();
+    
+    status = status.toLowerCase();
+    
+    if (status.includes('unavailable') || status.includes('0 of')) {
+        return 'offline';
+    }
 
-    // Handle backend status formats
-    if (lower.includes('not in use') || lower.includes('available')) return 'online';
-    if (lower.includes('in use')) return 'partial';
-    if (lower.includes('unavailable') || lower.includes('0 of') || lower === 'offline') return 'offline';
-    if (lower === 'online') return 'online';
+    if (status.includes('in use') || status.includes('not in use')) {
+        return 'online'; // masih dianggap aktif
+    }
 
-    return 'offline'; // Default to offline for unknown statuses
+    return 'unknown';
 }
 
 function getStatusColor(status) {
@@ -135,38 +146,63 @@ function applyLiveStatus() {
     });
 }
 
-function trackStatusChange(newStatusList) {
-    const now = new Date();
+function trackStatusChange(devices) {
+    devices.forEach(device => {
+        const endpoint = device.endpoint;
+        const currentStatus = normalizeStatus(device.status);
+        const timestamp = device.timestamp || new Date().toISOString();
 
-    newStatusList.forEach(newDevice => {
-        const existing = nodes.find(d => d.endpoint === newDevice.endpoint);
-        if (!existing) return;
+        // Get previous status for this endpoint
+        const prevStatus = previousStatusMap[endpoint];
 
-        const prevStatus = normalizeStatus(existing.status);
-        const currStatus = normalizeStatus(newDevice.status);
+        // Only track if there's actually a status change AND we have a previous status
+        if (prevStatus && prevStatus !== currentStatus) {
+            console.log(`[STATUS CHANGE] ${endpoint}: ${prevStatus} → ${currentStatus} at ${timestamp}`);
 
-        // Track status changes
-        if (prevStatus !== currStatus) {
-            const logEntry = {
-                endpoint: newDevice.endpoint,
-                status: currStatus,
-                time: now.toISOString(),
-                description: currStatus === 'offline' ? 'Telepon tidak merespons' : 'Telepon kembali online',
-                nodeName: existing.name || `Endpoint ${newDevice.endpoint}`
-            };
+            // Check if this exact log already exists (prevent duplicates)
+            const existingLogIndex = disconnectLogs.findIndex(log =>
+                log.endpoint === endpoint && 
+                log.time === timestamp &&
+                log.from === prevStatus &&
+                log.to === currentStatus
+            );
 
-            disconnectLogs.push(logEntry);
+            if (existingLogIndex === -1) { // No duplicate found
+                const node = nodes.find(n => n.endpoint === endpoint);
 
-            // Keep only last 100 log entries
-            if (disconnectLogs.length > 100) {
-                disconnectLogs = disconnectLogs.slice(-100);
+                const log = {
+                    endpoint,
+                    from: prevStatus,
+                    to: currentStatus,
+                    time: timestamp,
+                    status: currentStatus,
+                    nodeName: node?.name || `Node ${endpoint}`,
+                    description: getStatusDescription(prevStatus, currentStatus)
+                };
+
+                disconnectLogs.push(log);
+                console.log("New log added:", log);
+                
+                // Render the updated activity log
+                renderActivityLog();
             }
         }
 
-        // Update node status
-        existing.status = currStatus;
-        existing.timestamp = newDevice.timestamp;
+        // Update the previous status map
+        previousStatusMap[endpoint] = currentStatus;
     });
+}
+
+function getStatusDescription(fromStatus, toStatus) {
+    if (toStatus === 'offline') {
+        return 'Telepon tidak merespons';
+    } else if (fromStatus === 'offline' && toStatus === 'online') {
+        return 'Telepon kembali online';
+    } else if (toStatus === 'online') {
+        return 'Telepon aktif';
+    } else {
+        return `Status berubah dari ${fromStatus} ke ${toStatus}`;
+    }
 }
 
 function updateRealtimeStats(statusData) {
@@ -174,7 +210,7 @@ function updateRealtimeStats(statusData) {
         // Use nodes data if no status data
         statusData = nodes.map(node => ({
             endpoint: node.endpoint,
-            status: node.status
+            status: node.status || 'offline'
         }));
     }
 
@@ -196,33 +232,55 @@ function updateRealtimeStats(statusData) {
     setText('online-phones', online);
     setText('offline-phones', offline);
     setText('in-use-phones', inUse);
+
+    // Update filter info if phoneMonitoring exists
+    if (phoneMonitoring) {
+        // Get current filter and update the display accordingly
+        const currentFilter = phoneMonitoring.currentFilter;
+        const currentPhoneData = phoneMonitoring.phoneData;
+        const filteredPhones = currentFilter === 'all' ? currentPhoneData : currentPhoneData.filter(phone => phone.status === currentFilter);
+        
+        phoneMonitoring.updateFilterInfo(currentFilter, filteredPhones.length, total);
+    }
 }
 
 function renderActivityLog() {
     const container = document.getElementById("activity-log");
     const filter = document.getElementById("activity-filter")?.value || 'all';
 
-    if (!container) return;
+    if (!container) {
+        console.warn('Activity log container not found');
+        return;
+    }
 
+    console.log('Rendering activity log with', disconnectLogs.length, 'total logs');
+
+    // Clear container
     container.innerHTML = '';
 
+    // Filter logs based on selected filter
     let logsToShow = disconnectLogs.filter(log => {
         if (filter === 'all') return true;
         return log.status === filter;
     });
+
+    console.log('Filtered logs:', logsToShow.length, 'logs to show');
 
     if (logsToShow.length === 0) {
         container.innerHTML = `
             <div class="text-center text-gray-500 text-sm p-8">
                 <i class="fas fa-inbox text-3xl mb-3"></i>
                 <p>Belum ada aktivitas ${filter !== 'all' ? `(${filter})` : ''}.</p>
+                <p class="text-xs mt-2">Total logs in memory: ${disconnectLogs.length}</p>
             </div>
         `;
         return;
     }
 
-    // Show latest logs first
-    logsToShow.slice().reverse().forEach(log => {
+    // Show latest logs first (reverse chronologically)
+    const sortedLogs = logsToShow.slice().sort((a, b) => new Date(b.time) - new Date(a.time));
+    
+    sortedLogs.forEach(log => {
         const item = document.createElement('div');
         item.className = 'p-4 rounded-xl shadow-sm border border-gray-200 bg-white flex justify-between items-start gap-4 hover:shadow-md transition-shadow';
 
@@ -230,7 +288,6 @@ function renderActivityLog() {
             '<i class="fas fa-exclamation-triangle text-red-500"></i>' :
             '<i class="fas fa-check-circle text-green-500"></i>';
 
-        const statusText = log.status === 'offline' ? 'tidak merespons' : 'kembali aktif';
         const statusColor = log.status === 'offline' ? 'text-red-600' : 'text-green-600';
 
         item.innerHTML = `
@@ -238,11 +295,11 @@ function renderActivityLog() {
                 <div class="mt-1">${statusIcon}</div>
                 <div>
                     <div class="font-semibold text-gray-800">
-                        ${log.nodeName || `Endpoint ${log.endpoint}`} ${statusText}
+                        ${log.nodeName}
                     </div>
                     <div class="text-sm text-gray-500">${log.description}</div>
                     <div class="text-xs ${statusColor} font-medium mt-1">
-                        Endpoint: ${log.endpoint}
+                        ${log.from} → ${log.to} | Endpoint: ${log.endpoint}
                     </div>
                 </div>
             </div>
@@ -253,18 +310,6 @@ function renderActivityLog() {
 
         container.appendChild(item);
     });
-}
-
-function updateNodesTable() {
-    // This function should update the nodes table if it exists
-    // Implementation depends on your table structure
-    console.log('Updating nodes table with:', nodes);
-}
-
-function updateMapMarkers() {
-    // This function should update map markers if map exists
-    // Implementation depends on your map structure
-    console.log('Updating map markers');
 }
 
 function getPopupContent(node, color) {
@@ -356,17 +401,7 @@ class PhoneMonitoring {
         const filteredPhones = status === 'all' ? currentPhoneData : currentPhoneData.filter(phone => phone.status === status);
 
         // Update filter info
-        const filterStatus = {
-            'all': 'Semua telepon',
-            'online': 'Telepon online',
-            'offline': 'Telepon offline',
-            'partial': 'Telepon in use'
-        };
-
-        const filterStatusEl = document.getElementById('filter-status');
-        if (filterStatusEl) {
-            filterStatusEl.textContent = filterStatus[status] || 'Filter tidak dikenal';
-        }
+        this.updateFilterInfo(status, filteredPhones.length, currentPhoneData.length);
 
         // Generate phone cards
         const phoneGrid = document.getElementById('phone-grid');
@@ -382,6 +417,35 @@ class PhoneMonitoring {
             if (noResults) noResults.classList.add('hidden');
             phoneGrid.innerHTML = filteredPhones.map(phone => this.generatePhoneCard(phone)).join('');
         }
+    }
+
+    updateFilterInfo(status, filteredCount, totalCount) {
+        const filterStatus = {
+            'all': 'Semua telepon',
+            'online': 'Telepon online',
+            'offline': 'Telepon offline',
+            'partial': 'Telepon in use'
+        };
+
+        // Update filter status text
+        const filterStatusEl = document.getElementById('filter-status');
+        if (filterStatusEl) {
+            filterStatusEl.textContent = filterStatus[status] || 'Filter tidak dikenal';
+        }
+
+        // Update filtered count
+        const filterPhonesEl = document.getElementById('filterPhones');
+        if (filterPhonesEl) {
+            filterPhonesEl.textContent = filteredCount;
+        }
+
+        // Update total count (this should match the total-phones from stats)
+        const totalPhonesEl = document.getElementById('total-phones');
+        if (totalPhonesEl) {
+            totalPhonesEl.textContent = totalCount;
+        }
+
+        console.log(`Filter Info Updated: ${filterStatus[status]} (${filteredCount} dari ${totalCount} telepon)`);
     }
 
     generatePhoneCard(phone) {
@@ -445,6 +509,9 @@ class PhoneMonitoring {
         if (phoneGrid) {
             const currentPhoneData = this.phoneData;
             phoneGrid.innerHTML = currentPhoneData.map(phone => this.generatePhoneCard(phone)).join('');
+            
+            // Update filter info for initial load (show all phones)
+            this.updateFilterInfo('all', currentPhoneData.length, currentPhoneData.length);
         }
 
         // Also render activity log

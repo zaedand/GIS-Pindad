@@ -408,3 +408,13 @@ lalu dtabase/api/nodes
     "response_time_raw": 41
   },
 ```
+
+1001 => ON => 07:00
+1001 => OFF => 07:10 => cari catatan off terakhir yang jam_on = null, kalo gak ada catat di tbl riwayat_off (id, endpoint, jam_off, jam_on?), kalo ada biarkan
+1001 => OFF => 07:20 => cari catatan off terakhir yang jam_on = null, kalo gak ada catat di tbl riwayat_off (id, endpoint, jam_off, jam_on?), kalo ada biarkan
+1001 => ON => 07:30 => => cari catatan off terakhir yang jam_on = null, kalo gak biarkan, kalo ada update jam_on
+
+id	endpoint	jam_off	jam_on					
+1	1001	2025-07-24 07:00:00	2025-07-24 07:30:00		jam 07:00 ON ke OFF			jam 07:00 ON
+2	1001	2025-07-24 08:00:00	2025-07-24 09:00:00		jam 08:00 ON ke OFF			jam 09:00 ON
+3	1004							
