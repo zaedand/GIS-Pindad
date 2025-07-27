@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         await fetchNodes();
 
         // Setup real-time socket connection
-        setupSocket();
+        initializeSocket();
 
         console.log('Dashboard initialized successfully');
     } catch (error) {
@@ -31,9 +31,36 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 });
 
+const MAP_CONFIG = {
+    center: [-8.173358, 112.684885],
+    zoom: 17,
+    maxZoom: 20
+};
+
 function initializeMap() {
     // Initialize Leaflet map centered on your location
     map = L.map('map').setView([-8.173358, 112.684885], 17);
+
+    // Add tile layers
+    const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: MAP_CONFIG.maxZoom,
+        attribution: '© OpenStreetMap contributors'
+    });
+
+    const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: MAP_CONFIG.maxZoom,
+        attribution: '© Esri'
+    });
+
+    // Add default layer
+    osmLayer.addTo(map);
+
+    // Layer control
+    const baseMaps = {
+        "OpenStreetMap": osmLayer,
+        "Satellite": satelliteLayer
+    };
+    L.control.layers(baseMaps).addTo(map);
 
     // Add OpenStreetMap tiles
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -68,29 +95,32 @@ async function fetchNodes() {
     }
 }
 
-function setupSocket() {
-    socket = io('http://localhost:3000', {
+function initializeSocket() {
+    socket = io("http://localhost:3000", {
         transports: ['websocket', 'polling'],
-        timeout: 20000
+        timeout: 20000,
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000
     });
 
-    socket.on('connect', () => {
-        console.log('Connected to Socket.IO server:', socket.id);
-        showSuccessMessage('Real-time connection established');
+    socket.on("connect", () => {
+        console.log("Connected to Socket.IO server:", socket.id);
+        showToast('Real-time connection established', 'success');
     });
 
-    socket.on('disconnect', (reason) => {
-        console.log('Disconnected from Socket.IO server:', reason);
-        showWarningMessage('Real-time connection lost. Attempting to reconnect...');
+    socket.on("disconnect", (reason) => {
+        console.log("Disconnected from Socket.IO server:", reason);
+        showToast('Connection lost. Reconnecting...', 'warning');
     });
 
-    socket.on('connect_error', (error) => {
-        console.error('Socket connection error:', error);
-        showErrorMessage('Failed to connect to real-time updates');
+    socket.on("connect_error", (error) => {
+        console.error("Socket connection error:", error);
+        showToast('Failed to connect server', 'error');
     });
 
-    socket.on('device-status', (statusData) => {
-        console.log('Received real-time status update:', statusData);
+    socket.on("device-status", (statusData) => {
+        console.log('Received device status update:', statusData);
         handleStatusUpdate(statusData);
     });
 }
@@ -172,6 +202,41 @@ function updateMapMarkers() {
     });
 
     console.log(`Updated ${Object.keys(markers).length} map markers`);
+}
+
+
+// Toast notification system
+function showToast(message, type = 'success') {
+    const toastStyles = {
+        success: { bg: 'linear-gradient(135deg, #10b981, #059669)', icon: '✅' },
+        error: { bg: 'linear-gradient(135deg, #ef4444, #dc2626)', icon: '❌' },
+        warning: { bg: 'linear-gradient(135deg, #f59e0b, #d97706)', icon: '⚠️' },
+        info: { bg: 'linear-gradient(135deg, #3b82f6, #2563eb)', icon: 'ℹ️' }
+    };
+
+    const style = toastStyles[type] || toastStyles.success;
+
+    if (typeof Toastify !== 'undefined') {
+        Toastify({
+            text: `${style.icon} ${message}`,
+            duration: 2000,
+            close: true,
+            gravity: "top",
+            position: "right",
+            style: {
+                background: style.bg,
+                color: '#ffffff',
+                borderRadius: "12px",
+                padding: "16px 20px",
+                boxShadow: "0 10px 25px rgba(0,0,0,0.2)",
+                fontSize: "14px",
+                fontWeight: "500",
+                minWidth: "300px"
+            }
+        }).showToast();
+    } else {
+        console.log(`${type.toUpperCase()}: ${message}`);
+    }
 }
 
 function createMarkerForNode(node) {
@@ -295,12 +360,12 @@ function normalizeStatus(status) {
     if (!status) return 'offline';
 
     const statusStr = status.toString().toLowerCase().trim();
-    
+
     console.log(`Normalizing status: "${statusStr}"`);
 
     // Handle "unavailable" or "0 of X" patterns - these are OFFLINE
-    if (statusStr.includes('unavailable') || 
-        statusStr.includes('0 of') || 
+    if (statusStr.includes('unavailable') ||
+        statusStr.includes('0 of') ||
         statusStr === 'offline') {
         console.log(`→ Mapped to: offline`);
         return 'offline';
@@ -477,3 +542,14 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+// Error boundary for unhandled errors
+window.addEventListener('error', (event) => {
+    console.error('Unhandled error in map.js:', event.error);
+    showToast('An unexpected error occurred', 'error');
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+    console.error('Unhandled promise rejection in map.js:', event.reason);
+    showToast('A network error occurred', 'error');
+});
