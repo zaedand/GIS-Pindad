@@ -1639,4 +1639,3 @@ php artisan tinker
 >>> $service = app(App\Services\DeviceHistoryService::class);
 >>> $service->handleStatusChange('1001', 'offline');
 >>> $service->handleStatusChange('1001', 'online');
-```

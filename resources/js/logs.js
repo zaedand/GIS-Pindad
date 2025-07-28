@@ -1,4 +1,4 @@
-// resources/js/logs.js
+// resources/js/logs.js - Updated to work with existing History API
 import { io } from 'socket.io-client';
 
 let socket;
@@ -6,7 +6,9 @@ let nodes = [];
 let disconnectLogs = [];
 let latestStatus = [];
 let markers = {};
-let previousStatusMap = {}; // Track previous status
+let previousStatusMap = {};
+let deviceHistoryTracker;
+let phoneMonitoring;
 
 const apiHeaders = {
     'Content-Type': 'application/json',
@@ -20,6 +22,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Fetch initial nodes data
         await fetchNodes();
 
+        // Initialize device history tracker
+        deviceHistoryTracker = new DeviceHistoryTracker();
+        
         // Initialize socket connection
         initializeSocket();
 
@@ -29,6 +34,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Setup event listeners
         setupEventListeners();
 
+        // Initialize search functionality
+        initializeSearch();
+
     } catch (error) {
         console.error('Initialization error:', error);
     }
@@ -37,6 +45,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function fetchNodes() {
     try {
         const response = await fetch('/api/nodes', { headers: apiHeaders });
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         nodes = await response.json();
         console.log('Loaded nodes:', nodes);
 
@@ -47,37 +59,105 @@ async function fetchNodes() {
             }
         });
 
+        // Load existing activity logs from database using History API
+        await loadActivityLogsFromDatabase();
+
         // Apply any existing live status
         applyLiveStatus();
         updateRealtimeStats(latestStatus);
 
     } catch (error) {
         console.error('Error fetching nodes:', error);
+        showNotification('Error loading nodes data', 'error');
+    }
+}
+
+async function loadActivityLogsFromDatabase() {
+    try {
+        // Use the existing History API endpoint
+        const response = await fetch('/api/history/all', { headers: apiHeaders });
+        if (response.ok) {
+            const logs = await response.json();
+            disconnectLogs = logs.map(log => ({
+                id: log.id,
+                endpoint: log.endpoint,
+                status: log.current_status,
+                time: log.timestamp || log.created_at,
+                description: log.description,
+                nodeName: log.node_name || `Node ${log.endpoint}`,
+                duration: log.duration || null,
+                from: log.previous_status,
+                to: log.current_status
+            }));
+            console.log('Loaded activity logs from database:', disconnectLogs.length);
+        }
+    } catch (error) {
+        console.error('Error loading activity logs:', error);
     }
 }
 
 function initializeSocket() {
-    socket = io('http://localhost:3000');
+    // Try different socket URLs based on environment
+    const socketUrls = [
+        'http://localhost:3000',
+        window.location.origin.replace(/^http/, 'ws'),
+        window.location.origin
+    ];
 
-    socket.on('connect', () => {
-        console.log('Connected to Socket.IO server:', socket.id);
-    });
+    let socketConnected = false;
 
-    socket.on('device-status', statusList => {
-        console.log('Received device status:', statusList);
-        latestStatus = statusList;
-        
-        // Track status changes BEFORE applying live status
-        trackStatusChange(statusList);
-        
-        // Apply live status updates
-        applyLiveStatus();
-        updateRealtimeStats(statusList);
-    });
+    function tryConnect(urlIndex = 0) {
+        if (urlIndex >= socketUrls.length || socketConnected) return;
 
-    socket.on('disconnect', () => {
-        console.log('Disconnected from Socket.IO server');
-    });
+        const url = socketUrls[urlIndex];
+        console.log(`Attempting socket connection to: ${url}`);
+
+        socket = io(url, {
+            transports: ['websocket', 'polling'],
+            autoConnect: true,
+            reconnection: true,
+            reconnectionDelay: 1000,
+            reconnectionAttempts: 3,
+            timeout: 5000
+        });
+
+        socket.on('connect', () => {
+            console.log('Connected to Socket.IO server:', socket.id);
+            socketConnected = true;
+            showNotification('Socket connected successfully', 'success');
+        });
+
+        socket.on('device-status', async (statusList) => {
+            console.log('Received device status:', statusList);
+            latestStatus = statusList;
+            
+            // Track status changes and save to database
+            await trackStatusChangeAndSave(statusList);
+            
+            // Apply live status updates
+            applyLiveStatus();
+            updateRealtimeStats(statusList);
+            
+            // Update phone monitoring display
+            if (phoneMonitoring) {
+                phoneMonitoring.updateLogboard();
+            }
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Disconnected from Socket.IO server');
+            showNotification('Socket disconnected', 'warning');
+        });
+
+        socket.on('connect_error', (error) => {
+            console.error(`Socket connection error for ${url}:`, error);
+            if (!socketConnected) {
+                tryConnect(urlIndex + 1);
+            }
+        });
+    }
+
+    tryConnect();
 }
 
 function setupEventListeners() {
@@ -86,30 +166,47 @@ function setupEventListeners() {
     if (activityFilter) {
         activityFilter.addEventListener('change', renderActivityLog);
     }
+
+    // Search input
+    const searchInput = document.getElementById('endpoint-search');
+    if (searchInput) {
+        searchInput.addEventListener('input', handleEndpointSearch);
+    }
+
+    // Date range filters
+    const dateFromInput = document.getElementById('date-from');
+    const dateToInput = document.getElementById('date-to');
+    
+    if (dateFromInput) dateFromInput.addEventListener('change', renderActivityLog);
+    if (dateToInput) dateToInput.addEventListener('change', renderActivityLog);
 }
 
 function normalizeStatus(status) {
     if (!status) return 'offline';
     
-    status = status.toLowerCase();
+    status = status.toString().toLowerCase();
     
     if (status.includes('unavailable') || status.includes('0 of')) {
         return 'offline';
     }
 
     if (status.includes('in use') || status.includes('not in use')) {
-        return 'online'; // masih dianggap aktif
+        return 'online';
     }
 
-    return 'unknown';
+    if (status.includes('online') || status.includes('active')) {
+        return 'online';
+    }
+
+    return 'offline';
 }
 
 function getStatusColor(status) {
     switch (status) {
-        case 'online': return '#10b981';    // green
-        case 'offline': return '#ef4444';   // red
-        case 'partial': return '#f59e0b';   // yellow
-        default: return '#6b7280';          // gray
+        case 'online': return '#10b981';
+        case 'offline': return '#ef4444';
+        case 'partial': return '#f59e0b';
+        default: return '#6b7280';
     }
 }
 
@@ -146,18 +243,41 @@ function applyLiveStatus() {
     });
 }
 
-function trackStatusChange(devices) {
-    devices.forEach(device => {
+async function trackStatusChangeAndSave(devices) {
+    const statusChanges = [];
+
+    for (const device of devices) {
         const endpoint = device.endpoint;
         const currentStatus = normalizeStatus(device.status);
         const timestamp = device.timestamp || new Date().toISOString();
-
-        // Get previous status for this endpoint
         const prevStatus = previousStatusMap[endpoint];
 
         // Only track if there's actually a status change AND we have a previous status
         if (prevStatus && prevStatus !== currentStatus) {
             console.log(`[STATUS CHANGE] ${endpoint}: ${prevStatus} → ${currentStatus} at ${timestamp}`);
+
+            const node = nodes.find(n => n.endpoint === endpoint);
+            const statusChangeData = {
+                endpoint: endpoint,
+                node_name: node?.name || `Node ${endpoint}`,
+                previous_status: prevStatus,
+                current_status: currentStatus,
+                timestamp: timestamp,
+                description: getStatusDescription(prevStatus, currentStatus)
+            };
+
+            statusChanges.push(statusChangeData);
+
+            // Add to local logs immediately for UI responsiveness
+            const logEntry = {
+                endpoint: endpoint,
+                from: prevStatus,
+                to: currentStatus,
+                time: timestamp,
+                status: currentStatus,
+                nodeName: node?.name || `Node ${endpoint}`,
+                description: statusChangeData.description
+            };
 
             // Check if this exact log already exists (prevent duplicates)
             const existingLogIndex = disconnectLogs.findIndex(log =>
@@ -167,30 +287,58 @@ function trackStatusChange(devices) {
                 log.to === currentStatus
             );
 
-            if (existingLogIndex === -1) { // No duplicate found
-                const node = nodes.find(n => n.endpoint === endpoint);
-
-                const log = {
-                    endpoint,
-                    from: prevStatus,
-                    to: currentStatus,
-                    time: timestamp,
-                    status: currentStatus,
-                    nodeName: node?.name || `Node ${endpoint}`,
-                    description: getStatusDescription(prevStatus, currentStatus)
-                };
-
-                disconnectLogs.push(log);
-                console.log("New log added:", log);
-                
-                // Render the updated activity log
-                renderActivityLog();
+            if (existingLogIndex === -1) {
+                disconnectLogs.unshift(logEntry); // Add to beginning for latest first
+                console.log("New log added:", logEntry);
             }
         }
 
         // Update the previous status map
         previousStatusMap[endpoint] = currentStatus;
-    });
+    }
+
+    // Save status changes to database using History API
+    if (statusChanges.length > 0) {
+        try {
+            await saveStatusChangesToDatabase(statusChanges);
+        } catch (error) {
+            console.error('Error saving status changes to database:', error);
+        }
+    }
+
+    // Render the updated activity log
+    renderActivityLog();
+}
+
+async function saveStatusChangesToDatabase(statusChanges) {
+    try {
+        // Use the existing History API endpoint for bulk updates
+        for (const change of statusChanges) {
+            const response = await fetch('/api/history/update-status', {
+                method: 'POST',
+                headers: apiHeaders,
+                body: JSON.stringify({
+                    endpoint: change.endpoint,
+                    node_name: change.node_name,
+                    previous_status: change.previous_status,
+                    current_status: change.current_status,
+                    timestamp: change.timestamp,
+                    description: change.description
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const result = await response.json();
+            console.log('Status change saved to database:', result);
+        }
+
+    } catch (error) {
+        console.error('Error saving to database:', error);
+        showNotification('Error saving activity logs to database', 'error');
+    }
 }
 
 function getStatusDescription(fromStatus, toStatus) {
@@ -207,7 +355,6 @@ function getStatusDescription(fromStatus, toStatus) {
 
 function updateRealtimeStats(statusData) {
     if (!statusData || statusData.length === 0) {
-        // Use nodes data if no status data
         statusData = nodes.map(node => ({
             endpoint: node.endpoint,
             status: node.status || 'offline'
@@ -223,9 +370,7 @@ function updateRealtimeStats(statusData) {
 
     const setText = (id, val) => {
         const el = document.getElementById(id);
-        if (el) {
-            el.textContent = val;
-        }
+        if (el) el.textContent = val;
     };
 
     setText('total-phones', total);
@@ -235,10 +380,10 @@ function updateRealtimeStats(statusData) {
 
     // Update filter info if phoneMonitoring exists
     if (phoneMonitoring) {
-        // Get current filter and update the display accordingly
         const currentFilter = phoneMonitoring.currentFilter;
         const currentPhoneData = phoneMonitoring.phoneData;
-        const filteredPhones = currentFilter === 'all' ? currentPhoneData : currentPhoneData.filter(phone => phone.status === currentFilter);
+        const filteredPhones = currentFilter === 'all' ? currentPhoneData : 
+            currentPhoneData.filter(phone => phone.status === currentFilter);
         
         phoneMonitoring.updateFilterInfo(currentFilter, filteredPhones.length, total);
     }
@@ -247,6 +392,9 @@ function updateRealtimeStats(statusData) {
 function renderActivityLog() {
     const container = document.getElementById("activity-log");
     const filter = document.getElementById("activity-filter")?.value || 'all';
+    const searchTerm = document.getElementById('endpoint-search')?.value.toLowerCase() || '';
+    const dateFrom = document.getElementById('date-from')?.value;
+    const dateTo = document.getElementById('date-to')?.value;
 
     if (!container) {
         console.warn('Activity log container not found');
@@ -255,13 +403,23 @@ function renderActivityLog() {
 
     console.log('Rendering activity log with', disconnectLogs.length, 'total logs');
 
-    // Clear container
     container.innerHTML = '';
 
-    // Filter logs based on selected filter
+    // Filter logs based on criteria
     let logsToShow = disconnectLogs.filter(log => {
-        if (filter === 'all') return true;
-        return log.status === filter;
+        // Status filter
+        if (filter !== 'all' && log.status !== filter) return false;
+
+        // Search filter
+        if (searchTerm && !log.endpoint.toLowerCase().includes(searchTerm) && 
+            !log.nodeName.toLowerCase().includes(searchTerm)) return false;
+
+        // Date range filter
+        const logDate = new Date(log.time).toISOString().split('T')[0];
+        if (dateFrom && logDate < dateFrom) return false;
+        if (dateTo && logDate > dateTo) return false;
+
+        return true;
     });
 
     console.log('Filtered logs:', logsToShow.length, 'logs to show');
@@ -270,19 +428,20 @@ function renderActivityLog() {
         container.innerHTML = `
             <div class="text-center text-gray-500 text-sm p-8">
                 <i class="fas fa-inbox text-3xl mb-3"></i>
-                <p>Belum ada aktivitas ${filter !== 'all' ? `(${filter})` : ''}.</p>
-                <p class="text-xs mt-2">Total logs in memory: ${disconnectLogs.length}</p>
+                <p>Tidak ada aktivitas ditemukan</p>
+                ${searchTerm ? `<p class="text-xs mt-2">dengan pencarian: "${searchTerm}"</p>` : ''}
+                <p class="text-xs mt-2">Total logs: ${disconnectLogs.length}</p>
             </div>
         `;
         return;
     }
 
-    // Show latest logs first (reverse chronologically)
+    // Show latest logs first
     const sortedLogs = logsToShow.slice().sort((a, b) => new Date(b.time) - new Date(a.time));
     
-    sortedLogs.forEach(log => {
+    sortedLogs.forEach((log, index) => {
         const item = document.createElement('div');
-        item.className = 'p-4 rounded-xl shadow-sm border border-gray-200 bg-white flex justify-between items-start gap-4 hover:shadow-md transition-shadow';
+        item.className = 'p-4 rounded-xl shadow-sm border border-gray-200 bg-white hover:shadow-md transition-all duration-300';
 
         const statusIcon = log.status === 'offline' ?
             '<i class="fas fa-exclamation-triangle text-red-500"></i>' :
@@ -291,29 +450,285 @@ function renderActivityLog() {
         const statusColor = log.status === 'offline' ? 'text-red-600' : 'text-green-600';
 
         item.innerHTML = `
-            <div class="flex items-start gap-3">
-                <div class="mt-1">${statusIcon}</div>
-                <div>
-                    <div class="font-semibold text-gray-800">
-                        ${log.nodeName}
-                    </div>
-                    <div class="text-sm text-gray-500">${log.description}</div>
-                    <div class="text-xs ${statusColor} font-medium mt-1">
-                        ${log.from} → ${log.to} | Endpoint: ${log.endpoint}
+            <div class="flex justify-between items-start gap-4">
+                <div class="flex items-start gap-3 flex-1">
+                    <div class="mt-1">${statusIcon}</div>
+                    <div class="flex-1">
+                        <div class="font-semibold text-gray-800 mb-1">
+                            ${log.nodeName}
+                            <span class="text-sm font-normal text-gray-500">(${log.endpoint})</span>
+                        </div>
+                        <div class="text-sm text-gray-600 mb-2">${log.description}</div>
+                        <div class="flex flex-wrap gap-2 text-xs">
+                            <span class="${statusColor} font-medium bg-gray-50 px-2 py-1 rounded-full">
+                                ${log.from} → ${log.to}
+                            </span>
+                            <button 
+                                onclick="showEndpointHistory('${log.endpoint}')" 
+                                class="text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-full transition-colors"
+                            >
+                                <i class="fas fa-history mr-1"></i>View History
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div class="text-sm text-gray-400 whitespace-nowrap">
-                ${new Date(log.time).toLocaleString('id-ID')}
+                <div class="text-sm text-gray-400 whitespace-nowrap">
+                    ${new Date(log.time).toLocaleString('id-ID')}
+                </div>
             </div>
         `;
 
         container.appendChild(item);
     });
+
+    // Update search results count
+    updateSearchResultsCount(logsToShow.length, disconnectLogs.length);
+}
+
+function updateSearchResultsCount(filteredCount, totalCount) {
+    const searchResults = document.getElementById('search-results-count');
+    if (searchResults) {
+        if (filteredCount === totalCount) {
+            searchResults.textContent = `Showing all ${totalCount} activities`;
+        } else {
+            searchResults.textContent = `Showing ${filteredCount} of ${totalCount} activities`;
+        }
+    }
+}
+
+function handleEndpointSearch() {
+    // Debounce search to avoid too many re-renders
+    clearTimeout(window.searchTimeout);
+    window.searchTimeout = setTimeout(renderActivityLog, 300);
+}
+
+function initializeSearch() {
+    // Setup search functionality
+    const searchContainer = document.getElementById('search-container');
+    if (searchContainer) {
+        searchContainer.innerHTML = `
+            <div class="bg-white/95 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-white/30 mb-6">
+                <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <i class="fas fa-search text-indigo-500"></i>
+                    Pencarian & Filter Log Aktivitas
+                </h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Cari Endpoint</label>
+                        <input 
+                            type="text" 
+                            id="endpoint-search" 
+                            placeholder="Masukkan endpoint atau nama node..."
+                            class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        >
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Dari Tanggal</label>
+                        <input 
+                            type="date" 
+                            id="date-from"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        >
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Sampai Tanggal</label>
+                        <input 
+                            type="date" 
+                            id="date-to"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        >
+                    </div>
+                </div>
+                
+                <div class="flex flex-wrap items-center justify-between gap-4 mt-4">
+                    <div class="text-sm text-gray-600">
+                        <span id="search-results-count">Loading...</span>
+                    </div>
+                    
+                    <div class="flex gap-2">
+                        <button 
+                            onclick="clearSearchFilters()" 
+                            class="px-4 py-2 text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors text-sm"
+                        >
+                            <i class="fas fa-times mr-1"></i>Clear Filters
+                        </button>
+                        <button 
+                            onclick="exportActivityLogs()" 
+                            class="px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors text-sm"
+                        >
+                            <i class="fas fa-download mr-1"></i>Export
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Re-setup event listeners for search
+        setupEventListeners();
+    }
+}
+
+function clearSearchFilters() {
+    document.getElementById('endpoint-search').value = '';
+    document.getElementById('date-from').value = '';
+    document.getElementById('date-to').value = '';
+    document.getElementById('activity-filter').value = 'all';
+    renderActivityLog();
+}
+
+async function exportActivityLogs() {
+    try {
+        // Use existing History API for export - you may need to add this endpoint
+        const response = await fetch('/api/history/all?export=csv', {
+            headers: apiHeaders
+        });
+        
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `activity_logs_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            showNotification('Activity logs exported successfully', 'success');
+        } else {
+            throw new Error('Export failed');
+        }
+    } catch (error) {
+        console.error('Error exporting logs:', error);
+        showNotification('Error exporting activity logs', 'error');
+    }
+}
+
+async function showEndpointHistory(endpoint) {
+    try {
+        // Use existing History API endpoints
+        const [historyResponse, statsResponse] = await Promise.all([
+            fetch(`/api/history/endpoint/${endpoint}`, { headers: apiHeaders }),
+            fetch(`/api/history/endpoint/${endpoint}/stats`, { headers: apiHeaders })
+        ]);
+        
+        if (!historyResponse.ok || !statsResponse.ok) {
+            throw new Error('Failed to fetch endpoint data');
+        }
+        
+        const history = await historyResponse.json();
+        const stats = await statsResponse.json();
+        
+        displayEndpointHistoryModal(endpoint, {
+            history: history,
+            statistics: stats,
+            node_name: nodes.find(n => n.endpoint === endpoint)?.name || `Node ${endpoint}`
+        });
+    } catch (error) {
+        console.error('Error fetching endpoint history:', error);
+        showNotification('Error loading endpoint history', 'error');
+    }
+}
+
+function displayEndpointHistoryModal(endpoint, data) {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+    
+    modal.innerHTML = `
+        <div class="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
+            <div class="p-6 border-b border-gray-200">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800">
+                            History untuk Endpoint: ${endpoint}
+                        </h2>
+                        <p class="text-gray-600 mt-1">${data.node_name || 'Unknown Node'}</p>
+                    </div>
+                    <button onclick="this.closest('.fixed').remove()" 
+                            class="text-gray-500 hover:text-gray-700 text-2xl p-2">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="p-6 overflow-y-auto max-h-[70vh]">
+                <!-- Statistics Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-blue-50 p-4 rounded-xl border border-blue-200">
+                        <div class="text-sm text-blue-600">Total Events</div>
+                        <div class="text-2xl font-bold text-blue-800">${data.statistics?.total_events || 0}</div>
+                    </div>
+                    <div class="bg-red-50 p-4 rounded-xl border border-red-200">
+                        <div class="text-sm text-red-600">Offline Events</div>
+                        <div class="text-2xl font-bold text-red-800">${data.statistics?.offline_events || 0}</div>
+                    </div>
+                    <div class="bg-green-50 p-4 rounded-xl border border-green-200">
+                        <div class="text-sm text-green-600">Online Events</div>
+                        <div class="text-2xl font-bold text-green-800">${data.statistics?.online_events || 0}</div>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                        <div class="text-sm text-gray-600">Avg Offline Duration</div>
+                        <div class="text-2xl font-bold text-gray-800">${data.statistics?.avg_offline_duration || 'N/A'}</div>
+                    </div>
+                </div>
+
+                <!-- Recent History Table -->
+                <div class="bg-gray-50 rounded-xl p-4">
+                    <h3 class="text-lg font-semibold mb-4 text-gray-800">Recent Activity (Last 50)</h3>
+                    
+                    ${data.history && data.history.length > 0 ? `
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead class="bg-gray-100 rounded-lg">
+                                    <tr>
+                                        <th class="py-3 px-4 text-left font-medium text-gray-700">Time</th>
+                                        <th class="py-3 px-4 text-left font-medium text-gray-700">Status Change</th>
+                                        <th class="py-3 px-4 text-left font-medium text-gray-700">Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="space-y-2">
+                                    ${data.history.map(item => `
+                                        <tr class="border-b border-gray-200 hover:bg-white">
+                                            <td class="py-3 px-4 text-gray-800">
+                                                ${new Date(item.timestamp || item.created_at).toLocaleString('id-ID')}
+                                            </td>
+                                            <td class="py-3 px-4">
+                                                <span class="px-2 py-1 rounded-full text-xs font-medium ${
+                                                    item.current_status === 'offline' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
+                                                }">
+                                                    ${item.previous_status} → ${item.current_status}
+                                                </span>
+                                            </td>
+                                            <td class="py-3 px-4 text-gray-600">${item.description}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    ` : `
+                        <div class="text-center py-8 text-gray-500">
+                            <i class="fas fa-inbox text-3xl mb-3"></i>
+                            <p>No history data available for this endpoint</p>
+                        </div>
+                    `}
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Close on backdrop click
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
 }
 
 function getPopupContent(node, color) {
-    // Return popup content for map markers
     return `
         <div>
             <strong>${node.name}</strong><br>
@@ -324,7 +739,173 @@ function getPopupContent(node, color) {
     `;
 }
 
-// Phone Monitoring Class - Updated to use real backend data
+function showNotification(message, type = 'info') {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `fixed top-4 right-4 z-50 px-6 py-4 rounded-lg shadow-lg transform transition-all duration-300 translate-x-full`;
+    
+    const colors = {
+        success: 'bg-green-500 text-white',
+        error: 'bg-red-500 text-white',
+        warning: 'bg-yellow-500 text-white',
+        info: 'bg-blue-500 text-white'
+    };
+    
+    notification.className += ` ${colors[type] || colors.info}`;
+    notification.innerHTML = `
+        <div class="flex items-center gap-2">
+            <i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'exclamation-triangle' : 'info'}-circle"></i>
+            <span>${message}</span>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Animate in
+    setTimeout(() => {
+        notification.classList.remove('translate-x-full');
+    }, 100);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        notification.classList.add('translate-x-full');
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
+    }, 5000);
+}
+
+// Device History Tracker Class - Updated to use History API
+class DeviceHistoryTracker {
+    constructor() {
+        this.previousStates = new Map();
+        this.historyCache = new Map();
+        this.init();
+    }
+
+    init() {
+        console.log('Device History Tracker initialized');
+        
+        // Initialize previous states from current nodes
+        if (nodes && nodes.length > 0) {
+            this.initializePreviousStates(nodes);
+        }
+    }
+
+    initializePreviousStates(nodesList) {
+        nodesList.forEach(node => {
+            if (node.endpoint) {
+                this.previousStates.set(node.endpoint, normalizeStatus(node.status));
+            }
+        });
+        console.log('Initialized previous states for', this.previousStates.size, 'endpoints');
+    }
+
+    async handleStatusChange(endpoint, newStatus, timestamp = null) {
+        try {
+            const previousStatus = this.previousStates.get(endpoint);
+            const currentTimestamp = timestamp || new Date().toISOString();
+
+            if (previousStatus !== newStatus) {
+                console.log(`Status change detected for ${endpoint}: ${previousStatus} → ${newStatus}`);
+
+                // Update our local state
+                this.previousStates.set(endpoint, newStatus);
+
+                // Send to backend for database storage using History API
+                await this.sendStatusUpdate(endpoint, newStatus, currentTimestamp, previousStatus);
+            }
+        } catch (error) {
+            console.error('Error handling status change:', error);
+        }
+    }
+
+    async sendStatusUpdate(endpoint, status, timestamp, previousStatus = null) {
+        try {
+            const node = nodes.find(n => n.endpoint === endpoint);
+            const response = await fetch('/api/history/update-status', {
+                method: 'POST',
+                headers: apiHeaders,
+                body: JSON.stringify({
+                    endpoint: endpoint,
+                    node_name: node?.name || `Node ${endpoint}`,
+                    previous_status: previousStatus,
+                    current_status: status,
+                    timestamp: timestamp,
+                    description: getStatusDescription(previousStatus, status)
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const result = await response.json();
+            console.log('Status update sent successfully:', result);
+        } catch (error) {
+            console.error('Error sending status update:', error);
+            this.queueRetry(endpoint, status, timestamp, previousStatus);
+        }
+    }
+
+    queueRetry(endpoint, status, timestamp, previousStatus) {
+        setTimeout(() => {
+            this.sendStatusUpdate(endpoint, status, timestamp, previousStatus);
+        }, 5000);
+    }
+
+    async getHistory(endpoint, limit = 50) {
+        try {
+            const cacheKey = `${endpoint}_${limit}`;
+
+            if (this.historyCache.has(cacheKey)) {
+                const cached = this.historyCache.get(cacheKey);
+                if (Date.now() - cached.timestamp < 300000) {
+                    return cached.data;
+                }
+            }
+
+            // Use existing History API endpoints
+            const [historyResponse, statsResponse] = await Promise.all([
+                fetch(`/api/history/endpoint/${endpoint}?limit=${limit}`, { headers: apiHeaders }),
+                fetch(`/api/history/endpoint/${endpoint}/stats`, { headers: apiHeaders })
+            ]);
+            
+            if (!historyResponse.ok || !statsResponse.ok) {
+                throw new Error('Failed to fetch endpoint data');
+            }
+
+            const history = await historyResponse.json();
+            const statistics = await statsResponse.json();
+
+            const data = {
+                endpoint,
+                history,
+                statistics,
+                total: history.length
+            };
+
+            this.historyCache.set(cacheKey, {
+                data: data,
+                timestamp: Date.now()
+            });
+
+            return data;
+        } catch (error) {
+            console.error('Error fetching history:', error);
+            return { endpoint, history: [], statistics: {}, total: 0 };
+        }
+    }
+
+    clearCache() {
+        this.historyCache.clear();
+        console.log('History cache cleared');
+    }
+}
+
+// Phone Monitoring Class - Updated with real backend data
 class PhoneMonitoring {
     constructor() {
         this.currentFilter = 'all';
@@ -334,11 +915,9 @@ class PhoneMonitoring {
 
     init() {
         this.initLogboard();
-        // Remove simulation - we're using real data now
     }
 
     get phoneData() {
-        // Convert nodes data to phone data format
         return nodes.map(node => ({
             id: node.id,
             name: node.name,
@@ -396,14 +975,12 @@ class PhoneMonitoring {
             activeBtn.classList.remove('text-gray-600');
         }
 
-        // Filter and display phones
         const currentPhoneData = this.phoneData;
-        const filteredPhones = status === 'all' ? currentPhoneData : currentPhoneData.filter(phone => phone.status === status);
+        const filteredPhones = status === 'all' ? currentPhoneData : 
+            currentPhoneData.filter(phone => phone.status === status);
 
-        // Update filter info
         this.updateFilterInfo(status, filteredPhones.length, currentPhoneData.length);
 
-        // Generate phone cards
         const phoneGrid = document.getElementById('phone-grid');
         const noResults = document.getElementById('no-results');
 
@@ -427,19 +1004,16 @@ class PhoneMonitoring {
             'partial': 'Telepon in use'
         };
 
-        // Update filter status text
         const filterStatusEl = document.getElementById('filter-status');
         if (filterStatusEl) {
             filterStatusEl.textContent = filterStatus[status] || 'Filter tidak dikenal';
         }
 
-        // Update filtered count
         const filterPhonesEl = document.getElementById('filterPhones');
         if (filterPhonesEl) {
             filterPhonesEl.textContent = filteredCount;
         }
 
-        // Update total count (this should match the total-phones from stats)
         const totalPhonesEl = document.getElementById('total-phones');
         if (totalPhonesEl) {
             totalPhonesEl.textContent = totalCount;
@@ -499,6 +1073,15 @@ class PhoneMonitoring {
                             </span>
                         </div>
                     `}
+                    
+                    <div class="mt-3 pt-2 border-t border-gray-100">
+                        <button 
+                            onclick="showEndpointHistory('${phone.endpoint}')" 
+                            class="w-full text-xs text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 py-1 px-2 rounded-lg transition-colors"
+                        >
+                            <i class="fas fa-chart-line mr-1"></i>View History
+                        </button>
+                    </div>
                 </div>
             </div>
         `;
@@ -509,26 +1092,34 @@ class PhoneMonitoring {
         if (phoneGrid) {
             const currentPhoneData = this.phoneData;
             phoneGrid.innerHTML = currentPhoneData.map(phone => this.generatePhoneCard(phone)).join('');
-            
-            // Update filter info for initial load (show all phones)
             this.updateFilterInfo('all', currentPhoneData.length, currentPhoneData.length);
         }
 
-        // Also render activity log
         renderActivityLog();
     }
 
-    // Update the logboard when data changes
     updateLogboard() {
         this.initLogboard();
-        this.filterPhones(this.currentFilter); // Reapply current filter
+        this.filterPhones(this.currentFilter);
     }
 }
 
-// Global functions for HTML onclick events
-let phoneMonitoring;
+// Additional utility function to get offline phones using existing API
+async function getCurrentOfflinePhones() {
+    try {
+        const response = await fetch('/api/history/offline', { headers: apiHeaders });
+        if (response.ok) {
+            const offlinePhones = await response.json();
+            console.log('Current offline phones:', offlinePhones);
+            return offlinePhones;
+        }
+    } catch (error) {
+        console.error('Error fetching offline phones:', error);
+    }
+    return [];
+}
 
-// Global functions
+// Global functions for HTML onclick events
 window.filterPhones = function(status) {
     if (phoneMonitoring) {
         phoneMonitoring.filterPhones(status);
@@ -538,6 +1129,11 @@ window.filterPhones = function(status) {
 window.filterActivities = function() {
     renderActivityLog();
 };
+
+window.showEndpointHistory = showEndpointHistory;
+window.clearSearchFilters = clearSearchFilters;
+window.exportActivityLogs = exportActivityLogs;
+window.getCurrentOfflinePhones = getCurrentOfflinePhones;
 
 // Initialize phone monitoring after nodes are loaded
 function initializePhoneMonitoring() {
@@ -556,7 +1152,10 @@ function initializePhoneMonitoring() {
 // Export for global access
 Object.assign(window, {
     phoneMonitoring,
+    deviceHistoryTracker,
     fetchNodes,
     renderActivityLog,
-    updateRealtimeStats
+    updateRealtimeStats,
+    showNotification,
+    getCurrentOfflinePhones
 });

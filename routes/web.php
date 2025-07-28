@@ -23,6 +23,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/api/extensions', [ManageController::class, 'getExtensionsStatus']);
 });
 
+Route::get('/tes', function () {
+    return view('tes');
+});
 
 
 Route::middleware('auth')->group(function () {
