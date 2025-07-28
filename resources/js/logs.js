@@ -77,7 +77,10 @@ async function loadActivityLogsFromDatabase() {
         // Use the existing History API endpoint
         const response = await fetch('/api/history/all', { headers: apiHeaders });
         if (response.ok) {
-            const logs = await response.json();
+            const data = await response.json();
+            // Handle different response formats
+            const logs = Array.isArray(data) ? data : (data.data || []);
+            
             disconnectLogs = logs.map(log => ({
                 id: log.id,
                 endpoint: log.endpoint,
@@ -312,8 +315,8 @@ async function trackStatusChangeAndSave(devices) {
 
 async function saveStatusChangesToDatabase(statusChanges) {
     try {
-        // Use the existing History API endpoint for bulk updates
-        for (const change of statusChanges) {
+        // Use the existing History API endpoint for individual updates
+        const savePromises = statusChanges.map(async (change) => {
             const response = await fetch('/api/history/update-status', {
                 method: 'POST',
                 headers: apiHeaders,
@@ -328,16 +331,34 @@ async function saveStatusChangesToDatabase(statusChanges) {
             });
 
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                const errorText = await response.text();
+                console.error('API Error Response:', response.status, errorText);
+                throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
             }
 
-            const result = await response.json();
-            console.log('Status change saved to database:', result);
-        }
+            return await response.json();
+        });
+
+        const results = await Promise.allSettled(savePromises);
+        
+        // Log results and handle failures
+        results.forEach((result, index) => {
+            if (result.status === 'fulfilled') {
+                console.log(`Status change ${index + 1} saved successfully:`, result.value);
+            } else {
+                console.error(`Status change ${index + 1} failed:`, result.reason);
+            }
+        });
 
     } catch (error) {
-        console.error('Error saving to database:', error);
+        console.error('Error in saveStatusChangesToDatabase:', error);
         showNotification('Error saving activity logs to database', 'error');
+        
+        // Retry mechanism
+        setTimeout(() => {
+            console.log('Retrying failed status changes...');
+            saveStatusChangesToDatabase(statusChanges);
+        }, 5000);
     }
 }
 

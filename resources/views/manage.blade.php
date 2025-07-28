@@ -159,6 +159,14 @@
                 </h3>
                 <div class="mt-4">
 
+                <div class="mb-4 flex items-center gap-2">
+                    <input type="text" id="deviceSearch" placeholder="Cari perangkat..." 
+                        class="w-full md:w-1/3 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    <button onclick="filterDevices()" 
+                            class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition">
+                        Search
+                    </button>
+                </div>
 
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
@@ -261,7 +269,20 @@
         </div>
     </div>
 </div>
+<script>
+    function filterDevices() {
+        const input = document.getElementById("deviceSearch");
+        const filter = input.value.toLowerCase();
+        const tableBody = document.getElementById("nodes-table-body");
+        const rows = tableBody.getElementsByTagName("tr");
 
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(filter) ? "" : "none";
+        }
+    }
+</script>
 @push('scripts')
     @vite('resources/js/maps.js')
 @endpush
