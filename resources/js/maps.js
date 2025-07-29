@@ -1,14 +1,24 @@
-// resources/js/map.js - Optimized Version
+// resources/js/map.js - Optimized Version with Pagination & Enhanced Search
 import { io } from 'socket.io-client';
 
 // Global variables
 let map;
 let markers = {};
 let nodes = [];
+let filteredNodes = []; // For search functionality
 let socket;
 let editingNodeId = null;
 let latestStatus = [];
 let drawnItems;
+
+// Pagination variables
+let currentPage = 1;
+let itemsPerPage = 10;
+let totalPages = 1;
+
+// Search variables
+let searchTimeout = null;
+let lastSearchQuery = '';
 
 // API configuration
 const apiHeaders = {
@@ -45,6 +55,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         await fetchNodes();
         initializeSocket();
         setupEventListeners();
+        setupPagination();
+        setupSearch();
 
         // Auto refresh every 30 seconds
         setInterval(refreshData, 30000);
@@ -109,6 +121,7 @@ async function fetchNodes() {
         }
 
         nodes = await response.json();
+        filteredNodes = [...nodes]; // Initialize filtered nodes
         console.log('Fetched nodes:', nodes);
 
         applyLiveStatus();
@@ -297,6 +310,309 @@ function applyLiveStatus() {
             console.log(`Node ${node.endpoint} status: ${oldStatus} → ${newStatus}`);
         }
     });
+
+    // Update filtered nodes if search is active
+    if (lastSearchQuery) {
+        performSearch(lastSearchQuery);
+    }
+}
+
+// Enhanced Search Functionality
+function setupSearch() {
+    const searchInput = document.getElementById('deviceSearch');
+    const searchButton = document.querySelector('button[onclick="filterDevices()"]');
+    const clearButton = createClearButton();
+    
+    if (!searchInput) return;
+
+    // Insert clear button after search input
+    searchInput.parentNode.insertBefore(clearButton, searchButton);
+
+    // Real-time search with debouncing
+    searchInput.addEventListener('input', (e) => {
+        const query = e.target.value.trim();
+        
+        // Clear previous timeout
+        if (searchTimeout) {
+            clearTimeout(searchTimeout);
+        }
+
+        // Show/hide clear button
+        clearButton.style.display = query ? 'block' : 'none';
+
+        // Debounce search
+        searchTimeout = setTimeout(() => {
+            performSearch(query);
+        }, 300);
+    });
+
+    // Handle Enter key
+    searchInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            performSearch(e.target.value.trim());
+        }
+    });
+
+    // Clear search
+    clearButton.addEventListener('click', () => {
+        searchInput.value = '';
+        clearButton.style.display = 'none';
+        performSearch('');
+        searchInput.focus();
+    });
+}
+
+function createClearButton() {
+    const clearButton = document.createElement('button');
+    clearButton.type = 'button';
+    clearButton.className = 'bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition ml-2';
+    clearButton.style.display = 'none';
+    clearButton.innerHTML = '<i class="fas fa-times"></i>';
+    clearButton.title = 'Clear search';
+    return clearButton;
+}
+
+function performSearch(query) {
+    lastSearchQuery = query;
+
+    if (!query) {
+        // Reset to show all nodes
+        filteredNodes = [...nodes];
+        updateSearchResults();
+        return;
+    }
+
+    const searchTerm = query.toLowerCase();
+    
+    // Advanced search across multiple fields
+    filteredNodes = nodes.filter(node => {
+        const searchFields = [
+            node.name?.toLowerCase() || '',
+            node.ip?.toLowerCase() || '',
+            node.endpoint?.toLowerCase() || '',
+            node.description?.toLowerCase() || '',
+            STATUS_DISPLAY[node.status]?.toLowerCase() || '',
+            `${node.coords?.[0] || ''} ${node.coords?.[1] || ''}` // coordinates
+        ];
+
+        return searchFields.some(field => field.includes(searchTerm));
+    });
+
+    updateSearchResults();
+}
+
+function updateSearchResults() {
+    // Reset to first page when search changes
+    currentPage = 1;
+    updatePagination();
+    updateNodesTable();
+    
+    // Update search results info
+    updateSearchInfo();
+}
+
+function updateSearchInfo() {
+    const searchInfo = document.getElementById('search-info');
+    if (!searchInfo) return;
+
+    const total = nodes.length;
+    const filtered = filteredNodes.length;
+    
+    if (lastSearchQuery) {
+        searchInfo.textContent = `Showing ${filtered} of ${total} devices`;
+        searchInfo.className = 'text-sm text-gray-600 mb-4';
+    } else {
+        searchInfo.textContent = '';
+    }
+}
+
+// Pagination Setup
+function setupPagination() {
+    createPaginationControls();
+    updatePagination();
+}
+
+function createPaginationControls() {
+    const tableContainer = document.querySelector('.overflow-x-auto');
+    if (!tableContainer) return;
+
+    // Create pagination container
+    const paginationContainer = document.createElement('div');
+    paginationContainer.id = 'pagination-container';
+    paginationContainer.className = 'flex items-center justify-between mt-6 p-4 bg-gray-50 rounded-lg';
+
+    // Items per page selector
+    const itemsPerPageContainer = document.createElement('div');
+    itemsPerPageContainer.className = 'flex items-center gap-2';
+    itemsPerPageContainer.innerHTML = `
+        <label class="text-sm text-gray-700">Items per page:</label>
+        <select id="items-per-page-select" class="px-3 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 text-sm">
+            <option value="5">5</option>
+            <option value="10" selected>10</option>
+            <option value="25">25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+        </select>
+    `;
+
+    // Pagination info
+    const paginationInfo = document.createElement('div');
+    paginationInfo.id = 'pagination-info';
+    paginationInfo.className = 'text-sm text-gray-700';
+
+    // Pagination buttons
+    const paginationButtons = document.createElement('div');
+    paginationButtons.id = 'pagination-buttons';
+    paginationButtons.className = 'flex items-center gap-2';
+
+    // Search info
+    const searchInfo = document.createElement('div');
+    searchInfo.id = 'search-info';
+    searchInfo.className = 'text-sm text-gray-600 mb-4';
+
+    paginationContainer.appendChild(itemsPerPageContainer);
+    paginationContainer.appendChild(paginationInfo);
+    paginationContainer.appendChild(paginationButtons);
+
+    // Insert before table container
+    tableContainer.parentNode.insertBefore(searchInfo, tableContainer);
+    tableContainer.parentNode.insertBefore(paginationContainer, tableContainer.nextSibling);
+
+    // Event listeners
+    document.getElementById('items-per-page-select').addEventListener('change', (e) => {
+        itemsPerPage = parseInt(e.target.value);
+        currentPage = 1;
+        updatePagination();
+        updateNodesTable();
+    });
+}
+
+function updatePagination() {
+    const totalItems = filteredNodes.length;
+    totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+    
+    // Ensure current page is valid
+    if (currentPage > totalPages) {
+        currentPage = totalPages;
+    }
+
+    updatePaginationInfo();
+    updatePaginationButtons();
+}
+
+function updatePaginationInfo() {
+    const paginationInfo = document.getElementById('pagination-info');
+    if (!paginationInfo) return;
+
+    const totalItems = filteredNodes.length;
+    const startItem = totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
+    const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+
+    paginationInfo.textContent = `Showing ${startItem}-${endItem} of ${totalItems} results`;
+}
+
+function updatePaginationButtons() {
+    const buttonsContainer = document.getElementById('pagination-buttons');
+    if (!buttonsContainer) return;
+
+    buttonsContainer.innerHTML = '';
+
+    // Previous button
+    const prevButton = createPaginationButton(
+        '<i class="fas fa-chevron-left"></i>',
+        currentPage > 1,
+        () => changePage(currentPage - 1)
+    );
+    buttonsContainer.appendChild(prevButton);
+
+    // Page numbers
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+    // Adjust start page if we're near the end
+    if (endPage - startPage + 1 < maxVisiblePages) {
+        startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    // First page + ellipsis
+    if (startPage > 1) {
+        buttonsContainer.appendChild(createPaginationButton('1', true, () => changePage(1)));
+        if (startPage > 2) {
+            buttonsContainer.appendChild(createEllipsis());
+        }
+    }
+
+    // Page numbers
+    for (let i = startPage; i <= endPage; i++) {
+        buttonsContainer.appendChild(createPaginationButton(
+            i.toString(),
+            true,
+            () => changePage(i),
+            i === currentPage
+        ));
+    }
+
+    // Last page + ellipsis
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            buttonsContainer.appendChild(createEllipsis());
+        }
+        buttonsContainer.appendChild(createPaginationButton(
+            totalPages.toString(),
+            true,
+            () => changePage(totalPages)
+        ));
+    }
+
+    // Next button
+    const nextButton = createPaginationButton(
+        '<i class="fas fa-chevron-right"></i>',
+        currentPage < totalPages,
+        () => changePage(currentPage + 1)
+    );
+    buttonsContainer.appendChild(nextButton);
+}
+
+function createPaginationButton(text, enabled, onClick, isActive = false) {
+    const button = document.createElement('button');
+    button.innerHTML = text;
+    button.className = `px-3 py-2 text-sm rounded-lg transition-all duration-200 ${
+        isActive 
+            ? 'bg-indigo-600 text-white font-semibold shadow-md'
+            : enabled 
+                ? 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 hover:border-gray-400 hover:shadow-sm'
+                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+    }`;
+    
+    if (enabled && !isActive) {
+        button.addEventListener('click', onClick);
+        button.style.cursor = 'pointer';
+    }
+
+    return button;
+}
+
+function createEllipsis() {
+    const ellipsis = document.createElement('span');
+    ellipsis.textContent = '...';
+    ellipsis.className = 'px-2 py-2 text-gray-500';
+    return ellipsis;
+}
+
+function changePage(page) {
+    if (page >= 1 && page <= totalPages && page !== currentPage) {
+        currentPage = page;
+        updatePagination();
+        updateNodesTable();
+        
+        // Scroll to table top
+        document.querySelector('.overflow-x-auto').scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+        });
+    }
 }
 
 // Update all UI components
@@ -305,6 +621,8 @@ function updateUI() {
     updateNodesTable();
     updateStatusList();
     updateRealtimeStats();
+    updatePagination();
+    updateSearchInfo();
 }
 
 // Update map markers
@@ -317,7 +635,7 @@ function updateMapMarkers() {
     });
     markers = {};
 
-    // Create new markers
+    // Create new markers for all nodes (not just filtered ones)
     nodes.forEach(node => {
         createMarkerForNode(node);
     });
@@ -450,59 +768,87 @@ function getPopupContent(node) {
     `;
 }
 
-// Update nodes table
+// Update nodes table with pagination
 function updateNodesTable() {
     const tableBody = document.getElementById('nodes-table-body');
     if (!tableBody) return;
 
-    tableBody.innerHTML = '';
+    // Show loading state
+    tableBody.innerHTML = '<tr><td colspan="8" class="text-center py-8"><div class="loading">Loading...</div></td></tr>';
 
-    nodes.forEach(node => {
-        const [lat, lng] = getLatLngFromCoords(node.coords);
-        const color = STATUS_COLORS[node.status] || STATUS_COLORS.unknown;
-        const statusText = STATUS_DISPLAY[node.status] || STATUS_DISPLAY.unknown;
-        const lastPing = node.last_ping_raw ?
-            new Date(node.last_ping_raw).toLocaleString('id-ID') :
-            'Never';
+    // Simulate small delay for better UX
+    setTimeout(() => {
+        tableBody.innerHTML = '';
 
-        const row = document.createElement('tr');
-        row.className = 'hover:bg-gray-50 transition-colors';
-        row.innerHTML = `
-            <td class="px-4 py-3 text-sm font-medium text-gray-900">${node.name}</td>
-            <td class="px-4 py-3 text-sm font-mono text-gray-600">${node.ip}</td>
-            <td class="px-4 py-3 text-sm font-mono text-gray-600">${node.endpoint}</td>
-            <td class="px-4 py-3 text-sm">
-                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium"
-                      style="background-color: ${color}20; color: ${color};">
-                    <div class="w-2 h-2 rounded-full mr-1.5" style="background-color: ${color};"></div>
-                    ${statusText}
-                </span>
-            </td>
-            <td class="px-4 py-3 text-sm text-gray-600">${lat.toFixed(6)}, ${lng.toFixed(6)}</td>
-            <td class="px-4 py-3 text-sm text-gray-600">${node.description || '-'}</td>
-            <td class="px-4 py-3 text-sm text-gray-500">${lastPing}</td>
-            <td class="px-4 py-3 text-sm">
-                <div class="flex space-x-2">
-                    <button onclick="editNode(${node.id})"
-                            class="text-indigo-600 hover:text-indigo-900 transition-colors"
-                            title="Edit">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button onclick="deleteNode(${node.id})"
-                            class="text-red-600 hover:text-red-900 transition-colors"
-                            title="Delete">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                    <button onclick="focusOnNode(${node.id})"
-                            class="text-green-600 hover:text-green-900 transition-colors"
-                            title="Focus on Map">
-                        <i class="fas fa-search-location"></i>
-                    </button>
-                </div>
-            </td>
-        `;
-        tableBody.appendChild(row);
-    });
+        // Calculate pagination bounds
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const paginatedNodes = filteredNodes.slice(startIndex, endIndex);
+
+        if (paginatedNodes.length === 0) {
+            const emptyRow = document.createElement('tr');
+            emptyRow.innerHTML = `
+                <td colspan="8" class="px-4 py-8 text-center text-gray-500">
+                    <div class="flex flex-col items-center gap-3">
+                        <i class="fas fa-search text-3xl text-gray-300"></i>
+                        <div>
+                            <div class="font-medium">No devices found</div>
+                            <div class="text-sm">Try adjusting your search criteria</div>
+                        </div>
+                    </div>
+                </td>
+            `;
+            tableBody.appendChild(emptyRow);
+            return;
+        }
+
+        paginatedNodes.forEach((node, index) => {
+            const [lat, lng] = getLatLngFromCoords(node.coords);
+            const color = STATUS_COLORS[node.status] || STATUS_COLORS.unknown;
+            const statusText = STATUS_DISPLAY[node.status] || STATUS_DISPLAY.unknown;
+            const lastPing = node.last_ping_raw ?
+                new Date(node.last_ping_raw).toLocaleString('id-ID') :
+                'Never';
+
+            const row = document.createElement('tr');
+            row.className = `hover:bg-gray-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`;
+            row.innerHTML = `
+                <td class="px-4 py-3 text-sm font-medium text-gray-900">${node.name}</td>
+                <td class="px-4 py-3 text-sm font-mono text-gray-600">${node.ip}</td>
+                <td class="px-4 py-3 text-sm font-mono text-gray-600">${node.endpoint}</td>
+                <td class="px-4 py-3 text-sm">
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium"
+                          style="background-color: ${color}20; color: ${color};">
+                        <div class="w-2 h-2 rounded-full mr-1.5" style="background-color: ${color};"></div>
+                        ${statusText}
+                    </span>
+                </td>
+                <td class="px-4 py-3 text-sm text-gray-600">${lat.toFixed(6)}, ${lng.toFixed(6)}</td>
+                <td class="px-4 py-3 text-sm text-gray-600">${node.description || '-'}</td>
+                <td class="px-4 py-3 text-sm text-gray-500">${lastPing}</td>
+                <td class="px-4 py-3 text-sm">
+                    <div class="flex space-x-2">
+                        <button onclick="editNode(${node.id})"
+                                class="text-indigo-600 hover:text-indigo-900 transition-colors"
+                                title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button onclick="deleteNode(${node.id})"
+                                class="text-red-600 hover:text-red-900 transition-colors"
+                                title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                        <button onclick="focusOnNode(${node.id})"
+                                class="text-green-600 hover:text-green-900 transition-colors"
+                                title="Focus on Map">
+                            <i class="fas fa-search-location"></i>
+                        </button>
+                    </div>
+                </td>
+            `;
+            tableBody.appendChild(row);
+        });
+    }, 100);
 }
 
 // Update status list
@@ -605,6 +951,26 @@ function setupEventListeners() {
     // Keyboard events
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') closeModal();
+        
+        // Pagination keyboard shortcuts
+        if (e.ctrlKey && e.key === 'ArrowLeft') {
+            e.preventDefault();
+            if (currentPage > 1) changePage(currentPage - 1);
+        }
+        if (e.ctrlKey && e.key === 'ArrowRight') {
+            e.preventDefault();
+            if (currentPage < totalPages) changePage(currentPage + 1);
+        }
+        
+        // Focus search with Ctrl+F
+        if (e.ctrlKey && e.key === 'f') {
+            e.preventDefault();
+            const searchInput = document.getElementById('deviceSearch');
+            if (searchInput) {
+                searchInput.focus();
+                searchInput.select();
+            }
+        }
     });
 }
 
@@ -656,6 +1022,14 @@ async function createNode(nodeData) {
 
         const newNode = await response.json();
         nodes.push(newNode);
+        
+        // Update filtered nodes if search is active
+        if (lastSearchQuery) {
+            performSearch(lastSearchQuery);
+        } else {
+            filteredNodes = [...nodes];
+        }
+        
         updateUI();
         showToast('Device added successfully!', 'success');
 
@@ -681,6 +1055,14 @@ async function updateNode(id, nodeData) {
         const index = nodes.findIndex(node => node.id === id);
         if (index !== -1) {
             nodes[index] = updatedNode;
+            
+            // Update filtered nodes if search is active
+            if (lastSearchQuery) {
+                performSearch(lastSearchQuery);
+            } else {
+                filteredNodes = [...nodes];
+            }
+            
             updateUI();
         }
 
@@ -710,6 +1092,20 @@ async function deleteNode(id) {
                 }
 
                 nodes = nodes.filter(node => node.id !== id);
+                
+                // Update filtered nodes if search is active
+                if (lastSearchQuery) {
+                    performSearch(lastSearchQuery);
+                } else {
+                    filteredNodes = [...nodes];
+                }
+                
+                // Adjust current page if necessary
+                const newTotalPages = Math.ceil(filteredNodes.length / itemsPerPage) || 1;
+                if (currentPage > newTotalPages) {
+                    currentPage = newTotalPages;
+                }
+                
                 updateUI();
                 showToast('Device deleted successfully!', 'success');
 
@@ -719,6 +1115,152 @@ async function deleteNode(id) {
             }
         }
     );
+}
+
+// Enhanced Filter Functions
+function filterDevices() {
+    const searchInput = document.getElementById('deviceSearch');
+    if (searchInput) {
+        performSearch(searchInput.value.trim());
+    }
+}
+
+function resetFilters() {
+    const searchInput = document.getElementById('deviceSearch');
+    const clearButton = document.querySelector('button[onclick="clearSearch()"]');
+    
+    if (searchInput) {
+        searchInput.value = '';
+    }
+    if (clearButton) {
+        clearButton.style.display = 'none';
+    }
+    
+    performSearch('');
+}
+
+// Advanced search with filters
+function setupAdvancedSearch() {
+    // Create advanced search panel
+    const searchContainer = document.querySelector('#deviceSearch').parentNode;
+    
+    const advancedToggle = document.createElement('button');
+    advancedToggle.type = 'button';
+    advancedToggle.className = 'text-sm text-indigo-600 hover:text-indigo-800 ml-2';
+    advancedToggle.innerHTML = '<i class="fas fa-filter"></i> Advanced';
+    advancedToggle.onclick = toggleAdvancedSearch;
+    
+    searchContainer.appendChild(advancedToggle);
+    
+    // Advanced search panel
+    const advancedPanel = document.createElement('div');
+    advancedPanel.id = 'advanced-search-panel';
+    advancedPanel.className = 'hidden mt-4 p-4 bg-gray-50 rounded-lg border';
+    advancedPanel.innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select id="status-filter" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    <option value="">All Status</option>
+                    <option value="online">Online</option>
+                    <option value="offline">Offline</option>
+                    <option value="partial">In Use</option>
+                    <option value="unknown">Unknown</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">IP Range</label>
+                <input type="text" id="ip-filter" placeholder="e.g., 192.168.1" 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Last Ping</label>
+                <select id="ping-filter" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    <option value="">Any time</option>
+                    <option value="1">Last hour</option>
+                    <option value="24">Last 24 hours</option>
+                    <option value="168">Last week</option>
+                </select>
+            </div>
+        </div>
+        <div class="mt-4 flex gap-2">
+            <button onclick="applyAdvancedFilters()" 
+                    class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">
+                Apply Filters
+            </button>
+            <button onclick="clearAdvancedFilters()" 
+                    class="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400">
+                Clear
+            </button>
+        </div>
+    `;
+    
+    searchContainer.parentNode.insertBefore(advancedPanel, searchContainer.nextSibling);
+}
+
+function toggleAdvancedSearch() {
+    const panel = document.getElementById('advanced-search-panel');
+    if (panel) {
+        panel.classList.toggle('hidden');
+    }
+}
+
+function applyAdvancedFilters() {
+    const statusFilter = document.getElementById('status-filter')?.value;
+    const ipFilter = document.getElementById('ip-filter')?.value;
+    const pingFilter = document.getElementById('ping-filter')?.value;
+    
+    filteredNodes = nodes.filter(node => {
+        // Status filter
+        if (statusFilter && node.status !== statusFilter) {
+            return false;
+        }
+        
+        // IP filter
+        if (ipFilter && !node.ip.includes(ipFilter)) {
+            return false;
+        }
+        
+        // Ping filter (hours)
+        if (pingFilter && node.last_ping_raw) {
+            const lastPing = new Date(node.last_ping_raw);
+            const hoursAgo = new Date(Date.now() - (parseInt(pingFilter) * 60 * 60 * 1000));
+            if (lastPing < hoursAgo) {
+                return false;
+            }
+        }
+        
+        return true;
+    });
+    
+    // Also apply text search if active
+    const searchQuery = document.getElementById('deviceSearch')?.value;
+    if (searchQuery) {
+        const searchTerm = searchQuery.toLowerCase();
+        filteredNodes = filteredNodes.filter(node => {
+            const searchFields = [
+                node.name?.toLowerCase() || '',
+                node.ip?.toLowerCase() || '',
+                node.endpoint?.toLowerCase() || '',
+                node.description?.toLowerCase() || ''
+            ];
+            return searchFields.some(field => field.includes(searchTerm));
+        });
+    }
+    
+    currentPage = 1;
+    updateUI();
+    showToast(`Found ${filteredNodes.length} devices`, 'info');
+}
+
+function clearAdvancedFilters() {
+    document.getElementById('status-filter').value = '';
+    document.getElementById('ip-filter').value = '';
+    document.getElementById('ping-filter').value = '';
+    
+    filteredNodes = [...nodes];
+    currentPage = 1;
+    updateUI();
 }
 
 // Modal functions
@@ -782,20 +1324,30 @@ function refreshData() {
     fetchNodes();
 }
 
+function refreshMap() {
+    refreshData();
+    showToast('Map refreshed', 'success');
+}
+
+// Export functions for global access and backward compatibility
+function clearSearch() {
+    resetFilters();
+}
+
 // Toast notification system
 function showToast(message, type = 'success') {
     const toastStyles = {
-        success: { bg: 'linear-gradient(135deg, #10b981, #059669)', icon: '✅' },
-        error: { bg: 'linear-gradient(135deg, #ef4444, #dc2626)', icon: '❌' },
-        warning: { bg: 'linear-gradient(135deg, #f59e0b, #d97706)', icon: '⚠️' },
-        info: { bg: 'linear-gradient(135deg, #3b82f6, #2563eb)', icon: 'ℹ️' }
+        success: { bg: 'linear-gradient(135deg, #10b981, #059669)'},
+        error: { bg: 'linear-gradient(135deg, #ef4444, #dc2626)'},
+        warning: { bg: 'linear-gradient(135deg, #f59e0b, #d97706)'},
+        info: { bg: 'linear-gradient(135deg, #3b82f6, #2563eb)'}
     };
 
     const style = toastStyles[type] || toastStyles.success;
 
     if (typeof Toastify !== 'undefined') {
         Toastify({
-            text: `${style.icon} ${message}`,
+            text: `${message}`,
             duration: 2000,
             close: true,
             gravity: "top",
@@ -1012,6 +1564,10 @@ function addCustomStyles() {
         .loading {
             position: relative;
             overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6b7280;
         }
 
         .loading::after {
@@ -1030,6 +1586,25 @@ function addCustomStyles() {
             100% { left: 100%; }
         }
 
+        /* Pagination styling */
+        #pagination-container {
+            border: 1px solid #e5e7eb;
+        }
+
+        #pagination-buttons button:hover:not(:disabled) {
+            transform: translateY(-1px);
+        }
+
+        /* Search enhancements */
+        #deviceSearch:focus {
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        /* Advanced search panel */
+        #advanced-search-panel {
+            transition: all 0.3s ease;
+        }
+
         /* Responsive improvements */
         @media (max-width: 768px) {
             .device-popup-content {
@@ -1040,9 +1615,23 @@ function addCustomStyles() {
                 margin: 20px;
                 max-width: calc(100vw - 40px);
             }
+
+            #pagination-container {
+                flex-direction: column;
+                gap: 16px;
+            }
+
+            #pagination-buttons {
+                justify-content: center;
+            }
         }
     `;
     document.head.appendChild(style);
+}
+
+// Initialize advanced search
+function initializeAdvancedFeatures() {
+    setupAdvancedSearch();
 }
 
 // Export functions for global access
@@ -1054,35 +1643,60 @@ Object.assign(window, {
     focusOnNode,
     deleteNode,
 
+    // Search and filter functions
+    filterDevices,
+    clearSearch,
+    resetFilters,
+    applyAdvancedFilters,
+    clearAdvancedFilters,
+    toggleAdvancedSearch,
+
+    // Pagination functions
+    changePage,
+
     // Utility functions
     refreshData,
+    refreshMap,
     updateUI,
 
     // Debug functions
     getNodes: () => nodes,
+    getFilteredNodes: () => filteredNodes,
     getMarkers: () => markers,
     getSocket: () => socket,
-    getMap: () => map
+    getMap: () => map,
+    getCurrentPage: () => currentPage,
+    getTotalPages: () => totalPages
 });
 
 // Initialize custom styles
 addCustomStyles();
+
+// Initialize advanced features after DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(initializeAdvancedFeatures, 500);
+});
 
 // Performance monitoring
 const performanceMonitor = {
     startTime: Date.now(),
     markers: 0,
     updates: 0,
+    searches: 0,
 
     logUpdate() {
         this.updates++;
         if (this.updates % 10 === 0) {
-            console.log(`Performance: ${this.updates} updates, ${this.markers} markers, ${Date.now() - this.startTime}ms total`);
+            console.log(`Performance: ${this.updates} updates, ${this.markers} markers, ${this.searches} searches, ${Date.now() - this.startTime}ms total`);
         }
     },
 
     logMarkerCreation() {
         this.markers++;
+    },
+
+    logSearch() {
+        this.searches++;
     }
 };
 
@@ -1102,6 +1716,11 @@ window.addEventListener('beforeunload', () => {
     // Clear drawn items
     if (drawnItems) {
         drawnItems.clearLayers();
+    }
+
+    // Clear timeouts
+    if (searchTimeout) {
+        clearTimeout(searchTimeout);
     }
 
     console.log('Cleaned up resources');

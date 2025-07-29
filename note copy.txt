@@ -1,4 +1,93 @@
-// resources/js/logs.js - Enhanced with new features
+<x-app-layout>
+    <x-slot name="header">
+        <h2 class="font-bold text-xl text-gray-800 leading-tight">
+            Phone Monitoring System - Selamat datang {{ Auth::user()->name }}
+        </h2>
+    </x-slot>
+
+    <!-- Phone Status Grid -->
+    <div class="bg-white/95 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-white/30 mb-8">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+            <h3 class="text-xl font-bold text-gray-800 flex items-center gap-3">
+                <i class="fas fa-network-wired text-indigo-500"></i>
+                Status Telepon
+            </h3>
+
+            <div class="flex items-center gap-4">
+                <!-- Filter Buttons -->
+                <div class="flex items-center gap-2 bg-gray-100 rounded-xl p-1">
+                    <button onclick="filterPhones('all')" id="filter-all" class="filter-btn px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 bg-indigo-500 text-white shadow-md">
+                        <i class="fas fa-list mr-2"></i>Semua
+                    </button>
+                    <button onclick="filterPhones('online')" id="filter-online" class="filter-btn px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 text-gray-600 hover:bg-green-100 hover:text-green-700">
+                        <i class="fas fa-check-circle mr-2"></i>Online
+                    </button>
+                    <button onclick="filterPhones('offline')" id="filter-offline" class="filter-btn px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 text-gray-600 hover:bg-red-100 hover:text-red-700">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>Offline
+                    </button>
+                </div>
+
+                <div class="flex items-center gap-2 text-sm text-gray-600">
+                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    Live Update
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter Info -->
+        <div class="mb-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200" id="filter-info">
+            <div class="flex items-center gap-2 text-sm">
+                <i class="fas fa-info-circle text-blue-500"></i>
+                <span class="text-blue-700 font-medium">Menampilkan: <span id="filter-status">Semua telepon</span></span>
+                <span class="text-blue-600">(<span id="filterPhones">0</span> dari <span id="total-phones">0</span> telepon)</span>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" id="phone-grid">
+            <!-- Phone cards will be generated here -->
+        </div>
+
+        <!-- No Results Message -->
+        <div id="no-results" class="hidden text-center py-12">
+            <div class="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-search text-gray-400 text-2xl"></i>
+            </div>
+            <h4 class="text-lg font-semibold text-gray-600 mb-2">Tidak ada telepon ditemukan</h4>
+            <p class="text-gray-500">Tidak ada telepon dengan status yang dipilih.</p>
+        </div>
+    </div>
+
+    <!-- Activity Log -->
+    <div class="bg-white/95 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-white/30">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+            <h3 class="text-xl font-bold text-gray-800 flex items-center gap-3">
+                <i class="fas fa-history text-indigo-500"></i>
+                Log Aktivitas
+            </h3>
+
+            <!-- Activity Filter -->
+            <div class="flex items-center gap-2">
+                <select id="activity-filter" onchange="filterActivities()" class="px-4 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white">
+                    <option value="all">Semua Aktivitas</option>
+                    <option value="offline">Hanya Offline</option>
+                    <option value="online">Hanya Online</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="space-y-3" id="activity-log">
+            <!-- Activity items will be generated here -->
+        </div>
+
+    </div>
+
+@push('scripts')
+    @vite('resources/js/logs.js')
+@endpush
+</x-app-layout>
+
+
+// resources/js/logs.js - Updated to work with existing History API
 import { io } from 'socket.io-client';
 
 let socket;
@@ -9,12 +98,6 @@ let markers = {};
 let previousStatusMap = {};
 let deviceHistoryTracker;
 let phoneMonitoring;
-
-// Pagination settings
-let currentPage = 1;
-let itemsPerPage = 20;
-let totalPages = 1;
-let filteredLogs = [];
 
 const apiHeaders = {
     'Content-Type': 'application/json',
@@ -98,94 +181,11 @@ async function loadActivityLogsFromDatabase() {
                 from: log.previous_status,
                 to: log.current_status
             }));
-            
-            // Calculate durations for all logs
-            calculateLogDurations();
             console.log('Loaded activity logs from database:', disconnectLogs.length);
         }
     } catch (error) {
         console.error('Error loading activity logs:', error);
     }
-}
-
-// NEW FEATURE: Calculate duration between status changes
-function calculateLogDurations() {
-    // Group logs by endpoint for duration calculation
-    const logsByEndpoint = {};
-    
-    // Sort logs by time (oldest first) for accurate duration calculation
-    const sortedLogs = [...disconnectLogs].sort((a, b) => new Date(a.time) - new Date(b.time));
-    
-    sortedLogs.forEach(log => {
-        if (!logsByEndpoint[log.endpoint]) {
-            logsByEndpoint[log.endpoint] = [];
-        }
-        logsByEndpoint[log.endpoint].push(log);
-    });
-    
-    // Calculate durations for each endpoint
-    Object.keys(logsByEndpoint).forEach(endpoint => {
-        const endpointLogs = logsByEndpoint[endpoint];
-        
-        for (let i = 0; i < endpointLogs.length; i++) {
-            const currentLog = endpointLogs[i];
-            const nextLog = endpointLogs[i + 1];
-            
-            if (nextLog && currentLog.to === 'offline') {
-                // Calculate offline duration
-                const offlineStart = new Date(currentLog.time);
-                const offlineEnd = new Date(nextLog.time);
-                const durationMs = offlineEnd - offlineStart;
-                const durationMinutes = Math.floor(durationMs / (1000 * 60));
-                
-                currentLog.offlineDuration = durationMinutes;
-                currentLog.offlineDurationFormatted = formatDuration(durationMinutes);
-            } else if (currentLog.to === 'offline') {
-                // Still offline, calculate duration from then to now
-                const offlineStart = new Date(currentLog.time);
-                const now = new Date();
-                const durationMs = now - offlineStart;
-                const durationMinutes = Math.floor(durationMs / (1000 * 60));
-                
-                currentLog.offlineDuration = durationMinutes;
-                currentLog.offlineDurationFormatted = formatDuration(durationMinutes);
-                currentLog.isCurrentlyOffline = true;
-            }
-        }
-    });
-}
-
-function formatDuration(minutes) {
-    if (minutes < 1) return 'Kurang dari 1 menit';
-    if (minutes < 60) return `${minutes} menit`;
-    
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    
-    if (hours < 24) {
-        return mins > 0 ? `${hours}j ${mins}m` : `${hours} jam`;
-    }
-    
-    const days = Math.floor(hours / 24);
-    const remainingHours = hours % 24;
-    return remainingHours > 0 ? `${days}h ${remainingHours}j` : `${days} hari`;
-}
-
-// NEW FEATURE: Get total offline duration for specific endpoint
-function getTotalOfflineDuration(endpoint) {
-    const endpointLogs = disconnectLogs.filter(log => log.endpoint === endpoint);
-    let totalOfflineMinutes = 0;
-    
-    endpointLogs.forEach(log => {
-        if (log.to === 'offline' && log.offlineDuration) {
-            totalOfflineMinutes += log.offlineDuration;
-        }
-    });
-    
-    return {
-        minutes: totalOfflineMinutes,
-        formatted: formatDuration(totalOfflineMinutes)
-    };
 }
 
 function initializeSocket() {
@@ -256,10 +256,7 @@ function setupEventListeners() {
     // Activity filter
     const activityFilter = document.getElementById('activity-filter');
     if (activityFilter) {
-        activityFilter.addEventListener('change', () => {
-            currentPage = 1; // Reset to first page when filtering
-            renderActivityLog();
-        });
+        activityFilter.addEventListener('change', renderActivityLog);
     }
 
     // Search input
@@ -272,24 +269,8 @@ function setupEventListeners() {
     const dateFromInput = document.getElementById('date-from');
     const dateToInput = document.getElementById('date-to');
     
-    if (dateFromInput) dateFromInput.addEventListener('change', () => {
-        currentPage = 1;
-        renderActivityLog();
-    });
-    if (dateToInput) dateToInput.addEventListener('change', () => {
-        currentPage = 1;
-        renderActivityLog();
-    });
-
-    // Items per page selector
-    const itemsPerPageSelect = document.getElementById('items-per-page');
-    if (itemsPerPageSelect) {
-        itemsPerPageSelect.addEventListener('change', (e) => {
-            itemsPerPage = parseInt(e.target.value);
-            currentPage = 1;
-            renderActivityLog();
-        });
-    }
+    if (dateFromInput) dateFromInput.addEventListener('change', renderActivityLog);
+    if (dateToInput) dateToInput.addEventListener('change', renderActivityLog);
 }
 
 function normalizeStatus(status) {
@@ -379,27 +360,6 @@ async function trackStatusChangeAndSave(devices) {
 
             statusChanges.push(statusChangeData);
 
-            // Calculate duration for offline periods
-            let offlineDuration = null;
-            let offlineDurationFormatted = null;
-            
-            if (prevStatus === 'offline') {
-                // Find the last offline event for this endpoint
-                const lastOfflineLog = disconnectLogs.find(log => 
-                    log.endpoint === endpoint && 
-                    log.to === 'offline' && 
-                    new Date(log.time) < new Date(timestamp)
-                );
-                
-                if (lastOfflineLog) {
-                    const offlineStart = new Date(lastOfflineLog.time);
-                    const offlineEnd = new Date(timestamp);
-                    const durationMs = offlineEnd - offlineStart;
-                    offlineDuration = Math.floor(durationMs / (1000 * 60));
-                    offlineDurationFormatted = formatDuration(offlineDuration);
-                }
-            }
-
             // Add to local logs immediately for UI responsiveness
             const logEntry = {
                 endpoint: endpoint,
@@ -408,9 +368,7 @@ async function trackStatusChangeAndSave(devices) {
                 time: timestamp,
                 status: currentStatus,
                 nodeName: node?.name || `Node ${endpoint}`,
-                description: statusChangeData.description,
-                offlineDuration: offlineDuration,
-                offlineDurationFormatted: offlineDurationFormatted
+                description: statusChangeData.description
             };
 
             // Check if this exact log already exists (prevent duplicates)
@@ -439,9 +397,6 @@ async function trackStatusChangeAndSave(devices) {
             console.error('Error saving status changes to database:', error);
         }
     }
-
-    // Recalculate durations after new logs
-    calculateLogDurations();
 
     // Render the updated activity log
     renderActivityLog();
@@ -544,7 +499,6 @@ function updateRealtimeStats(statusData) {
     }
 }
 
-// ENHANCED: Activity log rendering with pagination
 function renderActivityLog() {
     const container = document.getElementById("activity-log");
     const filter = document.getElementById("activity-filter")?.value || 'all';
@@ -559,19 +513,16 @@ function renderActivityLog() {
 
     console.log('Rendering activity log with', disconnectLogs.length, 'total logs');
 
+    container.innerHTML = '';
+
     // Filter logs based on criteria
-    filteredLogs = disconnectLogs.filter(log => {
+    let logsToShow = disconnectLogs.filter(log => {
         // Status filter
         if (filter !== 'all' && log.status !== filter) return false;
 
-        // Search filter - Enhanced to search specific endpoints
-        if (searchTerm) {
-            const matchesEndpoint = log.endpoint.toLowerCase().includes(searchTerm);
-            const matchesNodeName = log.nodeName.toLowerCase().includes(searchTerm);
-            const matchesExactEndpoint = log.endpoint.toLowerCase() === searchTerm;
-            
-            if (!matchesEndpoint && !matchesNodeName && !matchesExactEndpoint) return false;
-        }
+        // Search filter
+        if (searchTerm && !log.endpoint.toLowerCase().includes(searchTerm) && 
+            !log.nodeName.toLowerCase().includes(searchTerm)) return false;
 
         // Date range filter
         const logDate = new Date(log.time).toISOString().split('T')[0];
@@ -581,21 +532,9 @@ function renderActivityLog() {
         return true;
     });
 
-    // Sort logs by time (latest first)
-    filteredLogs.sort((a, b) => new Date(b.time) - new Date(a.time));
+    console.log('Filtered logs:', logsToShow.length, 'logs to show');
 
-    console.log('Filtered logs:', filteredLogs.length, 'logs to show');
-
-    // Calculate pagination
-    totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    const logsToShow = filteredLogs.slice(startIndex, endIndex);
-
-    // Clear container
-    container.innerHTML = '';
-
-    if (filteredLogs.length === 0) {
+    if (logsToShow.length === 0) {
         container.innerHTML = `
             <div class="text-center text-gray-500 text-sm p-8">
                 <i class="fas fa-inbox text-3xl mb-3"></i>
@@ -604,12 +543,13 @@ function renderActivityLog() {
                 <p class="text-xs mt-2">Total logs: ${disconnectLogs.length}</p>
             </div>
         `;
-        updatePaginationControls();
         return;
     }
 
-    // Render current page logs
-    logsToShow.forEach((log, index) => {
+    // Show latest logs first
+    const sortedLogs = logsToShow.slice().sort((a, b) => new Date(b.time) - new Date(a.time));
+    
+    sortedLogs.forEach((log, index) => {
         const item = document.createElement('div');
         item.className = 'p-4 rounded-xl shadow-sm border border-gray-200 bg-white hover:shadow-md transition-all duration-300';
 
@@ -618,9 +558,6 @@ function renderActivityLog() {
             '<i class="fas fa-check-circle text-green-500"></i>';
 
         const statusColor = log.status === 'offline' ? 'text-red-600' : 'text-green-600';
-
-        // Get total offline duration for this endpoint
-        const totalOffline = getTotalOfflineDuration(log.endpoint);
 
         item.innerHTML = `
             <div class="flex justify-between items-start gap-4">
@@ -632,41 +569,15 @@ function renderActivityLog() {
                             <span class="text-sm font-normal text-gray-500">(${log.endpoint})</span>
                         </div>
                         <div class="text-sm text-gray-600 mb-2">${log.description}</div>
-                        
-                        <!-- Enhanced status change info with duration -->
-                        <div class="flex flex-wrap gap-2 text-xs mb-2">
+                        <div class="flex flex-wrap gap-2 text-xs">
                             <span class="${statusColor} font-medium bg-gray-50 px-2 py-1 rounded-full">
                                 ${log.from} → ${log.to}
                             </span>
-                            ${log.offlineDurationFormatted ? `
-                                <span class="text-orange-600 font-medium bg-orange-50 px-2 py-1 rounded-full">
-                                    <i class="fas fa-clock mr-1"></i>Durasi: ${log.offlineDurationFormatted}
-                                </span>
-                            ` : ''}
-                            ${log.isCurrentlyOffline ? `
-                                <span class="text-red-600 font-medium bg-red-50 px-2 py-1 rounded-full animate-pulse">
-                                    <i class="fas fa-exclamation-circle mr-1"></i>Masih Offline
-                                </span>
-                            ` : ''}
-                        </div>
-                        
-                        <!-- Total offline duration for endpoint -->
-                        <div class="text-xs text-purple-600 bg-purple-50 px-2 py-1 rounded-full inline-block mb-2">
-                            <i class="fas fa-chart-line mr-1"></i>Total Offline: ${totalOffline.formatted}
-                        </div>
-                        
-                        <div class="flex flex-wrap gap-2 text-xs">
                             <button 
                                 onclick="showEndpointHistory('${log.endpoint}')" 
                                 class="text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-full transition-colors"
                             >
                                 <i class="fas fa-history mr-1"></i>View History
-                            </button>
-                            <button 
-                                onclick="searchSpecificEndpoint('${log.endpoint}')" 
-                                class="text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2 py-1 rounded-full transition-colors"
-                            >
-                                <i class="fas fa-filter mr-1"></i>Filter This Endpoint
                             </button>
                         </div>
                     </div>
@@ -680,107 +591,8 @@ function renderActivityLog() {
         container.appendChild(item);
     });
 
-    // Update pagination and search results
-    updatePaginationControls();
-    updateSearchResultsCount(filteredLogs.length, disconnectLogs.length);
-}
-
-// NEW FEATURE: Pagination controls
-function updatePaginationControls() {
-    const paginationContainer = document.getElementById('pagination-controls');
-    if (!paginationContainer) return;
-
-    if (totalPages <= 1) {
-        paginationContainer.innerHTML = '';
-        return;
-    }
-
-    let paginationHTML = `
-        <div class="flex items-center justify-between bg-white px-4 py-3 rounded-lg border">
-            <div class="flex items-center gap-2 text-sm text-gray-700">
-                <span>Menampilkan ${((currentPage - 1) * itemsPerPage) + 1} - ${Math.min(currentPage * itemsPerPage, filteredLogs.length)} dari ${filteredLogs.length} data</span>
-            </div>
-            <div class="flex items-center gap-2">
-                <select id="items-per-page" class="px-3 py-1 border border-gray-300 rounded text-sm">
-                    <option value="10" ${itemsPerPage === 10 ? 'selected' : ''}>10 per halaman</option>
-                    <option value="20" ${itemsPerPage === 20 ? 'selected' : ''}>20 per halaman</option>
-                    <option value="50" ${itemsPerPage === 50 ? 'selected' : ''}>50 per halaman</option>
-                    <option value="100" ${itemsPerPage === 100 ? 'selected' : ''}>100 per halaman</option>
-                </select>
-                
-                <div class="flex gap-1">
-                    <button onclick="goToPage(${currentPage - 1})" 
-                            ${currentPage <= 1 ? 'disabled' : ''} 
-                            class="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
-                        <i class="fas fa-chevron-left"></i> Prev
-                    </button>
-    `;
-
-    // Page numbers
-    const maxVisiblePages = 5;
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-    
-    if (endPage - startPage + 1 < maxVisiblePages) {
-        startPage = Math.max(1, endPage - maxVisiblePages + 1);
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-        paginationHTML += `
-            <button onclick="goToPage(${i})" 
-                    class="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50 ${i === currentPage ? 'bg-indigo-500 text-white border-indigo-500' : ''}">
-                ${i}
-            </button>
-        `;
-    }
-
-    paginationHTML += `
-                    <button onclick="goToPage(${currentPage + 1})" 
-                            ${currentPage >= totalPages ? 'disabled' : ''} 
-                            class="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
-                        Next <i class="fas fa-chevron-right"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-
-    paginationContainer.innerHTML = paginationHTML;
-
-    // Re-attach event listener for items per page
-    const itemsPerPageSelect = document.getElementById('items-per-page');
-    if (itemsPerPageSelect) {
-        itemsPerPageSelect.addEventListener('change', (e) => {
-            itemsPerPage = parseInt(e.target.value);
-            currentPage = 1;
-            renderActivityLog();
-        });
-    }
-}
-
-// NEW FEATURE: Go to specific page
-function goToPage(page) {
-    if (page < 1 || page > totalPages) return;
-    currentPage = page;
-    renderActivityLog();
-}
-
-// NEW FEATURE: Search for specific endpoint
-function searchSpecificEndpoint(endpoint) {
-    const searchInput = document.getElementById('endpoint-search');
-    if (searchInput) {
-        searchInput.value = endpoint;
-        currentPage = 1;
-        renderActivityLog();
-        
-        // Scroll to search container
-        const searchContainer = document.getElementById('search-container');
-        if (searchContainer) {
-            searchContainer.scrollIntoView({ behavior: 'smooth' });
-        }
-        
-        showNotification(`Menampilkan aktivitas untuk endpoint: ${endpoint}`, 'info');
-    }
+    // Update search results count
+    updateSearchResultsCount(logsToShow.length, disconnectLogs.length);
 }
 
 function updateSearchResultsCount(filteredCount, totalCount) {
@@ -797,10 +609,7 @@ function updateSearchResultsCount(filteredCount, totalCount) {
 function handleEndpointSearch() {
     // Debounce search to avoid too many re-renders
     clearTimeout(window.searchTimeout);
-    window.searchTimeout = setTimeout(() => {
-        currentPage = 1; // Reset to first page when searching
-        renderActivityLog();
-    }, 300);
+    window.searchTimeout = setTimeout(renderActivityLog, 300);
 }
 
 function initializeSearch() {
@@ -811,7 +620,7 @@ function initializeSearch() {
             <div class="bg-white/95 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-white/30 mb-6">
                 <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                     <i class="fas fa-search text-indigo-500"></i>
-                    Log Aktivitas
+                    Pencarian & Filter Log Aktivitas
                 </h3>
                 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -820,7 +629,7 @@ function initializeSearch() {
                         <input 
                             type="text" 
                             id="endpoint-search" 
-                            placeholder="Contoh: 1001, 1002, atau nama gedung..."
+                            placeholder="Masukkan endpoint atau nama node..."
                             class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                         >
                     </div>
@@ -844,14 +653,6 @@ function initializeSearch() {
                     </div>
                 </div>
                 
-                <!-- Quick endpoint search buttons -->
-                <div class="mt-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Pencarian Endpoint Offline:</label>
-                    <div class="flex flex-wrap gap-2" id="quick-endpoint-buttons">
-                        <!-- Will be populated with available endpoints -->
-                    </div>
-                </div>
-                
                 <div class="flex flex-wrap items-center justify-between gap-4 mt-4">
                     <div class="text-sm text-gray-600">
                         <span id="search-results-count">Loading...</span>
@@ -865,303 +666,19 @@ function initializeSearch() {
                             <i class="fas fa-times mr-1"></i>Clear Filters
                         </button>
                         <button 
-                            onclick="showEndpointSummary()" 
-                            class="px-4 py-2 text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors text-sm"
+                            onclick="exportActivityLogs()" 
+                            class="px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors text-sm"
                         >
-                            <i class="fas fa-chart-bar mr-1"></i>Summary
+                            <i class="fas fa-download mr-1"></i>Export
                         </button>
                     </div>
                 </div>
             </div>
-            
-            <!-- Pagination Controls Container -->
-            <div id="pagination-controls" class="mb-4"></div>
         `;
-        
-        // Populate quick endpoint buttons
-        populateQuickEndpointButtons();
         
         // Re-setup event listeners for search
         setupEventListeners();
     }
-}
-
-// NEW FEATURE: Populate quick endpoint buttons
-function populateQuickEndpointButtons() {
-    const container = document.getElementById('quick-endpoint-buttons');
-    if (!container) return;
-
-    // Get unique endpoints from logs and nodes
-    const endpointsFromLogs = [...new Set(disconnectLogs.map(log => log.endpoint))];
-    const endpointsFromNodes = nodes.map(node => node.endpoint).filter(Boolean);
-    const allEndpoints = [...new Set([...endpointsFromLogs, ...endpointsFromNodes])];
-
-    // Sort endpoints numerically
-    allEndpoints.sort((a, b) => {
-        const numA = parseInt(a);
-        const numB = parseInt(b);
-        if (!isNaN(numA) && !isNaN(numB)) {
-            return numA - numB;
-        }
-        return a.localeCompare(b);
-    });
-
-    container.innerHTML = allEndpoints.slice(0, 10).map(endpoint => {
-        const totalOffline = getTotalOfflineDuration(endpoint);
-        const node = nodes.find(n => n.endpoint === endpoint);
-        const currentStatus = node?.status || 'unknown';
-        
-        let statusClass = 'bg-gray-100 text-gray-600';
-        if (currentStatus === 'online') statusClass = 'bg-green-100 text-green-700';
-        else if (currentStatus === 'offline') statusClass = 'bg-red-100 text-red-700';
-        
-        return `
-            <button 
-                onclick="searchSpecificEndpoint('${endpoint}')" 
-                class="px-3 py-2 ${statusClass} hover:shadow-md rounded-lg text-xs transition-all duration-200 border"
-                title="Total offline: ${totalOffline.formatted}"
-            >
-                <div class="font-medium">${endpoint}</div>
-                <div class="text-xs opacity-75">${totalOffline.formatted}</div>
-            </button>
-        `;
-    }).join('');
-
-    if (allEndpoints.length > 10) {
-        container.innerHTML += `
-            <button 
-                onclick="showAllEndpoints()" 
-                class="px-3 py-2 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 rounded-lg text-xs transition-colors border border-indigo-200"
-            >
-                <i class="fas fa-ellipsis-h"></i><br>
-                +${allEndpoints.length - 10} lagi
-            </button>
-        `;
-    }
-}
-
-// NEW FEATURE: Show all endpoints modal
-function showAllEndpoints() {
-    const endpointsFromLogs = [...new Set(disconnectLogs.map(log => log.endpoint))];
-    const endpointsFromNodes = nodes.map(node => node.endpoint).filter(Boolean);
-    const allEndpoints = [...new Set([...endpointsFromLogs, ...endpointsFromNodes])];
-
-    // Sort endpoints numerically
-    allEndpoints.sort((a, b) => {
-        const numA = parseInt(a);
-        const numB = parseInt(b);
-        if (!isNaN(numA) && !isNaN(numB)) {
-            return numA - numB;
-        }
-        return a.localeCompare(b);
-    });
-
-    const modal = document.createElement('div');
-    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
-    
-    modal.innerHTML = `
-        <div class="bg-white rounded-2xl max-w-4xl w-full max-h-[80vh] overflow-hidden shadow-2xl">
-            <div class="p-6 border-b border-gray-200">
-                <div class="flex justify-between items-center">
-                    <h2 class="text-2xl font-bold text-gray-800">
-                        Semua Endpoint (${allEndpoints.length})
-                    </h2>
-                    <button onclick="this.closest('.fixed').remove()" 
-                            class="text-gray-500 hover:text-gray-700 text-2xl p-2">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            </div>
-
-            <div class="p-6 overflow-y-auto max-h-[60vh]">
-                <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                    ${allEndpoints.map(endpoint => {
-                        const totalOffline = getTotalOfflineDuration(endpoint);
-                        const node = nodes.find(n => n.endpoint === endpoint);
-                        const currentStatus = node?.status || 'unknown';
-                        
-                        let statusClass = 'bg-gray-100 text-gray-600 border-gray-300';
-                        if (currentStatus === 'online') statusClass = 'bg-green-100 text-green-700 border-green-300';
-                        else if (currentStatus === 'offline') statusClass = 'bg-red-100 text-red-700 border-red-300';
-                        
-                        return `
-                            <button 
-                                onclick="searchSpecificEndpoint('${endpoint}'); this.closest('.fixed').remove();" 
-                                class="p-3 ${statusClass} hover:shadow-lg rounded-lg text-sm transition-all duration-200 border-2"
-                            >
-                                <div class="font-bold text-lg">${endpoint}</div>
-                                <div class="text-xs opacity-75 mt-1">${node?.name || 'Unknown'}</div>
-                                <div class="text-xs font-medium mt-1">${totalOffline.formatted}</div>
-                                <div class="text-xs capitalize mt-1">${currentStatus}</div>
-                            </button>
-                        `;
-                    }).join('')}
-                </div>
-            </div>
-        </div>
-    `;
-
-    document.body.appendChild(modal);
-
-    // Close on backdrop click
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            modal.remove();
-        }
-    });
-}
-
-// NEW FEATURE: Show endpoint summary statistics
-function showEndpointSummary() {
-    // Calculate summary statistics
-    const endpointStats = {};
-    
-    disconnectLogs.forEach(log => {
-        if (!endpointStats[log.endpoint]) {
-            endpointStats[log.endpoint] = {
-                endpoint: log.endpoint,
-                nodeName: log.nodeName,
-                totalEvents: 0,
-                offlineEvents: 0,
-                onlineEvents: 0,
-                totalOfflineMinutes: 0,
-                lastActivity: null
-            };
-        }
-        
-        const stats = endpointStats[log.endpoint];
-        stats.totalEvents++;
-        
-        if (log.to === 'offline') {
-            stats.offlineEvents++;
-            if (log.offlineDuration) {
-                stats.totalOfflineMinutes += log.offlineDuration;
-            }
-        } else if (log.to === 'online') {
-            stats.onlineEvents++;
-        }
-        
-        if (!stats.lastActivity || new Date(log.time) > new Date(stats.lastActivity)) {
-            stats.lastActivity = log.time;
-        }
-    });
-
-    // Convert to array and sort by total offline time
-    const sortedStats = Object.values(endpointStats).sort((a, b) => b.totalOfflineMinutes - a.totalOfflineMinutes);
-
-    const modal = document.createElement('div');
-    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
-    
-    modal.innerHTML = `
-        <div class="bg-white rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
-            <div class="p-6 border-b border-gray-200">
-                <div class="flex justify-between items-center">
-                    <div>
-                        <h2 class="text-2xl font-bold text-gray-800">
-                            Ringkasan Endpoint
-                        </h2>
-                        <p class="text-gray-600 mt-1">Statistik total durasi offline per endpoint</p>
-                    </div>
-                    <button onclick="this.closest('.fixed').remove()" 
-                            class="text-gray-500 hover:text-gray-700 text-2xl p-2">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            </div>
-
-            <div class="p-6 overflow-y-auto max-h-[70vh]">
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm">
-                        <thead class="bg-gray-100 rounded-lg">
-                            <tr>
-                                <th class="py-3 px-4 text-left font-medium text-gray-700">Rank</th>
-                                <th class="py-3 px-4 text-left font-medium text-gray-700">Endpoint</th>
-                                <th class="py-3 px-4 text-left font-medium text-gray-700">Node Name</th>
-                                <th class="py-3 px-4 text-left font-medium text-gray-700">Total Offline Duration</th>
-                                <th class="py-3 px-4 text-left font-medium text-gray-700">Total Events</th>
-                                <th class="py-3 px-4 text-left font-medium text-gray-700">Offline Events</th>
-                                <th class="py-3 px-4 text-left font-medium text-gray-700">Online Events</th>
-                                <th class="py-3 px-4 text-left font-medium text-gray-700">Last Activity</th>
-                                <th class="py-3 px-4 text-left font-medium text-gray-700">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${sortedStats.map((stats, index) => `
-                                <tr class="border-b border-gray-200 hover:bg-gray-50">
-                                    <td class="py-3 px-4">
-                                        <div class="flex items-center gap-2">
-                                            ${index < 3 ? `<i class="fas fa-medal text-${index === 0 ? 'yellow' : index === 1 ? 'gray' : 'orange'}-500"></i>` : ''}
-                                            <span class="font-bold">#${index + 1}</span>
-                                        </div>
-                                    </td>
-                                    <td class="py-3 px-4 font-bold text-indigo-600">${stats.endpoint}</td>
-                                    <td class="py-3 px-4">${stats.nodeName}</td>
-                                    <td class="py-3 px-4">
-                                        <span class="font-bold text-red-600">${formatDuration(stats.totalOfflineMinutes)}</span>
-                                        <div class="w-full bg-gray-200 rounded-full h-1 mt-1">
-                                            <div class="bg-red-500 h-1 rounded-full" style="width: ${Math.min(stats.totalOfflineMinutes / Math.max(...sortedStats.map(s => s.totalOfflineMinutes)) * 100, 100)}%"></div>
-                                        </div>
-                                    </td>
-                                    <td class="py-3 px-4">
-                                        <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-                                            ${stats.totalEvents}
-                                        </span>
-                                    </td>
-                                    <td class="py-3 px-4">
-                                        <span class="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium">
-                                            ${stats.offlineEvents}
-                                        </span>
-                                    </td>
-                                    <td class="py-3 px-4">
-                                        <span class="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
-                                            ${stats.onlineEvents}
-                                        </span>
-                                    </td>
-                                    <td class="py-3 px-4 text-xs text-gray-500">
-                                        ${stats.lastActivity ? new Date(stats.lastActivity).toLocaleString('id-ID') : 'N/A'}
-                                    </td>
-                                    <td class="py-3 px-4">
-                                        <div class="flex gap-1">
-                                            <button 
-                                                onclick="searchSpecificEndpoint('${stats.endpoint}'); this.closest('.fixed').remove();" 
-                                                class="px-2 py-1 text-xs bg-indigo-100 text-indigo-700 hover:bg-indigo-200 rounded transition-colors"
-                                                title="Filter endpoint ini"
-                                            >
-                                                <i class="fas fa-filter"></i>
-                                            </button>
-                                            <button 
-                                                onclick="showEndpointHistory('${stats.endpoint}')" 
-                                                class="px-2 py-1 text-xs bg-blue-100 text-blue-700 hover:bg-blue-200 rounded transition-colors"
-                                                title="Lihat history detail"
-                                            >
-                                                <i class="fas fa-history"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                </div>
-                
-                ${sortedStats.length === 0 ? `
-                    <div class="text-center py-8 text-gray-500">
-                        <i class="fas fa-inbox text-3xl mb-3"></i>
-                        <p>Belum ada data statistik endpoint</p>
-                    </div>
-                ` : ''}
-            </div>
-        </div>
-    `;
-
-    document.body.appendChild(modal);
-
-    // Close on backdrop click
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            modal.remove();
-        }
-    });
 }
 
 function clearSearchFilters() {
@@ -1169,8 +686,34 @@ function clearSearchFilters() {
     document.getElementById('date-from').value = '';
     document.getElementById('date-to').value = '';
     document.getElementById('activity-filter').value = 'all';
-    currentPage = 1;
     renderActivityLog();
+}
+
+async function exportActivityLogs() {
+    try {
+        // Use existing History API for export - you may need to add this endpoint
+        const response = await fetch('/api/history/all?export=csv', {
+            headers: apiHeaders
+        });
+        
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `activity_logs_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            showNotification('Activity logs exported successfully', 'success');
+        } else {
+            throw new Error('Export failed');
+        }
+    } catch (error) {
+        console.error('Error exporting logs:', error);
+        showNotification('Error exporting activity logs', 'error');
+    }
 }
 
 async function showEndpointHistory(endpoint) {
@@ -1200,13 +743,11 @@ async function showEndpointHistory(endpoint) {
 }
 
 function displayEndpointHistoryModal(endpoint, data) {
-    const totalOffline = getTotalOfflineDuration(endpoint);
-    
     const modal = document.createElement('div');
     modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
     
     modal.innerHTML = `
-        <div class="bg-white rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
+        <div class="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
             <div class="p-6 border-b border-gray-200">
                 <div class="flex justify-between items-center">
                     <div>
@@ -1214,9 +755,6 @@ function displayEndpointHistoryModal(endpoint, data) {
                             History Endpoint: ${endpoint}
                         </h2>
                         <p class="text-gray-600 mt-1">${data.node_name || 'Unknown Node'}</p>
-                        <p class="text-sm text-purple-600 mt-1">
-                            <i class="fas fa-clock mr-1"></i>Total Offline Duration: ${totalOffline.formatted}
-                        </p>
                     </div>
                     <button onclick="this.closest('.fixed').remove()" 
                             class="text-gray-500 hover:text-gray-700 text-2xl p-2">
@@ -1225,9 +763,9 @@ function displayEndpointHistoryModal(endpoint, data) {
                 </div>
             </div>
 
-            <div class="p-6 overflow-y-auto max-h-[75vh]">
-                <!-- Enhanced Statistics Cards -->
-                <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+            <div class="p-6 overflow-y-auto max-h-[70vh]">
+                <!-- Statistics Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                     <div class="bg-blue-50 p-4 rounded-xl border border-blue-200">
                         <div class="text-sm text-blue-600">Total Events</div>
                         <div class="text-2xl font-bold text-blue-800">${data.statistics?.total_events || 0}</div>
@@ -1240,17 +778,15 @@ function displayEndpointHistoryModal(endpoint, data) {
                         <div class="text-sm text-green-600">Online Events</div>
                         <div class="text-2xl font-bold text-green-800">${data.statistics?.online_events || 0}</div>
                     </div>
-                    <div class="bg-purple-50 p-4 rounded-xl border border-purple-200">
-                        <div class="text-sm text-purple-600">Total Offline Time</div>
-                        <div class="text-2xl font-bold text-purple-800">${totalOffline.formatted}</div>
+                    <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                        <div class="text-sm text-gray-600">Avg Offline Duration</div>
+                        <div class="text-2xl font-bold text-gray-800">${data.statistics?.avg_offline_duration || 'N/A'}</div>
                     </div>
                 </div>
 
-                <!-- Enhanced Recent History Table -->
+                <!-- Recent History Table -->
                 <div class="bg-gray-50 rounded-xl p-4">
-                    <h3 class="text-lg font-semibold mb-4 text-gray-800 flex items-center gap-2">
-                        <i class="fas fa-history"></i>Recent Activity (Last 50)
-                    </h3>
+                    <h3 class="text-lg font-semibold mb-4 text-gray-800">Recent Activity (Last 50)</h3>
                     
                     ${data.history && data.history.length > 0 ? `
                         <div class="overflow-x-auto">
@@ -1259,59 +795,25 @@ function displayEndpointHistoryModal(endpoint, data) {
                                     <tr>
                                         <th class="py-3 px-4 text-left font-medium text-gray-700">Time</th>
                                         <th class="py-3 px-4 text-left font-medium text-gray-700">Status Change</th>
-                                        <th class="py-3 px-4 text-left font-medium text-gray-700">Duration</th>
                                         <th class="py-3 px-4 text-left font-medium text-gray-700">Description</th>
                                     </tr>
                                 </thead>
                                 <tbody class="space-y-2">
-                                    ${data.history.map((item, index) => {
-                                        // Calculate duration to next event for offline periods
-                                        let duration = null;
-                                        let durationFormatted = null;
-                                        
-                                        if (item.current_status === 'offline') {
-                                            const nextItem = data.history[index + 1];
-                                            if (nextItem) {
-                                                const currentTime = new Date(item.timestamp || item.created_at);
-                                                const nextTime = new Date(nextItem.timestamp || nextItem.created_at);
-                                                const durationMs = nextTime - currentTime;
-                                                duration = Math.floor(durationMs / (1000 * 60));
-                                                durationFormatted = formatDuration(duration);
-                                            } else {
-                                                // Still offline, calculate to current time
-                                                const currentTime = new Date(item.timestamp || item.created_at);
-                                                const now = new Date();
-                                                const durationMs = now - currentTime;
-                                                duration = Math.floor(durationMs / (1000 * 60));
-                                                durationFormatted = formatDuration(duration) + ' (ongoing)';
-                                            }
-                                        }
-                                        
-                                        return `
-                                            <tr class="border-b border-gray-200 hover:bg-white">
-                                                <td class="py-3 px-4 text-gray-800">
-                                                    ${new Date(item.timestamp || item.created_at).toLocaleString('id-ID')}
-                                                </td>
-                                                <td class="py-3 px-4">
-                                                    <span class="px-2 py-1 rounded-full text-xs font-medium ${
-                                                        item.current_status === 'offline' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
-                                                    }">
-                                                        ${item.previous_status} → ${item.current_status}
-                                                    </span>
-                                                </td>
-                                                <td class="py-3 px-4">
-                                                    ${durationFormatted ? `
-                                                        <span class="px-2 py-1 rounded-full text-xs font-medium ${
-                                                            item.current_status === 'offline' ? 'bg-orange-100 text-orange-800' : 'bg-blue-100 text-blue-800'
-                                                        }">
-                                                            <i class="fas fa-clock mr-1"></i>${durationFormatted}
-                                                        </span>
-                                                    ` : '<span class="text-gray-400">-</span>'}
-                                                </td>
-                                                <td class="py-3 px-4 text-gray-600">${item.description}</td>
-                                            </tr>
-                                        `;
-                                    }).join('')}
+                                    ${data.history.map(item => `
+                                        <tr class="border-b border-gray-200 hover:bg-white">
+                                            <td class="py-3 px-4 text-gray-800">
+                                                ${new Date(item.timestamp || item.created_at).toLocaleString('id-ID')}
+                                            </td>
+                                            <td class="py-3 px-4">
+                                                <span class="px-2 py-1 rounded-full text-xs font-medium ${
+                                                    item.current_status === 'offline' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
+                                                }">
+                                                    ${item.previous_status} → ${item.current_status}
+                                                </span>
+                                            </td>
+                                            <td class="py-3 px-4 text-gray-600">${item.description}</td>
+                                        </tr>
+                                    `).join('')}
                                 </tbody>
                             </table>
                         </div>
@@ -1634,7 +1136,6 @@ class PhoneMonitoring {
         const color = this.getStatusColor(phone.status, phone.downtime);
         const isOnline = phone.status === 'online';
         const displayStatus = formatDisplayStatus(phone.status);
-        const totalOffline = getTotalOfflineDuration(phone.endpoint);
 
         return `
             <div class="bg-white rounded-xl p-4 shadow-lg border-l-4 border-${color}-500 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
@@ -1665,15 +1166,9 @@ class PhoneMonitoring {
                         <span class="text-blue-600 font-medium">${phone.uptime}%</span>
                     </div>
 
-                    <!-- Enhanced offline duration display -->
-                    <div class="flex justify-between items-center text-xs">
-                        <span class="text-gray-500">Total Offline:</span>
-                        <span class="text-purple-600 font-bold">${totalOffline.formatted}</span>
-                    </div>
-
                     ${!isOnline ? `
                         <div class="flex justify-between items-center text-xs">
-                            <span class="text-gray-500">Current Offline:</span>
+                            <span class="text-gray-500">Offline Duration:</span>
                             <span class="text-red-600 font-bold">${this.formatDuration(phone.downtime)}</span>
                         </div>
                         <div class="w-full bg-gray-200 rounded-full h-1.5">
@@ -1690,20 +1185,12 @@ class PhoneMonitoring {
                     `}
                     
                     <div class="mt-3 pt-2 border-t border-gray-100">
-                        <div class="flex gap-1">
-                            <button 
-                                onclick="showEndpointHistory('${phone.endpoint}')" 
-                                class="flex-1 text-xs text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 py-1 px-2 rounded-lg transition-colors"
-                            >
-                                <i class="fas fa-chart-line mr-1"></i>History
-                            </button>
-                            <button 
-                                onclick="searchSpecificEndpoint('${phone.endpoint}')" 
-                                class="flex-1 text-xs text-purple-600 hover:text-purple-800 hover:bg-purple-50 py-1 px-2 rounded-lg transition-colors"
-                            >
-                                <i class="fas fa-filter mr-1"></i>Filter
-                            </button>
-                        </div>
+                        <button 
+                            onclick="showEndpointHistory('${phone.endpoint}')" 
+                            class="w-full text-xs text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 py-1 px-2 rounded-lg transition-colors"
+                        >
+                            <i class="fas fa-chart-line mr-1"></i>View History
+                        </button>
                     </div>
                 </div>
             </div>
@@ -1755,12 +1242,8 @@ window.filterActivities = function() {
 
 window.showEndpointHistory = showEndpointHistory;
 window.clearSearchFilters = clearSearchFilters;
+window.exportActivityLogs = exportActivityLogs;
 window.getCurrentOfflinePhones = getCurrentOfflinePhones;
-window.searchSpecificEndpoint = searchSpecificEndpoint;
-window.goToPage = goToPage;
-window.showAllEndpoints = showAllEndpoints;
-window.showEndpointSummary = showEndpointSummary;
-window.getTotalOfflineDuration = getTotalOfflineDuration;
 
 // Initialize phone monitoring after nodes are loaded
 function initializePhoneMonitoring() {
@@ -1774,13 +1257,6 @@ function initializePhoneMonitoring() {
             phoneMonitoring.updateLogboard();
         }
     };
-
-    // Update quick endpoint buttons when data changes
-    const originalRenderActivityLog = renderActivityLog;
-    renderActivityLog = function() {
-        originalRenderActivityLog();
-        populateQuickEndpointButtons();
-    };
 }
 
 // Export for global access
@@ -1791,8 +1267,5 @@ Object.assign(window, {
     renderActivityLog,
     updateRealtimeStats,
     showNotification,
-    getCurrentOfflinePhones,
-    calculateLogDurations,
-    formatDuration,
-    populateQuickEndpointButtons
+    getCurrentOfflinePhones
 });

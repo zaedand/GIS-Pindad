@@ -1639,3 +1639,22 @@ php artisan tinker
 >>> $service = app(App\Services\DeviceHistoryService::class);
 >>> $service->handleStatusChange('1001', 'offline');
 >>> $service->handleStatusChange('1001', 'online');
+
+1. tambah fitur search untuk mengelompokkan endpoint tertentu (misal = 1001 -> endpoint history dari 1001)
+2. jika bisa, pada tabel, setiap waktu on/off diberi selisih waktu (misal 1 menit)(berfokuskan total waktu durasi offline tsb)
+3. total waktu durasi offline setiap endpoint
+4. beri pagination
+5. yg di track/ dicatat dlm databse on ke off saja, yg off ke on biarin??
+6. format waktu sudah dari server format wib(indonesia)
+   {
+    endpoint: '1099',
+    status: 'Unavailable 0 of',
+    timestamp: '2025-07-29 10:43:53'
+  }
+7. pagination Log aktivitas show  10
+
+1. beri pagination
+2. optimasi fitur search
+
+1. showToast=showNotification
+2. icon dihilangkan

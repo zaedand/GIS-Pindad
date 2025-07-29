@@ -208,10 +208,10 @@ function updateMapMarkers() {
 // Toast notification system
 function showToast(message, type = 'success') {
     const toastStyles = {
-        success: { bg: 'linear-gradient(135deg, #10b981, #059669)', icon: '✅' },
-        error: { bg: 'linear-gradient(135deg, #ef4444, #dc2626)', icon: '❌' },
-        warning: { bg: 'linear-gradient(135deg, #f59e0b, #d97706)', icon: '⚠️' },
-        info: { bg: 'linear-gradient(135deg, #3b82f6, #2563eb)', icon: 'ℹ️' }
+        success: { bg: 'linear-gradient(135deg, #10b981, #059669)', icon: '' },
+        error: { bg: 'linear-gradient(135deg, #ef4444, #dc2626)', icon: '' },
+        warning: { bg: 'linear-gradient(135deg, #f59e0b, #d97706)', icon: '' },
+        info: { bg: 'linear-gradient(135deg, #3b82f6, #2563eb)', icon: '' }
     };
 
     const style = toastStyles[type] || toastStyles.success;

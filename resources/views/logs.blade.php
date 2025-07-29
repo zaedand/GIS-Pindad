@@ -14,7 +14,7 @@
             </h3>
 
             <div class="flex items-center gap-4">
-                <!-- Filter Buttons -->
+                <!-- Enhanced Filter Buttons -->
                 <div class="flex items-center gap-2 bg-gray-100 rounded-xl p-1">
                     <button onclick="filterPhones('all')" id="filter-all" class="filter-btn px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 bg-indigo-500 text-white shadow-md">
                         <i class="fas fa-list mr-2"></i>Semua
@@ -25,6 +25,9 @@
                     <button onclick="filterPhones('offline')" id="filter-offline" class="filter-btn px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 text-gray-600 hover:bg-red-100 hover:text-red-700">
                         <i class="fas fa-exclamation-triangle mr-2"></i>Offline
                     </button>
+                    <button onclick="filterPhones('partial')" id="filter-partial" class="filter-btn px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 text-gray-600 hover:bg-yellow-100 hover:text-yellow-700">
+                        <i class="fas fa-users mr-2"></i>In Use
+                    </button>
                 </div>
 
                 <div class="flex items-center gap-2 text-sm text-gray-600">
@@ -34,17 +37,17 @@
             </div>
         </div>
 
-        <!-- Filter Info -->
+        <!-- Enhanced Filter Info -->
         <div class="mb-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200" id="filter-info">
             <div class="flex items-center gap-2 text-sm">
                 <i class="fas fa-info-circle text-blue-500"></i>
                 <span class="text-blue-700 font-medium">Menampilkan: <span id="filter-status">Semua telepon</span></span>
-                <span class="text-blue-600">(<span id="filterPhones">0</span> dari <span id="total-phones">0</span> telepon)</span>
+                <span class="text-blue-600">(<span id="filterPhones">0</span> dari <span id="total-phones-filter">0</span> telepon)</span>
             </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" id="phone-grid">
-            <!-- Phone cards will be generated here -->
+            <!-- Phone cards will be generated here by JavaScript -->
         </div>
 
         <!-- No Results Message -->
@@ -57,6 +60,11 @@
         </div>
     </div>
 
+    <!-- Enhanced Search Container - This will be populated by JavaScript -->
+    <div id="search-container">
+        <!-- JavaScript will populate this with advanced search functionality -->
+    </div>
+
     <!-- Activity Log -->
     <div class="bg-white/95 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-white/30">
         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
@@ -65,20 +73,30 @@
                 Log Aktivitas
             </h3>
 
-            <!-- Activity Filter -->
-            <div class="flex items-center gap-2">
+            <!-- Enhanced Activity Filter -->
+            <div class="flex items-center gap-3">
                 <select id="activity-filter" onchange="filterActivities()" class="px-4 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white">
                     <option value="all">Semua Aktivitas</option>
                     <option value="offline">Hanya Offline</option>
                     <option value="online">Hanya Online</option>
+                    <option value="partial">Hanya In Use</option>
                 </select>
             </div>
         </div>
 
+        <!-- Activity Log Container -->
         <div class="space-y-3" id="activity-log">
-            <!-- Activity items will be generated here -->
+            <!-- Activity items will be generated here by JavaScript -->
+            <div class="text-center text-gray-500 text-sm p-8">
+                <i class="fas fa-spinner fa-spin text-3xl mb-3"></i>
+                <p>Memuat log aktivitas...</p>
+            </div>
         </div>
 
+        <!-- Pagination Controls Container - Will be populated by JavaScript -->
+        <div id="pagination-controls" class="mt-6">
+            <!-- JavaScript will populate this with pagination controls -->
+        </div>
     </div>
 
 @push('scripts')

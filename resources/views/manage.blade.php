@@ -108,44 +108,6 @@
 
                     <div class="space-y-2 max-h-96 overflow-y-auto" id="phone-status-list">
                         <!-- Phone status items will be populated here -->
-                        <div class="flex items-center gap-4 p-3 rounded-xl hover:bg-indigo-50 transition-all duration-300 cursor-pointer">
-                            <div class="w-3 h-3 bg-green-500 rounded-full shadow-lg animate-pulse"></div>
-                            <div class="flex-1">
-                                <div class="font-semibold text-gray-800">Gedung A</div>
-                                <div class="text-sm text-gray-600">192.168.1.101</div>
-                                <div class="text-xs text-gray-500">Last ping: 2s ago</div>
-                            </div>
-                            <div class="text-right text-xs text-gray-500">
-                                <div class="font-medium">42ms</div>
-                                <div>99.8%</div>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center gap-4 p-3 rounded-xl hover:bg-indigo-50 transition-all duration-300 cursor-pointer">
-                            <div class="w-3 h-3 bg-red-500 rounded-full shadow-lg animate-blink"></div>
-                            <div class="flex-1">
-                                <div class="font-semibold text-gray-800">Gedung B</div>
-                                <div class="text-sm text-gray-600">192.168.1.102</div>
-                                <div class="text-xs text-gray-500">Last ping: 5m ago</div>
-                            </div>
-                            <div class="text-right text-xs text-gray-500">
-                                <div class="font-medium text-red-500">Timeout</div>
-                                <div>85.2%</div>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center gap-4 p-3 rounded-xl hover:bg-indigo-50 transition-all duration-300 cursor-pointer">
-                            <div class="w-3 h-3 bg-green-500 rounded-full shadow-lg animate-pulse"></div>
-                            <div class="flex-1">
-                                <div class="font-semibold text-gray-800">Gedung C</div>
-                                <div class="text-sm text-gray-600">192.168.1.103</div>
-                                <div class="text-xs text-gray-500">Last ping: 1s ago</div>
-                            </div>
-                            <div class="text-right text-xs text-gray-500">
-                                <div class="font-medium">38ms</div>
-                                <div>99.9%</div>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>

@@ -94,36 +94,7 @@
             </div>
 
             <!-- Activity Log -->
-            <div class="bg-white/95 backdrop-blur-md rounded-2xl p-6 shadow-lg">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                    <i class="fas fa-history text-indigo-500"></i>
-                    Log Aktivitas Terbaru
-                </h3>
-
-                <div class="space-y-4" id="activity-log">
-                    <div class="flex gap-4 p-4 border-b border-gray-100 last:border-b-0">
-                        <div class="w-10 h-10 bg-gradient-to-br from-red-500 to-orange-500 rounded-full flex items-center justify-center text-white flex-shrink-0">
-                            <i class="fas fa-exclamation-triangle text-sm"></i>
-                        </div>
-                        <div class="flex-1">
-                            <div class="font-semibold text-gray-800">Gedung B Offline</div>
-                            <div class="text-sm text-gray-600 mt-1">Telepon gedung B tidak merespons ping.</div>
-                            <div class="text-xs text-gray-500 mt-1">{{ now()->diffForHumans() }}</div>
-                        </div>
-                    </div>
-
-                    <div class="flex gap-4 p-4 border-b border-gray-100 last:border-b-0">
-                        <div class="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center text-white flex-shrink-0">
-                            <i class="fas fa-check-circle text-sm"></i>
-                        </div>
-                        <div class="flex-1">
-                            <div class="font-semibold text-gray-800">Sistem Monitoring Aktif</div>
-                            <div class="text-sm text-gray-600 mt-1">Monitoring telepon berjalan normal.</div>
-                            <div class="text-xs text-gray-500 mt-1">{{ now()->subMinutes(5)->diffForHumans() }}</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            
         </div>
     </div>
 
