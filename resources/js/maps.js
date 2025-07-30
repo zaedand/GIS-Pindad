@@ -1335,38 +1335,50 @@ function clearSearch() {
 }
 
 // Toast notification system
-function showToast(message, type = 'success') {
-    const toastStyles = {
-        success: { bg: 'linear-gradient(135deg, #10b981, #059669)'},
-        error: { bg: 'linear-gradient(135deg, #ef4444, #dc2626)'},
-        warning: { bg: 'linear-gradient(135deg, #f59e0b, #d97706)'},
-        info: { bg: 'linear-gradient(135deg, #3b82f6, #2563eb)'}
+function showToast(message, type = 'info') {
+    const colors = {
+        success: 'bg-white text-green-500',
+        error: 'bg-white text-red-500',
+        warning: 'bg-white text-yellow-600',
+        info: 'bg-white text-blue-500'
     };
 
-    const style = toastStyles[type] || toastStyles.success;
+    const icons = {
+        success: 'check-circle',
+        error: 'exclamation-circle',
+        warning: 'exclamation-triangle',
+        info: 'info-circle'
+    };
 
-    if (typeof Toastify !== 'undefined') {
-        Toastify({
-            text: `${message}`,
-            duration: 2000,
-            close: true,
-            gravity: "top",
-            position: "right",
-            style: {
-                background: style.bg,
-                color: '#ffffff',
-                borderRadius: "12px",
-                padding: "16px 20px",
-                boxShadow: "0 10px 25px rgba(0,0,0,0.2)",
-                fontSize: "14px",
-                fontWeight: "500",
-                minWidth: "300px"
+    const toast = document.createElement('div');
+    toast.className = `
+        fixed top-5 right-5 z-50 px-5 py-3 rounded-xl shadow-xl flex items-center gap-3 transition-all duration-300 transform translate-x-full
+        ${colors[type] || colors.info}
+    `;
+
+    toast.innerHTML = `
+        <i class="fas fa-${icons[type] || icons.info} text-lg"></i>
+        <span class="text-sm font-medium">${message}</span>
+    `;
+
+    document.body.appendChild(toast);
+
+    // Animasi masuk
+    setTimeout(() => {
+        toast.classList.remove('translate-x-full');
+    }, 50);
+
+    // Hapus setelah 4 detik
+    setTimeout(() => {
+        toast.classList.add('translate-x-full');
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
             }
-        }).showToast();
-    } else {
-        console.log(`${type.toUpperCase()}: ${message}`);
-    }
+        }, 300);
+    }, 4000);
 }
+
 
 // Confirmation modal
 function showConfirmModal(message, onConfirm, onCancel = null) {

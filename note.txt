@@ -1645,12 +1645,7 @@ php artisan tinker
 3. total waktu durasi offline setiap endpoint
 4. beri pagination
 5. yg di track/ dicatat dlm databse on ke off saja, yg off ke on biarin??
-6. format waktu sudah dari server format wib(indonesia)
-   {
-    endpoint: '1099',
-    status: 'Unavailable 0 of',
-    timestamp: '2025-07-29 10:43:53'
-  }
+6. format waktu yang masih ada terjadi selisih waktu dengan di phonecard/server seperti'2025-07-30 09:32:51 dg 30/07/25, 16.32.51
 7. pagination Log aktivitas show  10
 
 1. beri pagination

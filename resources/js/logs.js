@@ -1,4 +1,4 @@
-// resources/js/logs.js - Enhanced with new features
+// resources/js/logs.js -  FIXED TIME FORMAT
 import { io } from 'socket.io-client';
 
 let socket;
@@ -12,7 +12,7 @@ let phoneMonitoring;
 
 // Pagination settings
 let currentPage = 1;
-let itemsPerPage = 20;
+let itemsPerPage = 10;
 let totalPages = 1;
 let filteredLogs = [];
 
@@ -21,6 +21,106 @@ const apiHeaders = {
     'Accept': 'application/json',
     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
 };
+
+// ===== TIME FORMAT UTILITIES - FIXED =====
+function formatDateTime(dateString, format = 'full') {
+    if (!dateString) return 'N/A';
+    
+    try {
+        const date = new Date(dateString);
+        
+        // Check if date is valid
+        if (isNaN(date.getTime())) {
+            console.warn('Invalid date:', dateString);
+            return 'Invalid Date';
+        }
+        
+        const options = {
+            timeZone: 'Asia/Jakarta', // WIB timezone
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        };
+        
+        switch (format) {
+            case 'short':
+                // Format: 30/07/25, 16.32
+                return date.toLocaleString('id-ID', {
+                    timeZone: 'Asia/Jakarta',
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                }).replace(',', ',').replace(':', '.');
+                
+            case 'date-only':
+                // Format: 30/07/2025
+                return date.toLocaleDateString('id-ID', {
+                    timeZone: 'Asia/Jakarta',
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
+                });
+                
+            case 'time-only':
+                // Format: 16.32.51
+                return date.toLocaleTimeString('id-ID', {
+                    timeZone: 'Asia/Jakarta',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false
+                }).replace(/:/g, '.');
+                
+            case 'full':
+            default:
+                // Format: 30/07/2025, 16.32.51
+                return date.toLocaleString('id-ID', {
+                    timeZone: 'Asia/Jakarta',
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false
+                }).replace(':', '.').replace(/(\d{2})\.(\d{2})\.(\d{2})$/, '$1.$2.$3');
+        }
+    } catch (error) {
+        console.error('Error formatting date:', error, dateString);
+        return 'Format Error';
+    }
+}
+
+function formatRelativeTime(dateString) {
+    if (!dateString) return 'N/A';
+    
+    try {
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMinutes = Math.floor(diffMs / (1000 * 60));
+        const diffHours = Math.floor(diffMinutes / 60);
+        const diffDays = Math.floor(diffHours / 24);
+        
+        if (diffMinutes < 1) return 'Baru saja';
+        if (diffMinutes < 60) return `${diffMinutes} menit yang lalu`;
+        if (diffHours < 24) return `${diffHours} jam yang lalu`;
+        if (diffDays < 7) return `${diffDays} hari yang lalu`;
+        
+        // For older dates, show absolute date
+        return formatDateTime(dateString, 'short');
+    } catch (error) {
+        console.error('Error calculating relative time:', error);
+        return formatDateTime(dateString, 'short');
+    }
+}
 
 // Initialize everything when DOM is loaded
 document.addEventListener('DOMContentLoaded', async () => {
@@ -216,7 +316,7 @@ function initializeSocket() {
         socket.on('connect', () => {
             console.log('Connected to Socket.IO server:', socket.id);
             socketConnected = true;
-            showNotification('Socket connected successfully', 'success');
+            showNotification('Server connected successfully', 'success');
         });
 
         socket.on('device-status', async (statusList) => {
@@ -238,11 +338,11 @@ function initializeSocket() {
 
         socket.on('disconnect', () => {
             console.log('Disconnected from Socket.IO server');
-            showNotification('Socket disconnected', 'warning');
+            showNotification('Server disconnected', 'warning');
         });
 
         socket.on('connect_error', (error) => {
-            console.error(`Socket connection error for ${url}:`, error);
+            console.error(`Server connection error for ${url}:`, error);
             if (!socketConnected) {
                 tryConnect(urlIndex + 1);
             }
@@ -544,7 +644,7 @@ function updateRealtimeStats(statusData) {
     }
 }
 
-// ENHANCED: Activity log rendering with pagination
+// ENHANCED: Activity log rendering with pagination - FIXED TIME FORMAT
 function renderActivityLog() {
     const container = document.getElementById("activity-log");
     const filter = document.getElementById("activity-filter")?.value || 'all';
@@ -672,7 +772,7 @@ function renderActivityLog() {
                     </div>
                 </div>
                 <div class="text-sm text-gray-400 whitespace-nowrap">
-                    ${new Date(log.time).toLocaleString('id-ID')}
+                    ${formatDateTime(log.time, 'full')}
                 </div>
             </div>
         `;
@@ -685,7 +785,7 @@ function renderActivityLog() {
     updateSearchResultsCount(filteredLogs.length, disconnectLogs.length);
 }
 
-// NEW FEATURE: Pagination controls
+// Pagination controls
 function updatePaginationControls() {
     const paginationContainer = document.getElementById('pagination-controls');
     if (!paginationContainer) return;
@@ -696,16 +796,16 @@ function updatePaginationControls() {
     }
 
     let paginationHTML = `
-        <div class="flex items-center justify-between bg-white px-4 py-3 rounded-lg border">
+        <div class="flex items-center justify-between bg-white px-4 py-3 rounded-lg border ">
             <div class="flex items-center gap-2 text-sm text-gray-700">
                 <span>Menampilkan ${((currentPage - 1) * itemsPerPage) + 1} - ${Math.min(currentPage * itemsPerPage, filteredLogs.length)} dari ${filteredLogs.length} data</span>
             </div>
             <div class="flex items-center gap-2">
                 <select id="items-per-page" class="px-3 py-1 border border-gray-300 rounded text-sm">
-                    <option value="10" ${itemsPerPage === 10 ? 'selected' : ''}>10 per halaman</option>
-                    <option value="20" ${itemsPerPage === 20 ? 'selected' : ''}>20 per halaman</option>
-                    <option value="50" ${itemsPerPage === 50 ? 'selected' : ''}>50 per halaman</option>
-                    <option value="100" ${itemsPerPage === 100 ? 'selected' : ''}>100 per halaman</option>
+                    <option value="10" ${itemsPerPage === 10 ? 'selected' : ''}>10</option>
+                    <option value="20" ${itemsPerPage === 20 ? 'selected' : ''}>20</option>
+                    <option value="50" ${itemsPerPage === 50 ? 'selected' : ''}>50</option>
+                    <option value="100" ${itemsPerPage === 100 ? 'selected' : ''}>100</option>
                 </select>
 
                 <div class="flex gap-1">
@@ -779,7 +879,7 @@ function searchSpecificEndpoint(endpoint) {
             searchContainer.scrollIntoView({ behavior: 'smooth' });
         }
 
-        showNotification(`Menampilkan aktivitas untuk endpoint: ${endpoint}`, 'info');
+        showNotification(`Menampilkan aktivitas untuk endpoint: <strong>${endpoint}</strong>`, 'info');
     }
 }
 
@@ -1076,7 +1176,7 @@ function showEndpointSummary() {
                             <tr>
                                 <th class="py-3 px-4 text-left font-medium text-gray-700">Rank</th>
                                 <th class="py-3 px-4 text-left font-medium text-gray-700">Endpoint</th>
-                                <th class="py-3 px-4 text-left font-medium text-gray-700">Node Name</th>
+                                <th class="py-3 px-4 text-left font-medium text-gray-700">Gedung</th>
                                 <th class="py-3 px-4 text-left font-medium text-gray-700">Total Offline Duration</th>
                                 <th class="py-3 px-4 text-left font-medium text-gray-700">Total Events</th>
                                 <th class="py-3 px-4 text-left font-medium text-gray-700">Offline Events</th>
@@ -1090,7 +1190,7 @@ function showEndpointSummary() {
                                 <tr class="border-b border-gray-200 hover:bg-gray-50">
                                     <td class="py-3 px-4">
                                         <div class="flex items-center gap-2">
-                                            ${index < 3 ? `<i class="fas fa-medal text-${index === 0 ? 'yellow' : index === 1 ? 'gray' : 'orange'}-500"></i>` : ''}
+                                            
                                             <span class="font-bold">#${index + 1}</span>
                                         </div>
                                     </td>
@@ -1118,7 +1218,7 @@ function showEndpointSummary() {
                                         </span>
                                     </td>
                                     <td class="py-3 px-4 text-xs text-gray-500">
-                                        ${stats.lastActivity ? new Date(stats.lastActivity).toLocaleString('id-ID') : 'N/A'}
+                                        ${stats.lastActivity ? formatDateTime(stats.lastActivity, 'full') : 'N/A'}
                                     </td>
                                     <td class="py-3 px-4">
                                         <div class="flex gap-1">
@@ -1290,7 +1390,7 @@ function displayEndpointHistoryModal(endpoint, data) {
                                         return `
                                             <tr class="border-b border-gray-200 hover:bg-white">
                                                 <td class="py-3 px-4 text-gray-800">
-                                                    ${new Date(item.timestamp || item.created_at).toLocaleString('id-ID')}
+                                                    ${formatDateTime(item.timestamp || item.created_at, 'full')}
                                                 </td>
                                                 <td class="py-3 px-4">
                                                     <span class="px-2 py-1 rounded-full text-xs font-medium ${
@@ -1353,10 +1453,10 @@ function showNotification(message, type = 'info') {
     notification.className = `fixed top-4 right-4 z-50 px-6 py-4 rounded-lg shadow-lg transform transition-all duration-300 translate-x-full`;
 
     const colors = {
-        success: 'bg-green-500 text-white',
-        error: 'bg-red-500 text-white',
-        warning: 'bg-yellow-500 text-white',
-        info: 'bg-blue-500 text-white'
+        success: 'bg-white text-green-500',
+        error: 'bg-white text-red-500',
+        warning: 'bg-white text-yellow-600',
+        info: 'bg-white text-blue-500'
     };
 
     notification.className += ` ${colors[type] || colors.info}`;
@@ -1513,7 +1613,7 @@ class DeviceHistoryTracker {
     }
 }
 
-// Phone Monitoring Class - Updated with real backend data
+// Phone Monitoring Class - Updated with real backend data and FIXED TIME FORMAT
 class PhoneMonitoring {
     constructor() {
         this.currentFilter = 'all';
@@ -1657,7 +1757,7 @@ class PhoneMonitoring {
                 <div class="space-y-2">
                     <div class="flex justify-between items-center text-xs">
                         <span class="text-gray-500">Last Seen:</span>
-                        <span class="text-gray-700 font-medium">${phone.lastSeen.toLocaleString('id-ID')}</span>
+                        <span class="text-gray-700 font-medium">${formatDateTime(phone.lastSeen, 'short')}</span>
                     </div>
 
                     <div class="flex justify-between items-center text-xs">
@@ -1794,5 +1894,7 @@ Object.assign(window, {
     getCurrentOfflinePhones,
     calculateLogDurations,
     formatDuration,
-    populateQuickEndpointButtons
+    populateQuickEndpointButtons,
+    formatDateTime,
+    formatRelativeTime
 });

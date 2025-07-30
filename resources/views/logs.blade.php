@@ -91,6 +91,7 @@
                 <i class="fas fa-spinner fa-spin text-3xl mb-3"></i>
                 <p>Memuat log aktivitas...</p>
             </div>
+            
         </div>
 
         <!-- Pagination Controls Container - Will be populated by JavaScript -->
