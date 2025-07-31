@@ -1,4 +1,4 @@
-// resources/js/dashboard.js
+// resources/js/dashboard.js - FULL OPTIMIZED VERSION
 import { io } from 'socket.io-client';
 
 let map;
@@ -24,6 +24,9 @@ document.addEventListener('DOMContentLoaded', async function () {
 
         // Setup real-time socket connection
         initializeSocket();
+
+        // Debug info
+        debugNodeData();
 
         console.log('Dashboard initialized successfully');
     } catch (error) {
@@ -71,6 +74,7 @@ function initializeMap() {
     console.log('Map initialized');
 }
 
+// OPTIMIZED: Fetch nodes with proper data management
 async function fetchNodes() {
     try {
         const response = await fetch('/api/nodes', { headers: apiHeaders });
@@ -79,8 +83,16 @@ async function fetchNodes() {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        nodes = await response.json();
-        console.log('Fetched nodes:', nodes);
+        const fetchedNodes = await response.json();
+        console.log('Fetched nodes from server:', fetchedNodes.length);
+
+        // PENTING: Reset nodes array dengan data fresh dari server
+        nodes = [...fetchedNodes]; // Create new array to avoid reference issues
+
+        // Validasi dan bersihkan duplikat jika ada
+        validateAndCleanNodes();
+
+        console.log('Final nodes count after cleaning:', nodes.length);
 
         // Create initial markers
         updateMapMarkers();
@@ -90,8 +102,32 @@ async function fetchNodes() {
 
     } catch (error) {
         console.error('Error fetching nodes:', error);
-        // Show error message to user
         showErrorMessage('Failed to load phone data. Please refresh the page.');
+    }
+}
+
+// OPTIMIZED: Validate and clean duplicate nodes
+function validateAndCleanNodes() {
+    // Hapus duplikat berdasarkan endpoint
+    const uniqueNodes = [];
+    const seenEndpoints = new Set();
+
+    nodes.forEach(node => {
+        if (node.endpoint && !seenEndpoints.has(node.endpoint)) {
+            seenEndpoints.add(node.endpoint);
+            uniqueNodes.push(node);
+        } else if (node.endpoint) {
+            console.warn(`Duplicate node found for endpoint ${node.endpoint}, removing...`);
+        } else {
+            console.warn('Node without endpoint found, removing...', node);
+        }
+    });
+
+    const originalLength = nodes.length;
+    nodes = uniqueNodes;
+
+    if (originalLength !== nodes.length) {
+        console.log(`Cleaned ${originalLength - nodes.length} duplicate nodes. Total: ${nodes.length}`);
     }
 }
 
@@ -125,18 +161,39 @@ function initializeSocket() {
     });
 }
 
+// OPTIMIZED: Handle status updates without creating duplicates
 function handleStatusUpdate(statusData) {
     if (!Array.isArray(statusData)) {
         console.warn('Invalid status data received:', statusData);
         return;
     }
 
+    console.log(`Handling status update for ${statusData.length} devices`);
     latestStatus = statusData;
 
-    // Update each device status
+    // Hitung statistik HANYA dari data server yang diterima
+    const serverStats = {
+        total: statusData.length,
+        online: statusData.filter(item => normalizeStatus(item.status) === 'online').length,
+        offline: statusData.filter(item => normalizeStatus(item.status) === 'offline').length,
+        inUse: statusData.filter(item => normalizeStatus(item.status) === 'partial').length
+    };
+
+    console.log('Server statistics:', serverStats);
+
+    // Update each device status HANYA jika node ada di database
+    let updatedCount = 0;
     statusData.forEach(update => {
-        updateNodeStatus(update);
+        const nodeExists = nodes.find(n => n.endpoint === update.endpoint);
+        if (nodeExists) {
+            updateNodeStatus(update);
+            updatedCount++;
+        } else {
+            console.warn(`Received status for unknown endpoint: ${update.endpoint}`);
+        }
     });
+
+    console.log(`Updated ${updatedCount} existing nodes from ${statusData.length} server updates`);
 
     // Update UI components
     updateMapMarkers();
@@ -144,36 +201,23 @@ function handleStatusUpdate(statusData) {
     updateStatusList();
 }
 
+// OPTIMIZED: Update node status without creating new nodes
 function updateNodeStatus(statusUpdate) {
     const { endpoint, status, timestamp } = statusUpdate;
 
     console.log(`Processing status update for ${endpoint}: "${status}"`);
 
-    // Find existing node
+    // Find existing node HANYA berdasarkan endpoint
     let node = nodes.find(n => n.endpoint === endpoint);
 
     if (!node) {
-        // Create new node if not found (for dynamic devices)
-        node = {
-            id: nodes.length + 1,
-            name: `Device ${endpoint}`,
-            ip: statusUpdate.contact || 'Unknown',
-            endpoint: endpoint,
-            status: 'offline',
-            coords: [-8.173358, 112.684885], // Default coordinates
-            lastPing: timestamp || new Date().toISOString(),
-            uptime: '0%',
-            responseTime: 'N/A',
-            description: 'Dynamically discovered device',
-            last_ping_raw: timestamp || new Date().toISOString(),
-            uptime_percentage: '0',
-            response_time_raw: 0
-        };
-        nodes.push(node);
-        console.log('Added new node:', node);
+        console.warn(`Node with endpoint ${endpoint} not found in initial data. Skipping dynamic creation.`);
+        // HAPUS bagian yang membuat node baru secara dinamis
+        // Karena ini menyebabkan duplikasi data
+        return;
     }
 
-    // Update node status
+    // Update HANYA node yang sudah ada
     const oldStatus = node.status;
     const newStatus = normalizeStatus(status);
 
@@ -181,9 +225,9 @@ function updateNodeStatus(statusUpdate) {
     node.last_ping_raw = timestamp || new Date().toISOString();
     node.lastPing = new Date(node.last_ping_raw).toLocaleTimeString('id-ID');
 
-    // Log status changes with more detail
+    // Log status changes
     if (oldStatus !== newStatus) {
-        console.log(`Node ${endpoint} status changed: ${oldStatus} → ${newStatus} (original: "${status}")`);
+        console.log(`Node ${endpoint} status updated: ${oldStatus} → ${newStatus} (original: "${status}")`);
     }
 }
 
@@ -203,7 +247,6 @@ function updateMapMarkers() {
 
     console.log(`Updated ${Object.keys(markers).length} map markers`);
 }
-
 
 // Toast notification system
 function showToast(message, type = 'info') {
@@ -250,7 +293,6 @@ function showToast(message, type = 'info') {
         }, 300);
     }, 4000);
 }
-
 
 function createMarkerForNode(node) {
     const [lat, lng] = node.coords;
@@ -300,11 +342,32 @@ function createMarkerForNode(node) {
     markers[node.endpoint] = marker;
 }
 
+// OPTIMIZED: Status counts calculation with validation
 function updateStatusCounts() {
+    // Pastikan nodes array tidak memiliki duplikat
+    validateAndCleanNodes();
+
     const total = nodes.length;
     const online = nodes.filter(n => normalizeStatus(n.status) === 'online').length;
     const offline = nodes.filter(n => normalizeStatus(n.status) === 'offline').length;
     const inUse = nodes.filter(n => normalizeStatus(n.status) === 'partial').length;
+
+    // Debug log untuk memverifikasi hitungan
+    console.log('Status count calculation:', {
+        total,
+        online,
+        offline,
+        inUse,
+        totalCheck: online + offline + inUse
+    });
+
+    // Validasi bahwa jumlah status sesuai dengan total
+    if (online + offline + inUse !== total) {
+        console.warn('Status count mismatch detected!', {
+            calculated: online + offline + inUse,
+            expected: total
+        });
+    }
 
     // Update DOM elements safely
     updateElement('total-phones', total);
@@ -494,6 +557,24 @@ function showMessage(message, type = 'info') {
     }, 5000);
 }
 
+// OPTIMIZED: Sync with server data
+function syncWithServerData() {
+    console.log('Syncing local data with server...');
+
+    // Jika ada status data dari server, gunakan itu sebagai truth
+    if (latestStatus && latestStatus.length > 0) {
+        const serverEndpoints = new Set(latestStatus.map(item => item.endpoint));
+
+        // Filter nodes hanya yang ada di server data
+        const syncedNodes = nodes.filter(node => serverEndpoints.has(node.endpoint));
+
+        if (syncedNodes.length !== nodes.length) {
+            console.log(`Synced nodes: ${nodes.length} → ${syncedNodes.length}`);
+            nodes = syncedNodes;
+        }
+    }
+}
+
 // Public functions for external access
 function refreshMap() {
     updateMapMarkers();
@@ -502,8 +583,14 @@ function refreshMap() {
     console.log('Map refreshed manually');
 }
 
+// OPTIMIZED: Refresh data function
 function refreshData() {
+    console.log('Refreshing data...');
     fetchNodes().then(() => {
+        // Setelah fetch, sync dengan status data terakhir jika ada
+        if (latestStatus && latestStatus.length > 0) {
+            handleStatusUpdate(latestStatus);
+        }
         console.log('Data refreshed successfully');
         showSuccessMessage('Data refreshed');
     }).catch(error => {
@@ -512,9 +599,45 @@ function refreshData() {
     });
 }
 
+// DEBUGGING: Function for debugging node data
+function debugNodeData() {
+    console.log('=== NODE DEBUG INFO ===');
+    console.log('Total nodes:', nodes.length);
+    console.log('Unique endpoints:', new Set(nodes.map(n => n.endpoint)).size);
+    console.log('Latest status count:', latestStatus.length);
+
+    // Cek duplikat
+    const endpoints = nodes.map(n => n.endpoint);
+    const duplicates = endpoints.filter((item, index) => endpoints.indexOf(item) !== index);
+    if (duplicates.length > 0) {
+        console.warn('Duplicate endpoints found:', [...new Set(duplicates)]);
+    }
+
+    // Status breakdown
+    const statusBreakdown = {
+        online: nodes.filter(n => normalizeStatus(n.status) === 'online').length,
+        offline: nodes.filter(n => normalizeStatus(n.status) === 'offline').length,
+        partial: nodes.filter(n => normalizeStatus(n.status) === 'partial').length
+    };
+    console.log('Status breakdown:', statusBreakdown);
+
+    console.log('=== END DEBUG INFO ===');
+
+    return {
+        totalNodes: nodes.length,
+        uniqueEndpoints: new Set(nodes.map(n => n.endpoint)).size,
+        latestStatusCount: latestStatus.length,
+        duplicates: [...new Set(duplicates)],
+        statusBreakdown
+    };
+}
+
 // Export functions for global access
 window.refreshMap = refreshMap;
 window.refreshData = refreshData;
+window.debugNodeData = debugNodeData;
+window.validateAndCleanNodes = validateAndCleanNodes;
+window.syncWithServerData = syncWithServerData;
 
 // Export variables for debugging/external access
 Object.assign(window, {
@@ -558,11 +681,11 @@ document.head.appendChild(style);
 
 // Error boundary for unhandled errors
 window.addEventListener('error', (event) => {
-    console.error('Unhandled error in map.js:', event.error);
+    console.error('Unhandled error in dashboard.js:', event.error);
     showToast('An unexpected error occurred', 'error');
 });
 
 window.addEventListener('unhandledrejection', (event) => {
-    console.error('Unhandled promise rejection in map.js:', event.reason);
+    console.error('Unhandled promise rejection in dashboard.js:', event.reason);
     showToast('A network error occurred', 'error');
 });
