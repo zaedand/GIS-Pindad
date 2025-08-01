@@ -150,7 +150,7 @@ async function loadActivityLogsFromDatabase() {
                 status: log.current_status,
                 time: log.timestamp || log.created_at,
                 description: log.description,
-                nodeName: log.node_name || `Node ${log.endpoint}`,
+                nodeName: log.node_name || log.endpoint,
                 duration: log.duration || null,
                 from: log.previous_status,
                 to: log.current_status
@@ -431,7 +431,7 @@ async function trackStatusChangeAndSave(devices) {
             const node = nodes.find(n => n.endpoint === endpoint);
             const statusChangeData = {
                 endpoint: endpoint,
-                node_name: node?.name || `Node ${endpoint}`,
+                node_name: node?.name || endpoint,
                 previous_status: prevStatus,
                 current_status: currentStatus,
                 timestamp: timestamp,
@@ -468,7 +468,7 @@ async function trackStatusChangeAndSave(devices) {
                 to: currentStatus,
                 time: timestamp,
                 status: currentStatus,
-                nodeName: node?.name || `Node ${endpoint}`,
+                nodeName: node?.name || endpoint,
                 description: statusChangeData.description,
                 offlineDuration: offlineDuration,
                 offlineDurationFormatted: offlineDurationFormatted
@@ -1252,7 +1252,7 @@ async function showEndpointHistory(endpoint) {
         displayEndpointHistoryModal(endpoint, {
             history: history,
             statistics: stats,
-            node_name: nodes.find(n => n.endpoint === endpoint)?.name || `Node ${endpoint}`
+            node_name: nodes.find(n => n.endpoint === endpoint)?.name || endpoint  // ← UBAH dari template literal
         });
     } catch (error) {
         console.error('Error fetching endpoint history:', error);
@@ -1499,7 +1499,7 @@ class DeviceHistoryTracker {
                 headers: apiHeaders,
                 body: JSON.stringify({
                     endpoint: endpoint,
-                    node_name: node?.name || `Node ${endpoint}`,
+                    node_name: node?.name || endpoint,
                     previous_status: previousStatus,
                     current_status: status,
                     timestamp: timestamp,
