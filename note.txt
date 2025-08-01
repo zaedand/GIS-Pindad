@@ -1653,3 +1653,27 @@ php artisan tinker
 
 1. showToast=showNotification
 2. icon dihilangkan
+
+day
+7 memperbaiki tampilan welcome login dan register
+8 mengerjakan tampilan map pada menu dashboard dengan leaflet
+9  -
+10 -
+11 -
+-
+14
+15
+16
+17
+18
+-
+21
+22
+23
+24
+25
+-
+28 me
+29 menambah notif exeption koneksi
+30 menambah paginaton
+31 memperbaiki error server

@@ -47,6 +47,11 @@ function initializeMap() {
         attribution: '© OpenStreetMap contributors'
     });
 
+    const googleLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}&key=YOUR_API_KEY', {
+        maxZoom: 20,
+        attribution: 'Map data © Google'
+    });
+
     const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         maxZoom: MAP_CONFIG.maxZoom,
         attribution: '© Esri'
@@ -566,3 +571,4 @@ window.addEventListener('unhandledrejection', (event) => {
     console.error('Unhandled promise rejection in map.js:', event.reason);
     showToast('A network error occurred', 'error');
 });
+

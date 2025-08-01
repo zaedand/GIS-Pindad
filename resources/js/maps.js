@@ -144,9 +144,9 @@ function initializeMap() {
         attribution: '© OpenStreetMap contributors'
     });
 
-    const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    const satelliteLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}&key=YOUR_API_KEY', {
         maxZoom: MAP_CONFIG.maxZoom,
-        attribution: '© Esri'
+        attribution: 'Map data © Google'
     });
 
     // Add default layer
@@ -285,7 +285,11 @@ function applyLiveStatus() {
     if (!latestStatus || latestStatus.length === 0) return;
 
     latestStatus.forEach(update => {
-        const node = nodes.find(n => n.endpoint === update.endpoint);
+        const node = nodes.find(n => 
+            n.endpoint === update.endpoint || 
+            n.endpoint.includes(update.endpoint) ||
+            update.endpoint.includes(n.endpoint)
+        );
         if (!node) return;
 
         const oldStatus = node.status;

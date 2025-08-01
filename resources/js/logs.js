@@ -25,78 +25,35 @@ const apiHeaders = {
 // ===== TIME FORMAT UTILITIES - FIXED =====
 function formatDateTime(dateString, format = 'full') {
     if (!dateString) return 'N/A';
-    
+
     try {
-        const date = new Date(dateString);
-        
-        // Check if date is valid
-        if (isNaN(date.getTime())) {
-            console.warn('Invalid date:', dateString);
-            return 'Invalid Date';
-        }
-        
-        const options = {
-            timeZone: 'Asia/Jakarta', // WIB timezone
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: false
-        };
-        
+        // Parse manual, ambil nilai asli (bukan hasil konversi timezone browser)
+        const parts = dateString.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
+        if (!parts) return 'Invalid Date';
+
+        const [_, year, month, day, hour, minute, second] = parts;
+
         switch (format) {
             case 'short':
-                // Format: 30/07/25, 16.32
-                return date.toLocaleString('id-ID', {
-                    timeZone: 'Asia/Jakarta',
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: false
-                }).replace(',', ',').replace(':', '.');
-                
+                return `${day}/${month}/${year.slice(2)} ${hour}.${minute}`;
+
             case 'date-only':
-                // Format: 30/07/2025
-                return date.toLocaleDateString('id-ID', {
-                    timeZone: 'Asia/Jakarta',
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric'
-                });
-                
+                return `${day}/${month}/${year}`;
+
             case 'time-only':
-                // Format: 16.32.51
-                return date.toLocaleTimeString('id-ID', {
-                    timeZone: 'Asia/Jakarta',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                    hour12: false
-                }).replace(/:/g, '.');
-                
+                return `${hour}.${minute}.${second}`;
+
             case 'full':
             default:
-                // Format: 30/07/2025, 16.32.51
-                return date.toLocaleString('id-ID', {
-                    timeZone: 'Asia/Jakarta',
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                    hour12: false
-                }).replace(':', '.').replace(/(\d{2})\.(\d{2})\.(\d{2})$/, '$1.$2.$3');
+                return `${day}/${month}/${year} ${hour}.${minute}.${second}`;
         }
     } catch (error) {
         console.error('Error formatting date:', error, dateString);
         return 'Format Error';
     }
 }
+
+
 
 function formatRelativeTime(dateString) {
     if (!dateString) return 'N/A';
@@ -434,7 +391,11 @@ function applyLiveStatus() {
     if (!latestStatus || latestStatus.length === 0) return;
 
     latestStatus.forEach(update => {
-        const node = nodes.find(n => n.endpoint === update.endpoint);
+        const node = nodes.find(n => 
+            n.endpoint === update.endpoint || 
+            n.endpoint.includes(update.endpoint) ||
+            update.endpoint.includes(n.endpoint)
+        );
         if (!node) return;
 
         const normalizedStatus = normalizeStatus(update.status);
@@ -1757,7 +1718,7 @@ class PhoneMonitoring {
                 <div class="space-y-2">
                     <div class="flex justify-between items-center text-xs">
                         <span class="text-gray-500">Last Seen:</span>
-                        <span class="text-gray-700 font-medium">${formatDateTime(phone.lastSeen, 'short')}</span>
+                        <span class="text-gray-700 font-medium">${phone.lastSeen.toLocaleString('id-ID')}</span>
                     </div>
 
                     <div class="flex justify-between items-center text-xs">
