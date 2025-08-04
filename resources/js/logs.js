@@ -1,4 +1,4 @@
-// resources/js/logs.js -  FIXED TIME FORMAT
+// resources/js/logs.js
 import { io } from 'socket.io-client';
 
 let socket;
@@ -57,7 +57,7 @@ function formatDateTime(dateString, format = 'full') {
 
 function formatRelativeTime(dateString) {
     if (!dateString) return 'N/A';
-    
+
     try {
         const date = new Date(dateString);
         const now = new Date();
@@ -65,12 +65,12 @@ function formatRelativeTime(dateString) {
         const diffMinutes = Math.floor(diffMs / (1000 * 60));
         const diffHours = Math.floor(diffMinutes / 60);
         const diffDays = Math.floor(diffHours / 24);
-        
+
         if (diffMinutes < 1) return 'Baru saja';
         if (diffMinutes < 60) return `${diffMinutes} menit yang lalu`;
         if (diffHours < 24) return `${diffHours} jam yang lalu`;
         if (diffDays < 7) return `${diffDays} hari yang lalu`;
-        
+
         // For older dates, show absolute date
         return formatDateTime(dateString, 'short');
     } catch (error) {
@@ -165,7 +165,7 @@ async function loadActivityLogsFromDatabase() {
     }
 }
 
-// NEW FEATURE: Calculate duration between status changes
+//   Calculate duration between status changes
 function calculateLogDurations() {
     // Group logs by endpoint for duration calculation
     const logsByEndpoint = {};
@@ -228,7 +228,7 @@ function formatDuration(minutes) {
     return remainingHours > 0 ? `${days}h ${remainingHours}j` : `${days} hari`;
 }
 
-// NEW FEATURE: Get total offline duration for specific endpoint
+//   Get total offline duration for specific endpoint
 function getTotalOfflineDuration(endpoint) {
     const endpointLogs = disconnectLogs.filter(log => log.endpoint === endpoint);
     let totalOfflineMinutes = 0;
@@ -391,8 +391,8 @@ function applyLiveStatus() {
     if (!latestStatus || latestStatus.length === 0) return;
 
     latestStatus.forEach(update => {
-        const node = nodes.find(n => 
-            n.endpoint === update.endpoint || 
+        const node = nodes.find(n =>
+            n.endpoint === update.endpoint ||
             n.endpoint.includes(update.endpoint) ||
             update.endpoint.includes(n.endpoint)
         );
@@ -819,14 +819,14 @@ function updatePaginationControls() {
     }
 }
 
-// NEW FEATURE: Go to specific page
+//   Go to specific page
 function goToPage(page) {
     if (page < 1 || page > totalPages) return;
     currentPage = page;
     renderActivityLog();
 }
 
-// NEW FEATURE: Search for specific endpoint
+//   Search for specific endpoint
 function searchSpecificEndpoint(endpoint) {
     const searchInput = document.getElementById('endpoint-search');
     if (searchInput) {
@@ -947,18 +947,29 @@ function initializeSearch() {
     }
 }
 
-// NEW FEATURE: Populate quick endpoint buttons
+//  Populate quick endpoint buttons
 function populateQuickEndpointButtons() {
     const container = document.getElementById('quick-endpoint-buttons');
     if (!container) return;
 
-    // Get unique endpoints from logs and nodes
-    const endpointsFromLogs = [...new Set(disconnectLogs.map(log => log.endpoint))];
-    const endpointsFromNodes = nodes.map(node => node.endpoint).filter(Boolean);
-    const allEndpoints = [...new Set([...endpointsFromLogs, ...endpointsFromNodes])];
+    // Ambil endpoint dari nodes yang statusnya offline
+    const offlineEndpoints = nodes
+        .filter(node => normalizeStatus(node.status) === 'offline')
+        .map(node => node.endpoint)
+        .filter(Boolean);
 
-    // Sort endpoints numerically
-    allEndpoints.sort((a, b) => {
+    // Ambil endpoint dari logs yang pernah offline (opsional)
+    const endpointsFromLogs = [...new Set(
+        disconnectLogs
+            .filter(log => log.status === 'offline')
+            .map(log => log.endpoint)
+    )];
+
+    // Gabungkan dan unikkan endpoint offline
+    const allOfflineEndpoints = [...new Set([...offlineEndpoints, ...endpointsFromLogs])];
+
+    // Urutkan secara numerik
+    allOfflineEndpoints.sort((a, b) => {
         const numA = parseInt(a);
         const numB = parseInt(b);
         if (!isNaN(numA) && !isNaN(numB)) {
@@ -967,19 +978,13 @@ function populateQuickEndpointButtons() {
         return a.localeCompare(b);
     });
 
-    container.innerHTML = allEndpoints.slice(0, 10).map(endpoint => {
+    // Render tombol
+    container.innerHTML = allOfflineEndpoints.slice(0, 10).map(endpoint => {
         const totalOffline = getTotalOfflineDuration(endpoint);
-        const node = nodes.find(n => n.endpoint === endpoint);
-        const currentStatus = node?.status || 'unknown';
-
-        let statusClass = 'bg-gray-100 text-gray-600';
-        if (currentStatus === 'online') statusClass = 'bg-green-100 text-green-700';
-        else if (currentStatus === 'offline') statusClass = 'bg-red-100 text-red-700';
-
         return `
             <button
                 onclick="searchSpecificEndpoint('${endpoint}')"
-                class="px-3 py-2 ${statusClass} hover:shadow-md rounded-lg text-xs transition-all duration-200 border"
+                class="px-3 py-2 bg-red-100 text-red-700 hover:shadow-md rounded-lg text-xs transition-all duration-200 border"
                 title="Total offline: ${totalOffline.formatted}"
             >
                 <div class="font-medium">${endpoint}</div>
@@ -988,20 +993,22 @@ function populateQuickEndpointButtons() {
         `;
     }).join('');
 
-    if (allEndpoints.length > 10) {
+    // Jika lebih dari 10 offline endpoints
+    if (allOfflineEndpoints.length > 10) {
         container.innerHTML += `
             <button
                 onclick="showAllEndpoints()"
                 class="px-3 py-2 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 rounded-lg text-xs transition-colors border border-indigo-200"
             >
                 <i class="fas fa-ellipsis-h"></i><br>
-                +${allEndpoints.length - 10} lagi
+                +${allOfflineEndpoints.length - 10} lagi
             </button>
         `;
     }
 }
 
-// NEW FEATURE: Show all endpoints modal
+
+//   Show all endpoints modal
 function showAllEndpoints() {
     const endpointsFromLogs = [...new Set(disconnectLogs.map(log => log.endpoint))];
     const endpointsFromNodes = nodes.map(node => node.endpoint).filter(Boolean);
@@ -1072,7 +1079,7 @@ function showAllEndpoints() {
     });
 }
 
-// NEW FEATURE: Show endpoint summary statistics
+//   Show endpoint summary statistics
 function showEndpointSummary() {
     // Calculate summary statistics
     const endpointStats = {};
@@ -1151,7 +1158,7 @@ function showEndpointSummary() {
                                 <tr class="border-b border-gray-200 hover:bg-gray-50">
                                     <td class="py-3 px-4">
                                         <div class="flex items-center gap-2">
-                                            
+
                                             <span class="font-bold">#${index + 1}</span>
                                         </div>
                                     </td>

@@ -5,9 +5,9 @@ import { io } from 'socket.io-client';
 const state = {
     map: null,
     markers: new Map(),
-    nodes: [], // Use array like map.js for consistency
+    nodes: [],
     socket: null,
-    latestStatus: [], // Array like map.js
+    latestStatus: [],
     isInitialized: false,
     syncInProgress: false
 };
@@ -63,7 +63,7 @@ const SOCKET_CONFIG = {
 const STATUS_CONFIG = {
     colors: {
         online: '#10b981',
-        offline: '#ef4444', 
+        offline: '#ef4444',
         partial: '#f59e0b',
         unknown: '#6b7280'
     },
@@ -80,26 +80,21 @@ document.addEventListener('DOMContentLoaded', initializeDashboard);
 
 async function initializeDashboard() {
     if (state.isInitialized) return;
-    
+
     try {
-        showToast('Initializing dashboard...', 'info');
-        
         // Initialize components in optimal order
         await Promise.all([
             initializeMap(),
             fetchNodes()
         ]);
-        
+
         // Initialize socket after basic setup
         initializeSocket();
-        
+
         state.isInitialized = true;
-        console.log('Dashboard initialized successfully');
-        showToast('Dashboard ready!', 'success');
-        
+
     } catch (error) {
         console.error('Dashboard initialization error:', error);
-        showToast('Failed to initialize dashboard', 'error');
     }
 }
 
@@ -152,18 +147,18 @@ async function fetchWithRetry(url, options = {}, retries = 3) {
         try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.timeout);
-            
+
             const response = await fetch(url, {
                 ...options,
                 signal: controller.signal
             });
-            
+
             clearTimeout(timeoutId);
-            
+
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
-            
+
             return await response.json();
         } catch (error) {
             console.warn(`Fetch attempt ${i + 1} failed:`, error.message);
@@ -175,23 +170,23 @@ async function fetchWithRetry(url, options = {}, retries = 3) {
 
 async function fetchNodes() {
     try {
-        const fetchedNodes = await fetchWithRetry('/api/nodes', { 
-            headers: API_CONFIG.headers 
+        const fetchedNodes = await fetchWithRetry('/api/nodes', {
+            headers: API_CONFIG.headers
         });
-        
+
         console.log(`Fetched ${fetchedNodes.length} nodes from server`);
-        
+
         // Use array like map.js for consistency
         state.nodes = fetchedNodes.filter(node => isValidNode(node));
-        
+
         console.log(`Processed ${state.nodes.length} valid nodes`);
-        
+
         // Apply any existing status updates
         applyLiveStatus();
-        
+
         // Update UI components
         updateAllComponents();
-        
+
     } catch (error) {
         console.error('Error fetching nodes:', error);
         showToast('Failed to load device data', 'error');
@@ -199,11 +194,11 @@ async function fetchNodes() {
 }
 
 function isValidNode(node) {
-    return node.endpoint && 
-           node.coords && 
-           Array.isArray(node.coords) && 
+    return node.endpoint &&
+           node.coords &&
+           Array.isArray(node.coords) &&
            node.coords.length === 2 &&
-           !isNaN(parseFloat(node.coords[0])) && 
+           !isNaN(parseFloat(node.coords[0])) &&
            !isNaN(parseFloat(node.coords[1]));
 }
 
@@ -243,29 +238,29 @@ function handleStatusUpdate(statusData) {
         console.warn('Invalid status data received:', statusData);
         return;
     }
-    
+
     if (state.syncInProgress) {
         console.log('Sync in progress, skipping status update');
         return;
     }
-    
+
     state.syncInProgress = true;
-    
+
     try {
         console.log(`Processing ${statusData.length} status updates`);
-        
+
         // Store latest status data
         state.latestStatus = statusData;
-        
+
         // Apply status updates to nodes
         applyLiveStatus();
-        
+
         // Update UI components
         requestAnimationFrame(() => {
             updateAllComponents();
             state.syncInProgress = false;
         });
-        
+
     } catch (error) {
         console.error('Error handling status update:', error);
         state.syncInProgress = false;
@@ -277,17 +272,17 @@ function applyLiveStatus() {
     if (!state.latestStatus || state.latestStatus.length === 0) return;
 
     console.log(`Applying live status to ${state.nodes.length} nodes`);
-    
+
     let updatedCount = 0;
-    
+
     state.latestStatus.forEach(update => {
         // Find node by endpoint (exact match or partial match)
-        const node = state.nodes.find(n => 
-            n.endpoint === update.endpoint || 
+        const node = state.nodes.find(n =>
+            n.endpoint === update.endpoint ||
             n.endpoint.includes(update.endpoint) ||
             update.endpoint.includes(n.endpoint)
         );
-        
+
         if (!node) {
             console.warn(`No node found for endpoint: ${update.endpoint}`);
             return;
@@ -307,7 +302,7 @@ function applyLiveStatus() {
             updatedCount++;
         }
     });
-    
+
     console.log(`Updated ${updatedCount} nodes with new status`);
 }
 
@@ -359,7 +354,7 @@ function normalizeStatus(status) {
 // Optimized marker management
 function updateMapMarkers() {
     if (!state.map) return;
-    
+
     // Clear existing markers
     state.markers.forEach(marker => {
         state.map.removeLayer(marker);
@@ -374,20 +369,20 @@ function updateMapMarkers() {
             markersCreated.push(marker);
         }
     });
-    
+
     console.log(`Updated ${markersCreated.length} map markers`);
 }
 
 function createOptimizedMarker(node) {
     const [lat, lng] = getLatLngFromCoords(node.coords);
-    
+
     if (isNaN(lat) || isNaN(lng)) {
         console.warn(`Invalid coordinates for node ${node.endpoint}:`, node.coords);
         return null;
     }
-    
+
     const color = STATUS_CONFIG.colors[node.status] || STATUS_CONFIG.colors.unknown;
-    
+
     const marker = L.circleMarker([lat, lng], {
         radius: 12,
         color: color,
@@ -396,7 +391,7 @@ function createOptimizedMarker(node) {
         weight: 3,
         className: `marker-${node.status}`
     });
-    
+
     // Add device ID to marker element
     marker.on('add', function () {
         const element = marker.getElement();
@@ -406,21 +401,21 @@ function createOptimizedMarker(node) {
             element.setAttribute('data-endpoint', node.endpoint);
         }
     });
-    
+
     // Lazy load popup content
     marker.bindPopup(() => getPopupContent(node, color), {
         maxWidth: 300,
         className: 'device-popup'
     });
-    
+
     // Add click event
     marker.on('click', () => {
         console.log('Clicked on device:', node.endpoint);
     });
-    
+
     marker.addTo(state.map);
     state.markers.set(node.endpoint, marker);
-    
+
     return marker;
 }
 
@@ -449,13 +444,13 @@ function updateAllComponents() {
 
 function updateStatusCounts() {
     const stats = { total: 0, online: 0, offline: 0, partial: 0 };
-    
+
     state.nodes.forEach(node => {
         stats.total++;
         const normalizedStatus = normalizeStatus(node.status);
         stats[normalizedStatus] = (stats[normalizedStatus] || 0) + 1;
     });
-    
+
     // Batch DOM updates
     const updates = [
         ['total-phones', stats.total],
@@ -463,9 +458,9 @@ function updateStatusCounts() {
         ['offline-phones', stats.offline],
         ['in-use-phones', stats.partial]
     ];
-    
+
     updates.forEach(([id, value]) => updateElement(id, value));
-    
+
     console.log('Status counts updated:', stats);
 }
 
@@ -487,7 +482,7 @@ function updateStatusList() {
         const statusOrder = { 'online': 0, 'partial': 1, 'offline': 2, 'unknown': 3 };
         const aOrder = statusOrder[normalizeStatus(a.status)] || 3;
         const bOrder = statusOrder[normalizeStatus(b.status)] || 3;
-        
+
         if (aOrder !== bOrder) return aOrder - bOrder;
         return a.name.localeCompare(b.name);
     });
@@ -498,7 +493,7 @@ function updateStatusList() {
         const itemElement = createStatusListElement(node);
         fragment.appendChild(itemElement);
     });
-    
+
     statusListContainer.replaceChildren(fragment);
 }
 
@@ -506,14 +501,14 @@ function createStatusListElement(node) {
     const div = document.createElement('div');
     div.className = 'status-item flex items-center justify-between p-3 bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow';
     div.dataset.endpoint = node.endpoint;
-    
+
     const normalizedStatus = normalizeStatus(node.status);
     const color = STATUS_CONFIG.colors[normalizedStatus];
     const displayStatus = STATUS_CONFIG.displayNames[normalizedStatus];
-    const lastPing = node.lastPing || (node.last_ping_raw ? 
-        new Date(node.last_ping_raw).toLocaleTimeString('id-ID') : 
+    const lastPing = node.lastPing || (node.last_ping_raw ?
+        new Date(node.last_ping_raw).toLocaleTimeString('id-ID') :
         'Never');
-    
+
     div.innerHTML = `
         <div class="flex items-center gap-3">
             <div class="w-3 h-3 rounded-full" style="background-color: ${color}"></div>
@@ -527,19 +522,19 @@ function createStatusListElement(node) {
             <div class="text-xs text-gray-500">${lastPing}</div>
         </div>
     `;
-    
+
     // Add click event to focus on map
     div.addEventListener('click', () => {
         focusOnNode(node);
     });
-    
+
     return div;
 }
 
 // Focus on node in map
 function focusOnNode(node) {
     if (!state.map) return;
-    
+
     const [lat, lng] = getLatLngFromCoords(node.coords);
     state.map.setView([lat, lng], 18);
 
@@ -559,8 +554,8 @@ function escapeHtml(text) {
 function getPopupContent(node, color) {
     const normalizedStatus = normalizeStatus(node.status);
     const status = STATUS_CONFIG.displayNames[normalizedStatus];
-    const lastPing = node.lastPing || (node.last_ping_raw ? 
-        new Date(node.last_ping_raw).toLocaleString('id-ID') : 
+    const lastPing = node.lastPing || (node.last_ping_raw ?
+        new Date(node.last_ping_raw).toLocaleString('id-ID') :
         'Never');
     const uptime = node.uptime_percentage ? `${node.uptime_percentage}%` : 'N/A';
 
@@ -579,7 +574,6 @@ function getPopupContent(node, color) {
     `;
 }
 
-// Toast notification system (unchanged to preserve style)
 function showToast(message, type = 'info') {
     const colors = {
         success: 'bg-white text-green-500',
@@ -634,10 +628,10 @@ async function refreshData() {
         console.log('Sync already in progress, skipping refresh');
         return;
     }
-    
+
     console.log('Refreshing data...');
     showToast('Refreshing data...', 'info');
-    
+
     try {
         await fetchNodes();
         showToast('Data refreshed successfully', 'success');
@@ -654,12 +648,12 @@ function debugNodeData() {
         latestStatusCount: state.latestStatus.length,
         statusBreakdown: { online: 0, offline: 0, partial: 0, unknown: 0 }
     };
-    
+
     state.nodes.forEach(node => {
         const normalizedStatus = normalizeStatus(node.status);
         stats.statusBreakdown[normalizedStatus] = (stats.statusBreakdown[normalizedStatus] || 0) + 1;
     });
-    
+
     console.log('=== DASHBOARD DEBUG INFO ===');
     console.log(stats);
     console.log('Socket connected:', state.socket?.connected || false);
@@ -667,7 +661,7 @@ function debugNodeData() {
     console.log('Latest status data:', state.latestStatus);
     console.log('Node endpoints:', state.nodes.map(n => n.endpoint));
     console.log('=== END DEBUG INFO ===');
-    
+
     return stats;
 }
 
@@ -676,10 +670,10 @@ Object.assign(window, {
     refreshMap,
     refreshData: debouncedRefreshData,
     debugNodeData,
-    
+
     // Debug access to state
     getDashboardState: () => ({ ...state }),
-    
+
     // Utility functions
     applyLiveStatus,
     normalizeStatus,
@@ -751,7 +745,7 @@ window.addEventListener('beforeunload', () => {
     if (state.socket) {
         state.socket.disconnect();
     }
-    
+
     // Clear intervals and timeouts
     state.markers.clear();
     state.nodes.length = 0;
