@@ -22,7 +22,7 @@ const apiHeaders = {
     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
 };
 
-// ===== TIME FORMAT UTILITIES - FIXED =====
+// Time
 function formatDateTime(dateString, format = 'full') {
     if (!dateString) return 'N/A';
 
@@ -53,8 +53,6 @@ function formatDateTime(dateString, format = 'full') {
     }
 }
 
-
-
 function formatRelativeTime(dateString) {
     if (!dateString) return 'N/A';
 
@@ -79,25 +77,169 @@ function formatRelativeTime(dateString) {
     }
 }
 
+// Uptime Calculation
+function calculateRealUptime(endpoint, timeRangeHours = 24) {
+    const endpointLogs = disconnectLogs
+        .filter(log => log.endpoint === endpoint)
+        .sort((a, b) => new Date(a.time) - new Date(b.time)); // Sort chronologically
+
+    if (endpointLogs.length === 0) {
+        // No logs means we assume it's been online (or we have no data)
+        return {
+            uptimePercentage: 0, // Conservative approach - no data means unknown
+            totalMinutes: timeRangeHours * 60,
+            onlineMinutes: 0,
+            offlineMinutes: 0,
+            dataAvailable: false
+        };
+    }
+
+    const now = new Date();
+    const rangeStart = new Date(now.getTime() - (timeRangeHours * 60 * 60 * 1000));
+    
+    // Filter logs within the time range
+    const logsInRange = endpointLogs.filter(log => {
+        const logTime = new Date(log.time);
+        return logTime >= rangeStart && logTime <= now;
+    });
+
+    // If no logs in range, check the last known status before the range
+    if (logsInRange.length === 0) {
+        const lastLogBeforeRange = endpointLogs
+            .filter(log => new Date(log.time) < rangeStart)
+            .pop(); // Get most recent log
+
+        if (lastLogBeforeRange) {
+            const totalMinutes = timeRangeHours * 60;
+            if (lastLogBeforeRange.to === 'online') {
+                return {
+                    uptimePercentage: 100,
+                    totalMinutes: totalMinutes,
+                    onlineMinutes: totalMinutes,
+                    offlineMinutes: 0,
+                    dataAvailable: true,
+                    assumption: 'Assumed online based on last known status'
+                };
+            } else {
+                return {
+                    uptimePercentage: 0,
+                    totalMinutes: totalMinutes,
+                    onlineMinutes: 0,
+                    offlineMinutes: totalMinutes,
+                    dataAvailable: true,
+                    assumption: 'Assumed offline based on last known status'
+                };
+            }
+        }
+        
+        // No data at all
+        return {
+            uptimePercentage: 0,
+            totalMinutes: timeRangeHours * 60,
+            onlineMinutes: 0,
+            offlineMinutes: 0,
+            dataAvailable: false
+        };
+    }
+
+    let totalOfflineMinutes = 0;
+    let totalOnlineMinutes = 0;
+    
+    // Get initial status for the calculation period
+    let currentStatus = 'unknown';
+    const lastLogBeforeRange = endpointLogs
+        .filter(log => new Date(log.time) < rangeStart)
+        .pop();
+    
+    if (lastLogBeforeRange) {
+        currentStatus = lastLogBeforeRange.to;
+    } else if (logsInRange.length > 0) {
+        // If no log before range, assume the opposite of the first status change
+        currentStatus = logsInRange[0].from || 'online';
+    }
+
+    let lastTimestamp = rangeStart;
+
+    // Process each status change in the time range
+    logsInRange.forEach((log, index) => {
+        const logTime = new Date(log.time);
+        const durationMinutes = Math.floor((logTime - lastTimestamp) / (1000 * 60));
+
+        // Add duration for the previous status
+        if (currentStatus === 'online') {
+            totalOnlineMinutes += durationMinutes;
+        } else if (currentStatus === 'offline') {
+            totalOfflineMinutes += durationMinutes;
+        }
+
+        // Update current status and timestamp
+        currentStatus = log.to;
+        lastTimestamp = logTime;
+    });
+
+    // Handle the final period from last status change to now
+    const finalDurationMinutes = Math.floor((now - lastTimestamp) / (1000 * 60));
+    if (currentStatus === 'online') {
+        totalOnlineMinutes += finalDurationMinutes;
+    } else if (currentStatus === 'offline') {
+        totalOfflineMinutes += finalDurationMinutes;
+    }
+
+    const totalMinutes = timeRangeHours * 60;
+    const accountedMinutes = totalOnlineMinutes + totalOfflineMinutes;
+    
+    // Handle any unaccounted time (assuming online for conservative calculation)
+    const unaccountedMinutes = Math.max(0, totalMinutes - accountedMinutes);
+    if (unaccountedMinutes > 0) {
+        totalOnlineMinutes += unaccountedMinutes;
+    }
+
+    const uptimePercentage = totalMinutes > 0 ? 
+        Math.round((totalOnlineMinutes / totalMinutes) * 100) : 0;
+
+    return {
+        uptimePercentage,
+        totalMinutes: totalMinutes,
+        onlineMinutes: totalOnlineMinutes,
+        offlineMinutes: totalOfflineMinutes,
+        dataAvailable: true,
+        logsProcessed: logsInRange.length,
+        currentStatus: currentStatus
+    };
+}
+
+function calculateUptimeForAllPeriods(endpoint) {
+    return {
+        last24h: calculateRealUptime(endpoint, 24),
+        last7d: calculateRealUptime(endpoint, 24 * 7),
+        last30d: calculateRealUptime(endpoint, 24 * 30)
+    };
+}
+
+function getUptimeDisplay(endpoint, period = '24h') {
+    const uptimeData = calculateUptimeForAllPeriods(endpoint);
+    
+    switch (period) {
+        case '7d':
+            return uptimeData.last7d;
+        case '30d':
+            return uptimeData.last30d;
+        case '24h':
+        default:
+            return uptimeData.last24h;
+    }
+}
+
 // Initialize everything when DOM is loaded
 document.addEventListener('DOMContentLoaded', async () => {
     try {
-        // Fetch initial nodes data
-        await fetchNodes();
 
+        await fetchNodes();
         // Initialize device history tracker
         deviceHistoryTracker = new DeviceHistoryTracker();
-
-        // Initialize socket connection
         initializeSocket();
-
-        // Initialize phone monitoring
         initializePhoneMonitoring();
-
-        // Setup event listeners
         setupEventListeners();
-
-        // Initialize search functionality
         initializeSearch();
 
     } catch (error) {
@@ -165,7 +307,7 @@ async function loadActivityLogsFromDatabase() {
     }
 }
 
-//   Calculate duration between status changes
+// Calculate duration between status changes
 function calculateLogDurations() {
     // Group logs by endpoint for duration calculation
     const logsByEndpoint = {};
@@ -228,7 +370,7 @@ function formatDuration(minutes) {
     return remainingHours > 0 ? `${days}h ${remainingHours}j` : `${days} hari`;
 }
 
-//   Get total offline duration for specific endpoint
+// Get total offline duration for specific endpoint
 function getTotalOfflineDuration(endpoint) {
     const endpointLogs = disconnectLogs.filter(log => log.endpoint === endpoint);
     let totalOfflineMinutes = 0;
@@ -819,14 +961,14 @@ function updatePaginationControls() {
     }
 }
 
-//   Go to specific page
+// Go to specific page
 function goToPage(page) {
     if (page < 1 || page > totalPages) return;
     currentPage = page;
     renderActivityLog();
 }
 
-//   Search for specific endpoint
+// Search for specific endpoint
 function searchSpecificEndpoint(endpoint) {
     const searchInput = document.getElementById('endpoint-search');
     if (searchInput) {
@@ -947,28 +1089,27 @@ function initializeSearch() {
     }
 }
 
-//  Populate quick endpoint buttons
+// Populate quick endpoint buttons offline
 function populateQuickEndpointButtons() {
     const container = document.getElementById('quick-endpoint-buttons');
     if (!container) return;
 
-    // Ambil endpoint dari nodes yang statusnya offline
+    // Put endpoint offline
     const offlineEndpoints = nodes
         .filter(node => normalizeStatus(node.status) === 'offline')
         .map(node => node.endpoint)
         .filter(Boolean);
 
-    // Ambil endpoint dari logs yang pernah offline (opsional)
+    // Put endpoint from logs off
     const endpointsFromLogs = [...new Set(
         disconnectLogs
             .filter(log => log.status === 'offline')
             .map(log => log.endpoint)
     )];
 
-    // Gabungkan dan unikkan endpoint offline
     const allOfflineEndpoints = [...new Set([...offlineEndpoints, ...endpointsFromLogs])];
 
-    // Urutkan secara numerik
+    // Sorting
     allOfflineEndpoints.sort((a, b) => {
         const numA = parseInt(a);
         const numB = parseInt(b);
@@ -978,7 +1119,6 @@ function populateQuickEndpointButtons() {
         return a.localeCompare(b);
     });
 
-    // Render tombol
     container.innerHTML = allOfflineEndpoints.slice(0, 10).map(endpoint => {
         const totalOffline = getTotalOfflineDuration(endpoint);
         return `
@@ -993,7 +1133,6 @@ function populateQuickEndpointButtons() {
         `;
     }).join('');
 
-    // Jika lebih dari 10 offline endpoints
     if (allOfflineEndpoints.length > 10) {
         container.innerHTML += `
             <button
@@ -1007,8 +1146,7 @@ function populateQuickEndpointButtons() {
     }
 }
 
-
-//   Show all endpoints modal
+// Show all endpoints modal
 function showAllEndpoints() {
     const endpointsFromLogs = [...new Set(disconnectLogs.map(log => log.endpoint))];
     const endpointsFromNodes = nodes.map(node => node.endpoint).filter(Boolean);
@@ -1047,6 +1185,7 @@ function showAllEndpoints() {
                         const totalOffline = getTotalOfflineDuration(endpoint);
                         const node = nodes.find(n => n.endpoint === endpoint);
                         const currentStatus = node?.status || 'unknown';
+                        const uptimeData = getUptimeDisplay(endpoint, '24h');
 
                         let statusClass = 'bg-gray-100 text-gray-600 border-gray-300';
                         if (currentStatus === 'online') statusClass = 'bg-green-100 text-green-700 border-green-300';
@@ -1059,7 +1198,8 @@ function showAllEndpoints() {
                             >
                                 <div class="font-bold text-lg">${endpoint}</div>
                                 <div class="text-xs opacity-75 mt-1">${node?.name || 'Unknown'}</div>
-                                <div class="text-xs font-medium mt-1">${totalOffline.formatted}</div>
+                                <div class="text-xs font-medium mt-1">Offline: ${totalOffline.formatted}</div>
+                                <div class="text-xs font-medium mt-1 text-blue-600">Uptime: ${uptimeData.uptimePercentage}%</div>
                                 <div class="text-xs capitalize mt-1">${currentStatus}</div>
                             </button>
                         `;
@@ -1079,7 +1219,7 @@ function showAllEndpoints() {
     });
 }
 
-//   Show endpoint summary statistics
+// Show endpoint summary statistics
 function showEndpointSummary() {
     // Calculate summary statistics
     const endpointStats = {};
@@ -1114,6 +1254,13 @@ function showEndpointSummary() {
         }
     });
 
+    // Add uptime calculations for each endpoint
+    Object.keys(endpointStats).forEach(endpoint => {
+        const uptimeData = getUptimeDisplay(endpoint, '24h');
+        endpointStats[endpoint].uptime24h = uptimeData.uptimePercentage;
+        endpointStats[endpoint].uptimeData = uptimeData;
+    });
+
     // Convert to array and sort by total offline time
     const sortedStats = Object.values(endpointStats).sort((a, b) => b.totalOfflineMinutes - a.totalOfflineMinutes);
 
@@ -1128,7 +1275,7 @@ function showEndpointSummary() {
                         <h2 class="text-2xl font-bold text-gray-800">
                             Ringkasan Endpoint
                         </h2>
-                        <p class="text-gray-600 mt-1">Statistik total durasi offline per endpoint</p>
+                        <p class="text-gray-600 mt-1">Statistik total durasi offline dan uptime per endpoint</p>
                     </div>
                     <button onclick="this.closest('.fixed').remove()"
                             class="text-gray-500 hover:text-gray-700 text-2xl p-2">
@@ -1145,6 +1292,7 @@ function showEndpointSummary() {
                                 <th class="py-3 px-4 text-left font-medium text-gray-700">Rank</th>
                                 <th class="py-3 px-4 text-left font-medium text-gray-700">Endpoint</th>
                                 <th class="py-3 px-4 text-left font-medium text-gray-700">Gedung</th>
+                                <th class="py-3 px-4 text-left font-medium text-gray-700">24h Uptime</th>
                                 <th class="py-3 px-4 text-left font-medium text-gray-700">Total Offline Duration</th>
                                 <th class="py-3 px-4 text-left font-medium text-gray-700">Total Events</th>
                                 <th class="py-3 px-4 text-left font-medium text-gray-700">Offline Events</th>
@@ -1154,60 +1302,77 @@ function showEndpointSummary() {
                             </tr>
                         </thead>
                         <tbody>
-                            ${sortedStats.map((stats, index) => `
-                                <tr class="border-b border-gray-200 hover:bg-gray-50">
-                                    <td class="py-3 px-4">
-                                        <div class="flex items-center gap-2">
+                            ${sortedStats.map((stats, index) => {
+                                const uptimeColor = stats.uptime24h >= 95 ? 'text-green-600' : 
+                                                  stats.uptime24h >= 80 ? 'text-yellow-600' : 'text-red-600';
+                                const uptimeBgColor = stats.uptime24h >= 95 ? 'bg-green-100' : 
+                                                     stats.uptime24h >= 80 ? 'bg-yellow-100' : 'bg-red-100';
 
-                                            <span class="font-bold">#${index + 1}</span>
-                                        </div>
-                                    </td>
-                                    <td class="py-3 px-4 font-bold text-indigo-600">${stats.endpoint}</td>
-                                    <td class="py-3 px-4">${stats.nodeName}</td>
-                                    <td class="py-3 px-4">
-                                        <span class="font-bold text-red-600">${formatDuration(stats.totalOfflineMinutes)}</span>
-                                        <div class="w-full bg-gray-200 rounded-full h-1 mt-1">
-                                            <div class="bg-red-500 h-1 rounded-full" style="width: ${Math.min(stats.totalOfflineMinutes / Math.max(...sortedStats.map(s => s.totalOfflineMinutes)) * 100, 100)}%"></div>
-                                        </div>
-                                    </td>
-                                    <td class="py-3 px-4">
-                                        <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-                                            ${stats.totalEvents}
-                                        </span>
-                                    </td>
-                                    <td class="py-3 px-4">
-                                        <span class="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium">
-                                            ${stats.offlineEvents}
-                                        </span>
-                                    </td>
-                                    <td class="py-3 px-4">
-                                        <span class="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
-                                            ${stats.onlineEvents}
-                                        </span>
-                                    </td>
-                                    <td class="py-3 px-4 text-xs text-gray-500">
-                                        ${stats.lastActivity ? formatDateTime(stats.lastActivity, 'full') : 'N/A'}
-                                    </td>
-                                    <td class="py-3 px-4">
-                                        <div class="flex gap-1">
-                                            <button
-                                                onclick="searchSpecificEndpoint('${stats.endpoint}'); this.closest('.fixed').remove();"
-                                                class="px-2 py-1 text-xs bg-indigo-100 text-indigo-700 hover:bg-indigo-200 rounded transition-colors"
-                                                title="Filter endpoint ini"
-                                            >
-                                                <i class="fas fa-filter"></i>
-                                            </button>
-                                            <button
-                                                onclick="showEndpointHistory('${stats.endpoint}')"
-                                                class="px-2 py-1 text-xs bg-blue-100 text-blue-700 hover:bg-blue-200 rounded transition-colors"
-                                                title="Lihat history detail"
-                                            >
-                                                <i class="fas fa-history"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            `).join('')}
+                                return `
+                                    <tr class="border-b border-gray-200 hover:bg-gray-50">
+                                        <td class="py-3 px-4">
+                                            <div class="flex items-center gap-2">
+                                                <span class="font-bold">#${index + 1}</span>
+                                            </div>
+                                        </td>
+                                        <td class="py-3 px-4 font-bold text-indigo-600">${stats.endpoint}</td>
+                                        <td class="py-3 px-4">${stats.nodeName}</td>
+                                        <td class="py-3 px-4">
+                                            <div class="flex items-center gap-2">
+                                                <span class="font-bold ${uptimeColor} px-2 py-1 ${uptimeBgColor} rounded-full text-xs">
+                                                    ${stats.uptime24h}%
+                                                </span>
+                                                <div class="w-16 bg-gray-200 rounded-full h-1">
+                                                    <div class="bg-green-500 h-1 rounded-full" style="width: ${stats.uptime24h}%"></div>
+                                                </div>
+                                            </div>
+                                            ${stats.uptimeData.dataAvailable ? '' : '<div class="text-xs text-gray-400">No data</div>'}
+                                        </td>
+                                        <td class="py-3 px-4">
+                                            <span class="font-bold text-red-600">${formatDuration(stats.totalOfflineMinutes)}</span>
+                                            <div class="w-full bg-gray-200 rounded-full h-1 mt-1">
+                                                <div class="bg-red-500 h-1 rounded-full" style="width: ${Math.min(stats.totalOfflineMinutes / Math.max(...sortedStats.map(s => s.totalOfflineMinutes)) * 100, 100)}%"></div>
+                                            </div>
+                                        </td>
+                                        <td class="py-3 px-4">
+                                            <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                                                ${stats.totalEvents}
+                                            </span>
+                                        </td>
+                                        <td class="py-3 px-4">
+                                            <span class="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium">
+                                                ${stats.offlineEvents}
+                                            </span>
+                                        </td>
+                                        <td class="py-3 px-4">
+                                            <span class="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+                                                ${stats.onlineEvents}
+                                            </span>
+                                        </td>
+                                        <td class="py-3 px-4 text-xs text-gray-500">
+                                            ${stats.lastActivity ? formatDateTime(stats.lastActivity, 'full') : 'N/A'}
+                                        </td>
+                                        <td class="py-3 px-4">
+                                            <div class="flex gap-1">
+                                                <button
+                                                    onclick="searchSpecificEndpoint('${stats.endpoint}'); this.closest('.fixed').remove();"
+                                                    class="px-2 py-1 text-xs bg-indigo-100 text-indigo-700 hover:bg-indigo-200 rounded transition-colors"
+                                                    title="Filter endpoint ini"
+                                                >
+                                                    <i class="fas fa-filter"></i>
+                                                </button>
+                                                <button
+                                                    onclick="showEndpointHistory('${stats.endpoint}')"
+                                                    class="px-2 py-1 text-xs bg-blue-100 text-blue-700 hover:bg-blue-200 rounded transition-colors"
+                                                    title="Lihat history detail"
+                                                >
+                                                    <i class="fas fa-history"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('')}
                         </tbody>
                     </table>
                 </div>
@@ -1259,7 +1424,7 @@ async function showEndpointHistory(endpoint) {
         displayEndpointHistoryModal(endpoint, {
             history: history,
             statistics: stats,
-            node_name: nodes.find(n => n.endpoint === endpoint)?.name || endpoint  // ← UBAH dari template literal
+            node_name: nodes.find(n => n.endpoint === endpoint)?.name || endpoint
         });
     } catch (error) {
         console.error('Error fetching endpoint history:', error);
@@ -1269,6 +1434,7 @@ async function showEndpointHistory(endpoint) {
 
 function displayEndpointHistoryModal(endpoint, data) {
     const totalOffline = getTotalOfflineDuration(endpoint);
+    const uptimeData = calculateUptimeForAllPeriods(endpoint);
 
     const modal = document.createElement('div');
     modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
@@ -1282,9 +1448,20 @@ function displayEndpointHistoryModal(endpoint, data) {
                             History Endpoint: ${endpoint}
                         </h2>
                         <p class="text-gray-600 mt-1">${data.node_name || 'Unknown Node'}</p>
-                        <p class="text-sm text-purple-600 mt-1">
-                            <i class="fas fa-clock mr-1"></i>Total Offline Duration: ${totalOffline.formatted}
-                        </p>
+                        <div class="flex flex-wrap gap-4 mt-2 text-sm">
+                            <p class="text-purple-600">
+                                <i class="fas fa-clock mr-1"></i>Total Offline: ${totalOffline.formatted}
+                            </p>
+                            <p class="text-blue-600">
+                                <i class="fas fa-chart-line mr-1"></i>24h Uptime: ${uptimeData.last24h.uptimePercentage}%
+                            </p>
+                            <p class="text-green-600">
+                                <i class="fas fa-calendar-week mr-1"></i>7d Uptime: ${uptimeData.last7d.uptimePercentage}%
+                            </p>
+                            <p class="text-indigo-600">
+                                <i class="fas fa-calendar-alt mr-1"></i>30d Uptime: ${uptimeData.last30d.uptimePercentage}%
+                            </p>
+                        </div>
                     </div>
                     <button onclick="this.closest('.fixed').remove()"
                             class="text-gray-500 hover:text-gray-700 text-2xl p-2">
@@ -1295,7 +1472,7 @@ function displayEndpointHistoryModal(endpoint, data) {
 
             <div class="p-6 overflow-y-auto max-h-[75vh]">
                 <!-- Enhanced Statistics Cards -->
-                <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6">
                     <div class="bg-blue-50 p-4 rounded-xl border border-blue-200">
                         <div class="text-sm text-blue-600">Total Events</div>
                         <div class="text-2xl font-bold text-blue-800">${data.statistics?.total_events || 0}</div>
@@ -1309,8 +1486,58 @@ function displayEndpointHistoryModal(endpoint, data) {
                         <div class="text-2xl font-bold text-green-800">${data.statistics?.online_events || 0}</div>
                     </div>
                     <div class="bg-purple-50 p-4 rounded-xl border border-purple-200">
-                        <div class="text-sm text-purple-600">Total Offline Time</div>
+                        <div class="text-sm text-purple-600">Total Offline</div>
                         <div class="text-2xl font-bold text-purple-800">${totalOffline.formatted}</div>
+                    </div>
+                    <div class="bg-indigo-50 p-4 rounded-xl border border-indigo-200">
+                        <div class="text-sm text-indigo-600">24h Uptime</div>
+                        <div class="text-2xl font-bold text-indigo-800">${uptimeData.last24h.uptimePercentage}%</div>
+                        <div class="w-full bg-gray-200 rounded-full h-1 mt-1">
+                            <div class="bg-indigo-500 h-1 rounded-full" style="width: ${uptimeData.last24h.uptimePercentage}%"></div>
+                        </div>
+                    </div>
+                    <div class="bg-teal-50 p-4 rounded-xl border border-teal-200">
+                        <div class="text-sm text-teal-600">7d Uptime</div>
+                        <div class="text-2xl font-bold text-teal-800">${uptimeData.last7d.uptimePercentage}%</div>
+                        <div class="w-full bg-gray-200 rounded-full h-1 mt-1">
+                            <div class="bg-teal-500 h-1 rounded-full" style="width: ${uptimeData.last7d.uptimePercentage}%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Uptime Details -->
+                <div class="bg-gray-50 rounded-xl p-4 mb-6">
+                    <h4 class="text-lg font-semibold mb-3 text-gray-800 flex items-center gap-2">
+                        <i class="fas fa-chart-bar"></i>Uptime Analysis
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="bg-white p-3 rounded-lg border">
+                            <div class="text-sm font-medium text-gray-700 mb-2">Last 24 Hours</div>
+                            <div class="text-lg font-bold ${uptimeData.last24h.uptimePercentage >= 95 ? 'text-green-600' : uptimeData.last24h.uptimePercentage >= 80 ? 'text-yellow-600' : 'text-red-600'}">${uptimeData.last24h.uptimePercentage}%</div>
+                            <div class="text-xs text-gray-500 mt-1">
+                                Online: ${formatDuration(uptimeData.last24h.onlineMinutes)} | 
+                                Offline: ${formatDuration(uptimeData.last24h.offlineMinutes)}
+                            </div>
+                            ${!uptimeData.last24h.dataAvailable ? '<div class="text-xs text-orange-500">No data available</div>' : ''}
+                        </div>
+                        <div class="bg-white p-3 rounded-lg border">
+                            <div class="text-sm font-medium text-gray-700 mb-2">Last 7 Days</div>
+                            <div class="text-lg font-bold ${uptimeData.last7d.uptimePercentage >= 95 ? 'text-green-600' : uptimeData.last7d.uptimePercentage >= 80 ? 'text-yellow-600' : 'text-red-600'}">${uptimeData.last7d.uptimePercentage}%</div>
+                            <div class="text-xs text-gray-500 mt-1">
+                                Online: ${formatDuration(uptimeData.last7d.onlineMinutes)} | 
+                                Offline: ${formatDuration(uptimeData.last7d.offlineMinutes)}
+                            </div>
+                            ${!uptimeData.last7d.dataAvailable ? '<div class="text-xs text-orange-500">No data available</div>' : ''}
+                        </div>
+                        <div class="bg-white p-3 rounded-lg border">
+                            <div class="text-sm font-medium text-gray-700 mb-2">Last 30 Days</div>
+                            <div class="text-lg font-bold ${uptimeData.last30d.uptimePercentage >= 95 ? 'text-green-600' : uptimeData.last30d.uptimePercentage >= 80 ? 'text-yellow-600' : 'text-red-600'}">${uptimeData.last30d.uptimePercentage}%</div>
+                            <div class="text-xs text-gray-500 mt-1">
+                                Online: ${formatDuration(uptimeData.last30d.onlineMinutes)} | 
+                                Offline: ${formatDuration(uptimeData.last30d.offlineMinutes)}
+                            </div>
+                            ${!uptimeData.last30d.dataAvailable ? '<div class="text-xs text-orange-500">No data available</div>' : ''}
+                        </div>
                     </div>
                 </div>
 
@@ -1581,7 +1808,7 @@ class DeviceHistoryTracker {
     }
 }
 
-// Phone Monitoring Class - Updated with real backend data and FIXED TIME FORMAT
+// Phone Monitoring Class - Updated with real uptime calculation
 class PhoneMonitoring {
     constructor() {
         this.currentFilter = 'all';
@@ -1594,17 +1821,22 @@ class PhoneMonitoring {
     }
 
     get phoneData() {
-        return nodes.map(node => ({
-            id: node.id,
-            name: node.name,
-            ip: node.ip,
-            endpoint: node.endpoint,
-            status: node.status || 'offline',
-            lastSeen: node.last_ping_raw ? new Date(node.last_ping_raw) : new Date(),
-            downtime: this.calculateDowntime(node.last_ping_raw),
-            uptime: node.uptime_percentage || '0',
-            responseTime: node.response_time_raw || 'N/A'
-        }));
+        return nodes.map(node => {
+            const uptimeData = getUptimeDisplay(node.endpoint, '24h');
+            
+            return {
+                id: node.id,
+                name: node.name,
+                ip: node.ip,
+                endpoint: node.endpoint,
+                status: node.status || 'offline',
+                lastSeen: node.last_ping_raw ? new Date(node.last_ping_raw) : new Date(),
+                downtime: this.calculateDowntime(node.last_ping_raw),
+                uptime: uptimeData.uptimePercentage,
+                uptimeData: uptimeData,
+                responseTime: node.response_time_raw || 'N/A'
+            };
+        });
     }
 
     calculateDowntime(lastPing) {
@@ -1703,6 +1935,12 @@ class PhoneMonitoring {
         const isOnline = phone.status === 'online';
         const displayStatus = formatDisplayStatus(phone.status);
         const totalOffline = getTotalOfflineDuration(phone.endpoint);
+        
+        // Determine uptime color based on percentage
+        const uptimeColor = phone.uptime >= 95 ? 'text-green-600' : 
+                           phone.uptime >= 80 ? 'text-yellow-600' : 'text-red-600';
+        const uptimeBgColor = phone.uptime >= 95 ? 'bg-green-50' : 
+                             phone.uptime >= 80 ? 'bg-yellow-50' : 'bg-red-50';
 
         return `
             <div class="bg-white rounded-xl p-4 shadow-lg border-l-4 border-${color}-500 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
@@ -1725,12 +1963,22 @@ class PhoneMonitoring {
                 <div class="space-y-2">
                     <div class="flex justify-between items-center text-xs">
                         <span class="text-gray-500">Last Seen:</span>
-                        <span class="text-gray-700 font-medium">${phone.lastSeen.toLocaleString('id-ID')}</span>
+                        <span class="text-gray-700 font-medium">${formatDateTime(phone.lastSeen.toISOString(), 'short')}</span>
                     </div>
 
+                    <!-- Enhanced Uptime Display with Real Calculation -->
                     <div class="flex justify-between items-center text-xs">
-                        <span class="text-gray-500">Uptime:</span>
-                        <span class="text-blue-600 font-medium">${phone.uptime}%</span>
+                        <span class="text-gray-500">24h Uptime:</span>
+                        <div class="flex items-center gap-2">
+                            <span class="${uptimeColor} font-bold px-2 py-1 ${uptimeBgColor} rounded-full">
+                                ${phone.uptime}%
+                            </span>
+                            ${!phone.uptimeData.dataAvailable ? 
+                                '<span class="text-xs text-orange-500">(No data)</span>' : 
+                                phone.uptimeData.assumption ? 
+                                '<span class="text-xs text-blue-500" title="' + phone.uptimeData.assumption + '">(Est.)</span>' : ''
+                            }
+                        </div>
                     </div>
 
                     <!-- Enhanced offline duration display -->
@@ -1756,6 +2004,21 @@ class PhoneMonitoring {
                             </span>
                         </div>
                     `}
+
+                    <!-- Uptime Breakdown -->
+                    ${phone.uptimeData.dataAvailable ? `
+                        <div class="text-xs text-gray-500 bg-gray-50 p-2 rounded-lg">
+                            <div class="flex justify-between">
+                                <span>Online: ${formatDuration(phone.uptimeData.onlineMinutes)}</span>
+                                <span>Offline: ${formatDuration(phone.uptimeData.offlineMinutes)}</span>
+                            </div>
+                            ${phone.uptimeData.logsProcessed ? `
+                                <div class="text-center mt-1 text-blue-500">
+                                    ${phone.uptimeData.logsProcessed} events processed
+                                </div>
+                            ` : ''}
+                        </div>
+                    ` : ''}
 
                     <div class="mt-3 pt-2 border-t border-gray-100">
                         <div class="flex gap-1">
@@ -1829,6 +2092,9 @@ window.goToPage = goToPage;
 window.showAllEndpoints = showAllEndpoints;
 window.showEndpointSummary = showEndpointSummary;
 window.getTotalOfflineDuration = getTotalOfflineDuration;
+window.calculateRealUptime = calculateRealUptime;
+window.calculateUptimeForAllPeriods = calculateUptimeForAllPeriods;
+window.getUptimeDisplay = getUptimeDisplay;
 
 // Initialize phone monitoring after nodes are loaded
 function initializePhoneMonitoring() {
@@ -1864,5 +2130,8 @@ Object.assign(window, {
     formatDuration,
     populateQuickEndpointButtons,
     formatDateTime,
-    formatRelativeTime
+    formatRelativeTime,
+    calculateRealUptime,
+    calculateUptimeForAllPeriods,
+    getUptimeDisplay
 });

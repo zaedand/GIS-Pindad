@@ -1713,6 +1713,11 @@ async function loadActivityLogsFromDatabase() {
     }
 }
 
+<!-- Uptime Progress Bar -->
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div class="bg-gradient-to-r ${phone.uptime >= 95 ? 'from-green-400 to-green-600' : phone.uptime >= 80 ? 'from-yellow-400 to-yellow-600' : 'from-red-400 to-red-600'} h-2 rounded-full transition-all duration-500" style="width: ${phone.uptime}%"></div>
+                    </div>
+
 1. tambah fitur search untuk mengelompokkan endpoint tertentu (misal = 1001 -> endpoint history dari 1001)
 2. jika bisa, pada tabel, setiap waktu on/off diberi selisih waktu (misal 1 menit)(berfokuskan total waktu durasi offline tsb)
 3. total waktu durasi offline setiap endpoint
@@ -1731,27 +1736,33 @@ async function loadActivityLogsFromDatabase() {
 <<<<<<< HEAD
 
 day
+1 --
+2 ranvang data
+3 figma
+4 Frontend
+-
 7 memperbaiki tampilan welcome login dan register
 8 mengerjakan tampilan map pada menu dashboard dengan leaflet
 9  -
 10 -
-11 -
+11 membuat crud dengan map 
 -
-14
-15
-16
-17
-18
+14 pengerjaan koneksi database dengan api
+15 - tambah modal koneksi
+16 - membuat server koneksi socket io (realtime)
+18 - koneksi api ip pbx
+17 - -
 -
-21
-22
-23
-24
-25
+21 koneksi server, api pbx, socket
+22 rancang tambah menu log history
+23 Database, model, view, controller log
+24 -
+25 membuat fungsi input dari server ke database malalui api
 -
 28 me
 29 menambah notif exeption koneksi
 30 menambah paginaton
-31 memperbaiki error server
+31 memperbaiki error server, koneksi
 =======
-1 membersihkan kantor, memperbaiki error
+1 membersihkan kantor, memperbaiki error koneksi, update server
+4 uptime
