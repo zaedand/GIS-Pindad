@@ -245,6 +245,9 @@
         }
     }
 </script>
+<script>
+    window.userToken = "{{ $apiKey }}";
+</script>
 @push('scripts')
     @vite('resources/js/maps.js')
 @endpush

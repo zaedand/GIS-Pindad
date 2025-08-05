@@ -19,6 +19,7 @@
         "vite": "^6.2.4"
     },
     "dependencies": {
+        "jsonwebtoken": "^9.0.2",
         "leaflet": "^1.9.4",
         "leaflet-draw": "^1.0.4",
         "socket.io": "^4.8.1",

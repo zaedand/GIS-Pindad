@@ -70,8 +70,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // Socket.IO connection
 function initializeSocket() {
-    socket = io("http://localhost:3000", {
+    if (!window.userToken) {
+        console.error("JWT Token tidak ditemukan. Pastikan sudah di-embed di Blade.");
+        return;
+    }
+
+    const socket = io("http://localhost:3000", {
         transports: ['websocket', 'polling'],
+        auth: { token: window.userToken },
         timeout: 20000,
         reconnection: true,
         reconnectionAttempts: 5,
@@ -89,7 +95,7 @@ function initializeSocket() {
     });
 
     socket.on("connect_error", (error) => {
-        console.error("Socket connection error:", error);
+        console.error("Socket connection error:", error.message);
         showToast('Failed to connect server', 'error');
     });
 
@@ -98,6 +104,8 @@ function initializeSocket() {
         handleStatusUpdate(statusData);
     });
 }
+
+
 
 // Handle real-time status updates
 function handleStatusUpdate(statusData) {
