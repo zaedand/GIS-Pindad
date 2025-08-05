@@ -285,8 +285,8 @@ function applyLiveStatus() {
     if (!latestStatus || latestStatus.length === 0) return;
 
     latestStatus.forEach(update => {
-        const node = nodes.find(n => 
-            n.endpoint === update.endpoint || 
+        const node = nodes.find(n =>
+            n.endpoint === update.endpoint ||
             n.endpoint.includes(update.endpoint) ||
             update.endpoint.includes(n.endpoint)
         );
@@ -326,7 +326,7 @@ function setupSearch() {
     const searchInput = document.getElementById('deviceSearch');
     const searchButton = document.querySelector('button[onclick="filterDevices()"]');
     const clearButton = createClearButton();
-    
+
     if (!searchInput) return;
 
     // Insert clear button after search input
@@ -335,7 +335,7 @@ function setupSearch() {
     // Real-time search with debouncing
     searchInput.addEventListener('input', (e) => {
         const query = e.target.value.trim();
-        
+
         // Clear previous timeout
         if (searchTimeout) {
             clearTimeout(searchTimeout);
@@ -388,7 +388,7 @@ function performSearch(query) {
     }
 
     const searchTerm = query.toLowerCase();
-    
+
     // Advanced search across multiple fields
     filteredNodes = nodes.filter(node => {
         const searchFields = [
@@ -411,7 +411,7 @@ function updateSearchResults() {
     currentPage = 1;
     updatePagination();
     updateNodesTable();
-    
+
     // Update search results info
     updateSearchInfo();
 }
@@ -422,7 +422,7 @@ function updateSearchInfo() {
 
     const total = nodes.length;
     const filtered = filteredNodes.length;
-    
+
     if (lastSearchQuery) {
         searchInfo.textContent = `Showing ${filtered} of ${total} devices`;
         searchInfo.className = 'text-sm text-gray-600 mb-4';
@@ -495,7 +495,7 @@ function createPaginationControls() {
 function updatePagination() {
     const totalItems = filteredNodes.length;
     totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
-    
+
     // Ensure current page is valid
     if (currentPage > totalPages) {
         currentPage = totalPages;
@@ -583,13 +583,13 @@ function createPaginationButton(text, enabled, onClick, isActive = false) {
     const button = document.createElement('button');
     button.innerHTML = text;
     button.className = `px-3 py-2 text-sm rounded-lg transition-all duration-200 ${
-        isActive 
+        isActive
             ? 'bg-indigo-600 text-white font-semibold shadow-md'
-            : enabled 
+            : enabled
                 ? 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 hover:border-gray-400 hover:shadow-sm'
                 : 'bg-gray-100 text-gray-400 cursor-not-allowed'
     }`;
-    
+
     if (enabled && !isActive) {
         button.addEventListener('click', onClick);
         button.style.cursor = 'pointer';
@@ -610,7 +610,7 @@ function changePage(page) {
         currentPage = page;
         updatePagination();
         updateNodesTable();
-        
+
         // Scroll to table top
         document.querySelector('.overflow-x-auto').scrollIntoView({
             behavior: 'smooth',
@@ -955,7 +955,7 @@ function setupEventListeners() {
     // Keyboard events
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') closeModal();
-        
+
         // Pagination keyboard shortcuts
         if (e.ctrlKey && e.key === 'ArrowLeft') {
             e.preventDefault();
@@ -965,7 +965,7 @@ function setupEventListeners() {
             e.preventDefault();
             if (currentPage < totalPages) changePage(currentPage + 1);
         }
-        
+
         // Focus search with Ctrl+F
         if (e.ctrlKey && e.key === 'f') {
             e.preventDefault();
@@ -1026,14 +1026,14 @@ async function createNode(nodeData) {
 
         const newNode = await response.json();
         nodes.push(newNode);
-        
+
         // Update filtered nodes if search is active
         if (lastSearchQuery) {
             performSearch(lastSearchQuery);
         } else {
             filteredNodes = [...nodes];
         }
-        
+
         updateUI();
         showToast('Device added successfully!', 'success');
 
@@ -1059,14 +1059,14 @@ async function updateNode(id, nodeData) {
         const index = nodes.findIndex(node => node.id === id);
         if (index !== -1) {
             nodes[index] = updatedNode;
-            
+
             // Update filtered nodes if search is active
             if (lastSearchQuery) {
                 performSearch(lastSearchQuery);
             } else {
                 filteredNodes = [...nodes];
             }
-            
+
             updateUI();
         }
 
@@ -1096,20 +1096,20 @@ async function deleteNode(id) {
                 }
 
                 nodes = nodes.filter(node => node.id !== id);
-                
+
                 // Update filtered nodes if search is active
                 if (lastSearchQuery) {
                     performSearch(lastSearchQuery);
                 } else {
                     filteredNodes = [...nodes];
                 }
-                
+
                 // Adjust current page if necessary
                 const newTotalPages = Math.ceil(filteredNodes.length / itemsPerPage) || 1;
                 if (currentPage > newTotalPages) {
                     currentPage = newTotalPages;
                 }
-                
+
                 updateUI();
                 showToast('Device deleted successfully!', 'success');
 
@@ -1132,14 +1132,14 @@ function filterDevices() {
 function resetFilters() {
     const searchInput = document.getElementById('deviceSearch');
     const clearButton = document.querySelector('button[onclick="clearSearch()"]');
-    
+
     if (searchInput) {
         searchInput.value = '';
     }
     if (clearButton) {
         clearButton.style.display = 'none';
     }
-    
+
     performSearch('');
 }
 
@@ -1147,15 +1147,15 @@ function resetFilters() {
 function setupAdvancedSearch() {
     // Create advanced search panel
     const searchContainer = document.querySelector('#deviceSearch').parentNode;
-    
+
     const advancedToggle = document.createElement('button');
     advancedToggle.type = 'button';
     advancedToggle.className = 'text-sm text-indigo-600 hover:text-indigo-800 ml-2';
     advancedToggle.innerHTML = '<i class="fas fa-filter"></i> Advanced';
     advancedToggle.onclick = toggleAdvancedSearch;
-    
+
     searchContainer.appendChild(advancedToggle);
-    
+
     // Advanced search panel
     const advancedPanel = document.createElement('div');
     advancedPanel.id = 'advanced-search-panel';
@@ -1174,7 +1174,7 @@ function setupAdvancedSearch() {
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">IP Range</label>
-                <input type="text" id="ip-filter" placeholder="e.g., 192.168.1" 
+                <input type="text" id="ip-filter" placeholder="e.g., 192.168.1"
                        class="w-full px-3 py-2 border border-gray-300 rounded-lg">
             </div>
             <div>
@@ -1188,17 +1188,17 @@ function setupAdvancedSearch() {
             </div>
         </div>
         <div class="mt-4 flex gap-2">
-            <button onclick="applyAdvancedFilters()" 
+            <button onclick="applyAdvancedFilters()"
                     class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">
                 Apply Filters
             </button>
-            <button onclick="clearAdvancedFilters()" 
+            <button onclick="clearAdvancedFilters()"
                     class="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400">
                 Clear
             </button>
         </div>
     `;
-    
+
     searchContainer.parentNode.insertBefore(advancedPanel, searchContainer.nextSibling);
 }
 
@@ -1213,18 +1213,18 @@ function applyAdvancedFilters() {
     const statusFilter = document.getElementById('status-filter')?.value;
     const ipFilter = document.getElementById('ip-filter')?.value;
     const pingFilter = document.getElementById('ping-filter')?.value;
-    
+
     filteredNodes = nodes.filter(node => {
         // Status filter
         if (statusFilter && node.status !== statusFilter) {
             return false;
         }
-        
+
         // IP filter
         if (ipFilter && !node.ip.includes(ipFilter)) {
             return false;
         }
-        
+
         // Ping filter (hours)
         if (pingFilter && node.last_ping_raw) {
             const lastPing = new Date(node.last_ping_raw);
@@ -1233,10 +1233,10 @@ function applyAdvancedFilters() {
                 return false;
             }
         }
-        
+
         return true;
     });
-    
+
     // Also apply text search if active
     const searchQuery = document.getElementById('deviceSearch')?.value;
     if (searchQuery) {
@@ -1251,7 +1251,7 @@ function applyAdvancedFilters() {
             return searchFields.some(field => field.includes(searchTerm));
         });
     }
-    
+
     currentPage = 1;
     updateUI();
     showToast(`Found ${filteredNodes.length} devices`, 'info');
@@ -1261,7 +1261,7 @@ function clearAdvancedFilters() {
     document.getElementById('status-filter').value = '';
     document.getElementById('ip-filter').value = '';
     document.getElementById('ping-filter').value = '';
-    
+
     filteredNodes = [...nodes];
     currentPage = 1;
     updateUI();
