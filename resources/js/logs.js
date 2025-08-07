@@ -422,7 +422,7 @@ function initializeSocket() {
         socket.on('connect', () => {
             console.log('Connected to Socket.IO server:', socket.id);
             socketConnected = true;
-            showNotification('Server connected successfully', 'success');
+            showNotification('Real-Time connection established', 'success');
         });
 
         socket.on('device-status', async (statusList) => {
