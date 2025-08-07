@@ -15,11 +15,21 @@ Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['au
 Route::get('/logs', [LogsController::class, 'index'])->middleware(['auth', 'role:user,admin'])->name('logs');
 
 // Akses khusus admin
+// Route::middleware(['auth', 'role:admin'])->group(function () {
+//     Route::get('/users', [UserController::class, 'index'])->name('users.index');
+//     Route::delete('/users/{id}', [UserController::class, 'destroy'])->name('users.destroy');
+// });
+// Route::get('/users', function () {
+//     return view('users');
+// })->middleware(['auth', 'role:admin'])->name('users');
 Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/users', [UserController::class, 'index'])->name('users.index');
-    Route::delete('/users/{id}', [UserController::class, 'destroy'])->name('users.destroy');
+    Route::post('/users', [UserController::class, 'store'])->name('users.store');
+    Route::get('/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
+    Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
+    Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+    Route::get('/users/{user}', [UserController::class, 'show'])->name('users.show');
 });
-
 
 Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/manage', [ManageController::class, 'index'])->name('manage.index');
