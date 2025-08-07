@@ -1,4 +1,4 @@
-// resources/js/dashboard.js - FIXED STATUS UPDATE VERSION
+// resources/js/dashboard.js - FIXED CONNECTION VERSION
 import { io } from 'socket.io-client';
 
 // Global state management
@@ -32,33 +32,88 @@ const throttle = (func, limit) => {
     };
 };
 
-// Constants
-const API_CONFIG = {
-    headers: {
+// FIXED: Token management - consistent strategy
+function getAuthToken() {
+    // Priority 1: App config token (from blade template)
+    if (window.AppConfig?.authToken) {
+        console.log('Using App config token:', window.AppConfig.authToken);
+        return window.AppConfig.authToken;
+    }
+
+    // Priority 2: Legacy window.userToken
+    if (window.userToken) {
+        console.log('Using legacy window.userToken:', window.userToken);
+        return window.userToken;
+    }
+
+    // Priority 3: Stored tokens (untuk persistence)
+    const storedToken = localStorage.getItem('auth_token') ||
+                       sessionStorage.getItem('auth_token') ||
+                       document.querySelector('meta[name="auth-token"]')?.getAttribute('content');
+
+    if (storedToken) {
+        console.log('Using stored token');
+        return storedToken;
+    }
+
+    // Priority 4: Fallback untuk development
+    const fallbackToken = 'pindad_123';
+    console.warn('Using fallback token:', fallbackToken);
+
+    return fallbackToken;
+}
+
+// Token storage dan persistence
+function storeAuthToken(token) {
+    if (!token) return;
+    sessionStorage.setItem('auth_token', token);
+    console.log('Token stored in sessionStorage');
+}
+
+function clearAuthToken() {
+    sessionStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_token');
+    console.log('Auth tokens cleared');
+}
+
+// FIXED: API configuration dengan token yang konsisten
+function getAPIConfig() {
+    const token = getAuthToken();
+    return {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
-    },
-    timeout: 10000
-};
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+        'Authorization': `Bearer ${token}`
+    };
+}
+
+// FIXED: Socket configuration dengan better token handling
+function getSocketConfig() {
+    const token = getAuthToken();
+    return {
+        url: "http://localhost:3000",
+        options: {
+            transports: ['websocket', 'polling'],
+            auth: {
+                token: token,
+                userId: window.AppConfig?.userId || null,
+                userName: window.AppConfig?.userName || 'unknown'
+            },
+            timeout: 20000,
+            reconnection: true,
+            reconnectionAttempts: 5,
+            reconnectionDelay: 1000,
+            forceNew: false,
+            upgrade: true,
+            rememberUpgrade: false
+        }
+    };
+}
 
 const MAP_CONFIG = {
     center: [-8.173358, 112.684885],
     zoom: 17,
     maxZoom: 20
-};
-
-const SOCKET_CONFIG = {
-    url: "http://localhost:3000",
-    options: {
-        transports: ['websocket', 'polling'],
-        auth: { token: window.userToken },
-        timeout: 20000,
-        reconnection: true,
-        reconnectionAttempts: 5,
-        reconnectionDelay: 1000,
-        forceNew: false
-    }
 };
 
 const STATUS_CONFIG = {
@@ -83,6 +138,21 @@ async function initializeDashboard() {
     if (state.isInitialized) return;
 
     try {
+        console.log('=== DASHBOARD INITIALIZATION ===');
+
+        // Validate authentication
+        if (window.AppConfig && !window.AppConfig.isAuthenticated) {
+            console.error('User not authenticated, redirecting...');
+            window.location.href = '/login';
+            return;
+        }
+
+        // Store token for persistence
+        const authToken = getAuthToken();
+        storeAuthToken(authToken);
+
+        console.log('Auth token validated:', authToken);
+
         // Initialize components in optimal order
         await Promise.all([
             initializeMap(),
@@ -93,9 +163,11 @@ async function initializeDashboard() {
         initializeSocket();
 
         state.isInitialized = true;
+        console.log('Dashboard initialized successfully');
 
     } catch (error) {
         console.error('Dashboard initialization error:', error);
+        showToast('Failed to initialize dashboard', 'error');
     }
 }
 
@@ -142,14 +214,131 @@ function initializeMap() {
     });
 }
 
-// Optimized API call with retry mechanism
+// FIXED: Socket initialization dengan proper error handling dan logging
+function initializeSocket() {
+    if (state.socket?.connected) {
+        console.log('Socket already connected');
+        return;
+    }
+
+    console.log('=== SOCKET INITIALIZATION ===');
+
+    const socketConfig = getSocketConfig();
+    console.log('Socket URL:', socketConfig.url);
+    console.log('Auth info:', {
+        token: socketConfig.options.auth.token,
+        userId: socketConfig.options.auth.userId,
+        userName: socketConfig.options.auth.userName
+    });
+
+    try {
+        state.socket = io(socketConfig.url, socketConfig.options);
+
+        // Connection events
+        state.socket.on("connect", () => {
+            console.log("✅ Connected to Socket.IO server:", state.socket.id);
+            console.log("Socket transport:", state.socket.io.engine.transport.name);
+            showToast('Real-time connection established', 'success');
+        });
+
+        state.socket.on("disconnect", (reason) => {
+            console.log("❌ Disconnected from Socket.IO server:", reason);
+
+            // Different handling based on disconnect reason
+            if (reason === 'io server disconnect') {
+                showToast('Server disconnected the connection', 'error');
+            } else if (reason === 'io client disconnect') {
+                showToast('Client disconnected', 'info');
+            } else {
+                showToast('Connection lost. Attempting to reconnect...', 'warning');
+            }
+        });
+
+        state.socket.on("connect_error", (error) => {
+            console.error("❌ Socket connection error:", error);
+            console.error("Error message:", error.message);
+            console.error("Error description:", error.description);
+            console.error("Error type:", error.type);
+
+            // Specific error handling
+            if (error.message.includes('Unauthorized') ||
+                error.message.includes('Authentication') ||
+                error.message.includes('Invalid token')) {
+                showToast('Authentication failed. Refreshing...', 'error');
+                setTimeout(() => {
+                    window.location.reload();
+                }, 3000);
+            } else if (error.message.includes('timeout')) {
+                showToast('Connection timeout. Check server availability.', 'error');
+            } else {
+                showToast(`Connection failed: ${error.message}`, 'error');
+            }
+        });
+
+        // Reconnection events
+        state.socket.on("reconnect", (attemptNumber) => {
+            console.log(`✅ Reconnected after ${attemptNumber} attempts`);
+            showToast('Connection restored', 'success');
+        });
+
+        state.socket.on("reconnect_attempt", (attemptNumber) => {
+            console.log(`🔄 Reconnection attempt #${attemptNumber}`);
+        });
+
+        state.socket.on("reconnect_error", (error) => {
+            console.error("❌ Reconnection error:", error);
+        });
+
+        state.socket.on("reconnect_failed", () => {
+            console.error("❌ Reconnection failed - max attempts reached");
+            showToast('Unable to reconnect to server', 'error');
+        });
+
+        // Server info event (sesuai dengan server.js)
+        state.socket.on("server-info", (data) => {
+            console.log("📋 Server info received:", data);
+            if (data.message) {
+                showToast(data.message, 'info');
+            }
+        });
+
+        // Server error event (sesuai dengan server.js)
+        state.socket.on("server-error", (errorData) => {
+            console.error("⚠️ Server error received:", errorData);
+            showToast(errorData.message || 'Server error occurred', 'error');
+        });
+
+        // FIXED: Handle device status updates sesuai dengan server.js
+        state.socket.on("device-status", (statusData) => {
+            console.log('📊 Received device status update:', statusData);
+            console.log('Status data type:', typeof statusData);
+            console.log('Status data length:', Array.isArray(statusData) ? statusData.length : 'Not array');
+
+            handleStatusUpdate(statusData);
+        });
+
+        // Debug: Log all events
+        state.socket.onAny((eventName, ...args) => {
+            console.log(`🔊 Socket event '${eventName}':`, args);
+        });
+
+        console.log('Socket initialization completed');
+
+    } catch (error) {
+        console.error('Failed to initialize socket:', error);
+        showToast('Failed to initialize real-time connection', 'error');
+    }
+}
+
+// ENHANCED: Fetch dengan consistent API config dan 401 handling
 async function fetchWithRetry(url, options = {}, retries = 3) {
     for (let i = 0; i < retries; i++) {
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.timeout);
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
 
             const response = await fetch(url, {
+                headers: getAPIConfig(), // Use consistent API config
                 ...options,
                 signal: controller.signal
             });
@@ -157,6 +346,16 @@ async function fetchWithRetry(url, options = {}, retries = 3) {
             clearTimeout(timeoutId);
 
             if (!response.ok) {
+                // Handle authentication errors
+                if (response.status === 401) {
+                    console.error('Authentication failed, clearing tokens');
+                    clearAuthToken();
+                    showToast('Authentication expired, please login again', 'error');
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 2000);
+                    return null;
+                }
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
 
@@ -171,9 +370,13 @@ async function fetchWithRetry(url, options = {}, retries = 3) {
 
 async function fetchNodes() {
     try {
-        const fetchedNodes = await fetchWithRetry('/api/nodes', {
-            headers: API_CONFIG.headers
-        });
+        console.log('Fetching nodes from API...');
+
+        const fetchedNodes = await fetchWithRetry('/api/nodes');
+
+        if (!fetchedNodes) {
+            throw new Error('No data received from API');
+        }
 
         console.log(`Fetched ${fetchedNodes.length} nodes from server`);
 
@@ -190,7 +393,32 @@ async function fetchNodes() {
 
     } catch (error) {
         console.error('Error fetching nodes:', error);
-        showToast('Failed to load device data', 'error');
+
+        // Create some dummy nodes for testing connection
+        console.log('Using dummy nodes for testing...');
+        state.nodes = [
+            {
+                id: 1,
+                name: 'Test Device 1',
+                ip: '192.168.1.100',
+                endpoint: 'test-device-1',
+                coords: [-8.173358, 112.684885],
+                status: 'offline',
+                description: 'Test device for connection'
+            },
+            {
+                id: 2,
+                name: 'Test Device 2',
+                ip: '192.168.1.101',
+                endpoint: 'test-device-2',
+                coords: [-8.173858, 112.685385],
+                status: 'offline',
+                description: 'Another test device'
+            }
+        ];
+
+        updateAllComponents();
+        showToast('Using test data - check API connection', 'warning');
     }
 }
 
@@ -203,45 +431,26 @@ function isValidNode(node) {
            !isNaN(parseFloat(node.coords[1]));
 }
 
-function initializeSocket() {
-    if (state.socket?.connected) {
-        console.log('Socket already connected');
+// FIXED: Handle status updates exactly like server.js format
+function handleStatusUpdate(statusData) {
+    console.log('=== HANDLING STATUS UPDATE ===');
+    console.log('Raw status data:', statusData);
+    console.log('Data type:', typeof statusData);
+    console.log('Is array:', Array.isArray(statusData));
+
+    if (!Array.isArray(statusData)) {
+        console.warn('Status data is not an array:', statusData);
         return;
     }
 
-    state.socket = io(SOCKET_CONFIG.url, SOCKET_CONFIG.options);
-
-    state.socket.on("connect", () => {
-        console.log("Connected to Socket.IO server:", state.socket.id);
-        showToast('Real-time connection established', 'success');
-    });
-
-    state.socket.on("disconnect", (reason) => {
-        console.log("Disconnected from Socket.IO server:", reason);
-        showToast('Connection lost. Reconnecting...', 'warning');
-    });
-
-    state.socket.on("connect_error", (error) => {
-        console.error("Socket connection error:", error);
-        showToast('Failed to connect to server', 'error');
-    });
-
-    // Handle device status updates - FIXED to match map.js behavior
-    state.socket.on("device-status", (statusData) => {
-        console.log('Received device status update:', statusData);
-        handleStatusUpdate(statusData);
-    });
-}
-
-// FIXED: Handle status updates exactly like map.js
-function handleStatusUpdate(statusData) {
-    if (!Array.isArray(statusData) || statusData.length === 0) {
-        console.warn('Invalid status data received:', statusData);
+    if (statusData.length === 0) {
+        console.warn('Empty status data array');
         return;
     }
 
     if (state.syncInProgress) {
-        console.log('Sync in progress, skipping status update');
+        console.log('Sync in progress, queuing status update');
+        setTimeout(() => handleStatusUpdate(statusData), 100);
         return;
     }
 
@@ -253,6 +462,15 @@ function handleStatusUpdate(statusData) {
         // Store latest status data
         state.latestStatus = statusData;
 
+        // Log each status update for debugging
+        statusData.forEach((update, index) => {
+            console.log(`Status ${index + 1}:`, {
+                endpoint: update.endpoint,
+                status: update.status,
+                timestamp: update.timestamp
+            });
+        });
+
         // Apply status updates to nodes
         applyLiveStatus();
 
@@ -260,32 +478,46 @@ function handleStatusUpdate(statusData) {
         requestAnimationFrame(() => {
             updateAllComponents();
             state.syncInProgress = false;
+            console.log('Status update completed');
         });
 
     } catch (error) {
         console.error('Error handling status update:', error);
         state.syncInProgress = false;
     }
+
+    console.log('=== END STATUS UPDATE ===');
 }
 
-// FIXED: Apply live status updates exactly like map.js
+// FIXED: Apply live status updates sesuai format server
 function applyLiveStatus() {
-    if (!state.latestStatus || state.latestStatus.length === 0) return;
+    if (!state.latestStatus || state.latestStatus.length === 0) {
+        console.log('No latest status to apply');
+        return;
+    }
 
     console.log(`Applying live status to ${state.nodes.length} nodes`);
 
     let updatedCount = 0;
 
     state.latestStatus.forEach(update => {
-        // Find node by endpoint (exact match or partial match)
-        const node = state.nodes.find(n =>
-            n.endpoint === update.endpoint ||
-            n.endpoint.includes(update.endpoint) ||
-            update.endpoint.includes(n.endpoint)
-        );
+        console.log(`Processing update for endpoint: ${update.endpoint}`);
+
+        // Find node by endpoint (sesuai dengan format server)
+        const node = state.nodes.find(n => {
+            // Hapus prefix "Endpoint " jika ada (sesuai server logic)
+            const cleanEndpoint = update.endpoint.replace(/^Endpoint\s*/i, '');
+            const nodeEndpoint = n.endpoint.replace(/^Endpoint\s*/i, '');
+
+            return nodeEndpoint === cleanEndpoint ||
+                   n.endpoint === update.endpoint ||
+                   n.endpoint.includes(update.endpoint) ||
+                   update.endpoint.includes(n.endpoint);
+        });
 
         if (!node) {
             console.warn(`No node found for endpoint: ${update.endpoint}`);
+            console.log('Available nodes:', state.nodes.map(n => n.endpoint));
             return;
         }
 
@@ -298,16 +530,14 @@ function applyLiveStatus() {
         node.lastPing = new Date(node.last_ping_raw).toLocaleTimeString('id-ID');
 
         // Log status changes
-        if (oldStatus !== newStatus) {
-            console.log(`Node ${node.endpoint} status updated: ${oldStatus} → ${newStatus} (original: "${update.status}")`);
-            updatedCount++;
-        }
+        console.log(`Node ${node.endpoint} status updated: ${oldStatus} → ${newStatus} (original: "${update.status}")`);
+        updatedCount++;
     });
 
     console.log(`Updated ${updatedCount} nodes with new status`);
 }
 
-// FIXED: Status normalization to match map.js exactly
+// Status normalization sesuai dengan server data format
 function normalizeStatus(status) {
     if (!status) return 'offline';
 
@@ -642,12 +872,19 @@ async function refreshData() {
     }
 }
 
-// Debug functions
+// ENHANCED: Debug functions dengan lebih banyak informasi koneksi
 function debugNodeData() {
     const stats = {
         totalNodes: state.nodes.length,
         latestStatusCount: state.latestStatus.length,
-        statusBreakdown: { online: 0, offline: 0, partial: 0, unknown: 0 }
+        statusBreakdown: { online: 0, offline: 0, partial: 0, unknown: 0 },
+        socketInfo: {
+            connected: state.socket?.connected || false,
+            id: state.socket?.id || null,
+            transport: state.socket?.io?.engine?.transport?.name || null,
+            pingInterval: state.socket?.io?.engine?.pingInterval || null,
+            pingTimeout: state.socket?.io?.engine?.pingTimeout || null
+        }
     };
 
     state.nodes.forEach(node => {
@@ -656,14 +893,104 @@ function debugNodeData() {
     });
 
     console.log('=== DASHBOARD DEBUG INFO ===');
-    console.log(stats);
-    console.log('Socket connected:', state.socket?.connected || false);
+    console.log('Stats:', stats);
+    console.log('Auth token:', getAuthToken());
+    console.log('Socket config:', getSocketConfig());
     console.log('Markers count:', state.markers.size);
     console.log('Latest status data:', state.latestStatus);
     console.log('Node endpoints:', state.nodes.map(n => n.endpoint));
+    console.log('Socket events:', state.socket?._callbacks || {});
     console.log('=== END DEBUG INFO ===');
 
     return stats;
+}
+
+// ENHANCED: Token debug function
+function debugTokenInfo() {
+    const tokenInfo = {
+        appConfigToken: window.AppConfig?.authToken || null,
+        legacyToken: window.userToken || null,
+        sessionToken: sessionStorage.getItem('auth_token'),
+        localToken: localStorage.getItem('auth_token'),
+        metaToken: document.querySelector('meta[name="auth-token"]')?.getAttribute('content'),
+        currentToken: getAuthToken(),
+        userInfo: {
+            id: window.AppConfig?.userId,
+            name: window.AppConfig?.userName,
+            authenticated: window.AppConfig?.isAuthenticated
+        }
+    };
+
+    console.log('=== TOKEN DEBUG INFO ===');
+    console.table(tokenInfo);
+    console.log('API Headers:', getAPIConfig());
+    console.log('Socket Auth:', getSocketConfig().options.auth);
+    console.log('=== END TOKEN DEBUG ===');
+
+    return tokenInfo;
+}
+
+// ENHANCED: Connection test function
+function testConnection() {
+    console.log('=== TESTING CONNECTION ===');
+
+    // Test token first
+    debugTokenInfo();
+
+    // Test socket connection
+    if (state.socket) {
+        console.log('Socket status:', {
+            connected: state.socket.connected,
+            disconnected: state.socket.disconnected,
+            id: state.socket.id,
+            transport: state.socket.io?.engine?.transport?.name
+        });
+
+        // Emit test event
+        state.socket.emit('test-connection', {
+            timestamp: new Date().toISOString(),
+            token: getAuthToken(),
+            userId: window.AppConfig?.userId,
+            message: 'Test from dashboard'
+        });
+    } else {
+        console.log('Socket not initialized');
+    }
+
+    // Test API connection
+    fetch('/api/nodes', { headers: getAPIConfig() })
+        .then(response => {
+            console.log('API test response:', response.status, response.statusText);
+            console.log('Request headers:', getAPIConfig());
+            return response.json();
+        })
+        .then(data => {
+            console.log('API test data:', data.length, 'nodes');
+        })
+        .catch(error => {
+            console.error('API test error:', error);
+        });
+
+    console.log('=== END CONNECTION TEST ===');
+}
+
+// ENHANCED: Force reconnect function
+function forceReconnect() {
+    console.log('Forcing socket reconnection with token refresh...');
+
+    if (state.socket) {
+        state.socket.disconnect();
+    }
+
+    // Clear cached tokens and re-store
+    clearAuthToken();
+    storeAuthToken(getAuthToken());
+
+    setTimeout(() => {
+        initializeSocket();
+    }, 1000);
+
+    showToast('Reconnecting with refreshed token...', 'info');
 }
 
 // Export functions for global access
@@ -671,17 +998,31 @@ Object.assign(window, {
     refreshMap,
     refreshData: debouncedRefreshData,
     debugNodeData,
+    testConnection,
+    forceReconnect,
 
     // Debug access to state
     getDashboardState: () => ({ ...state }),
 
+    // Token utilities
+    getAuthToken,
+    debugTokenInfo,
+    clearAuthToken,
+    storeAuthToken,
+    getAPIConfig,
+    getSocketConfig,
+
     // Utility functions
     applyLiveStatus,
     normalizeStatus,
-    focusOnNode
+    focusOnNode,
+
+    // Socket management
+    getSocket: () => state.socket,
+    initializeSocket
 });
 
-// Add optimized CSS (unchanged to preserve style)
+// Add optimized CSS styles
 const style = document.createElement('style');
 style.textContent = `
     .updated {
@@ -730,27 +1071,88 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
-// Optimized error handling
-window.addEventListener('error', throttle((event) => {
-    console.error('Unhandled error:', event.error);
-    showToast('An unexpected error occurred', 'error');
-}, 5000));
+// Auto connection monitoring
+let connectionCheckInterval;
 
-window.addEventListener('unhandledrejection', throttle((event) => {
-    console.error('Unhandled promise rejection:', event.reason);
-    showToast('A network error occurred', 'error');
-}, 5000));
+function startConnectionMonitoring() {
+    // Check connection every 30 seconds
+    connectionCheckInterval = setInterval(() => {
+        if (state.socket && !state.socket.connected) {
+            console.log('Connection lost detected, attempting to reconnect...');
+            forceReconnect();
+        }
+    }, 30000);
 
-// Cleanup on page unload
+    console.log('Connection monitoring started');
+}
+
+function stopConnectionMonitoring() {
+    if (connectionCheckInterval) {
+        clearInterval(connectionCheckInterval);
+        connectionCheckInterval = null;
+        console.log('Connection monitoring stopped');
+    }
+}
+
+// Enhanced cleanup on page unload
 window.addEventListener('beforeunload', () => {
+    console.log('Dashboard unloading, cleaning up...');
+
     if (state.socket) {
+        console.log('Disconnecting socket...');
         state.socket.disconnect();
     }
+
+    // Stop monitoring
+    stopConnectionMonitoring();
 
     // Clear intervals and timeouts
     state.markers.clear();
     state.nodes.length = 0;
     state.latestStatus.length = 0;
+
+    console.log('Cleanup completed');
 });
 
-console.log('Fixed Dashboard.js loaded successfully');
+// Optimized error handling
+window.addEventListener('error', throttle((event) => {
+    console.error('Unhandled error:', event.error);
+    showToast('An unexpected error occurred', 'error');
+
+    // Check connection if error is network related
+    if (event.error.message && event.error.message.includes('fetch')) {
+        testConnection();
+    }
+}, 5000));
+
+window.addEventListener('unhandledrejection', throttle((event) => {
+    console.error('Unhandled promise rejection:', event.reason);
+
+    // Check if it's a connection issue
+    if (event.reason && event.reason.message) {
+        if (event.reason.message.includes('fetch') ||
+            event.reason.message.includes('network') ||
+            event.reason.message.includes('timeout')) {
+            showToast('Connection issue detected', 'warning');
+            testConnection();
+        } else {
+            showToast('A network error occurred', 'error');
+        }
+    }
+}, 5000));
+
+// Start monitoring after initialization
+setTimeout(() => {
+    if (state.isInitialized) {
+        startConnectionMonitoring();
+    }
+}, 5000);
+
+console.log('✅ Fixed Dashboard.js loaded successfully - Connection focused version');
+console.log('🔑 Available debug functions:');
+console.log('  - testConnection() - Test socket and API connection');
+console.log('  - forceReconnect() - Force socket reconnection');
+console.log('  - debugNodeData() - Debug dashboard state');
+console.log('  - debugTokenInfo() - Debug token information');
+console.log('  - clearAuthToken() - Clear stored tokens');
+console.log('🔍 Expected server token: pindad_123 (or from AppConfig)');
