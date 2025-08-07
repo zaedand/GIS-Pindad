@@ -52,6 +52,7 @@ const SOCKET_CONFIG = {
     url: "http://localhost:3000",
     options: {
         transports: ['websocket', 'polling'],
+        auth: { token: window.userToken },
         timeout: 20000,
         reconnection: true,
         reconnectionAttempts: 5,

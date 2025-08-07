@@ -8,14 +8,28 @@ Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
-// Gunakan hanya apiResource dengan binding yang benar
-Route::apiResource('nodes', NodeController::class)->parameters([
-    'nodes' => 'node'
-]);
-Route::prefix('history')->group(function () {
+// Gunakan middleware dengan rate limiter yang sudah didefinisikan
+Route::apiResource('nodes', NodeController::class)
+    ->parameters(['nodes' => 'node'])
+    ->middleware(['auth:sanctum', 'throttle:api']);
+
+Route::prefix('history')->middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::get('/endpoint/{endpoint}', [HistoryController::class, 'getHistory']);
     Route::get('/endpoint/{endpoint}/stats', [HistoryController::class, 'getStats']);
     Route::get('/offline', [HistoryController::class, 'getCurrentOffline']);
     Route::get('/all', [HistoryController::class, 'getAllHistory']);
     Route::post('/update-status', [HistoryController::class, 'updateStatus']);
 });
+
+// Testing routes
+Route::get('/test-public', function () {
+    return response()->json(['message' => 'Public API working', 'laravel' => app()->version()]);
+});
+
+Route::get('/test', function () {
+    return response()->json([
+        'message' => 'API working',
+        'user' => auth()->user(),
+        'laravel' => app()->version()
+    ]);
+})->middleware(['auth:sanctum', 'throttle:api']);

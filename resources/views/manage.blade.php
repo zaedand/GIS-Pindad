@@ -122,9 +122,9 @@
                 <div class="mt-4">
 
                 <div class="mb-4 flex items-center gap-2">
-                    <input type="text" id="deviceSearch" placeholder="Cari perangkat..." 
+                    <input type="text" id="deviceSearch" placeholder="Cari perangkat..."
                         class="w-full md:w-1/3 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                    <button onclick="filterDevices()" 
+                    <button onclick="filterDevices()"
                             class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition">
                         Search
                     </button>
@@ -244,6 +244,14 @@
             row.style.display = text.includes(filter) ? "" : "none";
         }
     }
+</script>
+<script>
+    @auth
+        window.userToken = @json(auth()->user()->createToken('map-token')->plainTextToken);
+    @else
+        window.userToken = null;
+        window.location.href = '/login';
+    @endauth
 </script>
 <script>
     window.userToken = "{{ $apiKey }}";

@@ -24,8 +24,28 @@ let lastSearchQuery = '';
 const apiHeaders = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
+    'Authorization': `Bearer ${getAuthToken()}` // Tambahkan ini
 };
+
+// Tambahkan fungsi untuk mendapatkan token
+function getAuthToken() {
+    const token = window.userToken ||
+                 localStorage.getItem('auth_token') ||
+                 sessionStorage.getItem('auth_token') ||
+                 document.querySelector('meta[name="auth-token"]')?.getAttribute('content');
+
+    if (!token) {
+        console.error('No authentication token found');
+        showToast('Authentication required. Redirecting to login...', 'error');
+        setTimeout(() => {
+            window.location.href = '/login';
+        }, 2000);
+        return '';
+    }
+
+    return token;
+}
 
 // Constants
 const MAP_CONFIG = {
@@ -71,7 +91,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Socket.IO connection
 function initializeSocket() {
     if (!window.userToken) {
-        console.error("JWT Token tidak ditemukan. Pastikan sudah di-embed di Blade.");
+        console.error("JWT Token tidak ditemukan.");
         return;
     }
 
@@ -122,14 +142,47 @@ function handleStatusUpdate(statusData) {
 // Fetch nodes from API
 async function fetchNodes() {
     try {
-        const response = await fetch('/api/nodes', { headers: apiHeaders });
+        const token = getAuthToken();
+        console.log('Using token:', token ? 'Present' : 'Missing');
+
+        const headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
+        };
+
+        // Hanya tambahkan Authorization jika token ada
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        console.log('Request headers:', headers);
+        console.log('Making request to:', '/api/nodes');
+
+        const response = await fetch('/api/nodes', { headers });
+
+        console.log('Response status:', response.status);
+        console.log('Response headers:', [...response.headers.entries()]);
 
         if (!response.ok) {
+            // Log response text untuk debugging
+            const errorText = await response.text();
+            console.error('Response error text:', errorText);
+
+            if (response.status === 401) {
+                showToast('Authentication required. Please login.', 'error');
+                return;
+            }
+            if (response.status === 500) {
+                showToast('Server error. Check console for details.', 'error');
+                return;
+            }
             throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        nodes = await response.json();
-        filteredNodes = [...nodes]; // Initialize filtered nodes
+        const data = await response.json();
+        nodes = data;
+        filteredNodes = [...nodes];
         console.log('Fetched nodes:', nodes);
 
         applyLiveStatus();
@@ -1022,20 +1075,30 @@ function handleFormSubmit(e) {
 // CRUD Operations
 async function createNode(nodeData) {
     try {
+        const headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
+            'Authorization': `Bearer ${getAuthToken()}`
+        };
+
         const response = await fetch('/api/nodes', {
             method: 'POST',
-            headers: apiHeaders,
+            headers,
             body: JSON.stringify(nodeData),
         });
 
         if (!response.ok) {
+            if (response.status === 401) {
+                showToast('Authentication required', 'error');
+                return;
+            }
             throw new Error(`HTTP error! status: ${response.status}`);
         }
 
         const newNode = await response.json();
         nodes.push(newNode);
 
-        // Update filtered nodes if search is active
         if (lastSearchQuery) {
             performSearch(lastSearchQuery);
         } else {
@@ -1053,13 +1116,24 @@ async function createNode(nodeData) {
 
 async function updateNode(id, nodeData) {
     try {
+        const headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
+            'Authorization': `Bearer ${getAuthToken()}`
+        };
+
         const response = await fetch(`/api/nodes/${id}`, {
             method: 'PUT',
-            headers: apiHeaders,
+            headers,
             body: JSON.stringify(nodeData),
         });
 
         if (!response.ok) {
+            if (response.status === 401) {
+                showToast('Authentication required', 'error');
+                return;
+            }
             throw new Error(`HTTP error! status: ${response.status}`);
         }
 
@@ -1068,7 +1142,6 @@ async function updateNode(id, nodeData) {
         if (index !== -1) {
             nodes[index] = updatedNode;
 
-            // Update filtered nodes if search is active
             if (lastSearchQuery) {
                 performSearch(lastSearchQuery);
             } else {
@@ -1091,28 +1164,33 @@ async function deleteNode(id) {
         'Are you sure you want to delete this device? This action cannot be undone.',
         async () => {
             try {
+                const headers = {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
+                    'Authorization': `Bearer ${getAuthToken()}`
+                };
+
                 const response = await fetch(`/api/nodes/${id}`, {
                     method: 'DELETE',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
-                    }
+                    headers
                 });
 
                 if (!response.ok) {
+                    if (response.status === 401) {
+                        showToast('Authentication required', 'error');
+                        return;
+                    }
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
 
                 nodes = nodes.filter(node => node.id !== id);
 
-                // Update filtered nodes if search is active
                 if (lastSearchQuery) {
                     performSearch(lastSearchQuery);
                 } else {
                     filteredNodes = [...nodes];
                 }
 
-                // Adjust current page if necessary
                 const newTotalPages = Math.ceil(filteredNodes.length / itemsPerPage) || 1;
                 if (currentPage > newTotalPages) {
                     currentPage = newTotalPages;
