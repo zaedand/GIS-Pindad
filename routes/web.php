@@ -4,16 +4,18 @@ use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ManageController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\LogsController;
 
 Route::get('/', function () {
     return view('welcome');
 });
 
 Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth'])->name('dashboard');
+Route::get('/logs', [LogsController::class, 'index'])->middleware(['auth'])->name('logs');
 
-Route::get('/logs', function () {
-    return view('logs');
-})->middleware(['auth'])->name('logs');
+// Route::get('/logs', function () {
+//     return view('logs');
+// })->middleware(['auth'])->name('logs');
 
 
 Route::middleware(['auth'])->group(function () {

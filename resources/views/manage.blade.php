@@ -245,14 +245,14 @@
         }
     }
 </script>
-<script>
+<!-- <script>
     @auth
         window.userToken = @json(auth()->user()->createToken('map-token')->plainTextToken);
     @else
         window.userToken = null;
         window.location.href = '/login';
     @endauth
-</script>
+</script> -->
 <script>
     window.userToken = "{{ $apiKey }}";
 </script>

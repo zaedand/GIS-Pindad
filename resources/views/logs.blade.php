@@ -99,6 +99,17 @@
             <!-- JavaScript will populate this with pagination controls -->
         </div>
     </div>
+<!-- <script>
+    @auth
+        window.userToken = @json(auth()->user()->createToken('map-token')->plainTextToken);
+    @else
+        window.userToken = null;
+        window.location.href = '/login';
+    @endauth
+</script> -->
+<script>
+    window.userToken = "{{ $apiKey }}";
+</script>
 
 @push('scripts')
     @vite('resources/js/logs.js')

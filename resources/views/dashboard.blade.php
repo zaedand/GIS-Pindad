@@ -97,7 +97,7 @@
 
         </div>
     </div>
-<script>
+<!-- <script>
     @auth
         window.userToken = @json(auth()->user()->createToken('map-token')->plainTextToken);
     @else
@@ -107,7 +107,7 @@
 </script>
 <script>
     window.userToken = "{{ $apiKey }}";
-</script>
+</script> -->
 @push('scripts')
     @vite('resources/js/dashMap.js')
 @endpush

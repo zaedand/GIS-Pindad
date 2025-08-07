@@ -402,6 +402,8 @@ function initializeSocket() {
 
         const url = socketUrls[urlIndex];
         console.log(`Attempting socket connection to: ${url}`);
+        console.log("Token:", window.userToken);  // Harus muncul string token valid
+
 
         socket = io(url, {
             transports: ['websocket', 'polling'],
@@ -409,7 +411,12 @@ function initializeSocket() {
             reconnection: true,
             reconnectionDelay: 1000,
             reconnectionAttempts: 3,
-            timeout: 5000
+            timeout: 5000,
+            auth: { token: window.userToken }
+            // Add authentication token
+            // auth: {
+            //     token: 'pindad_123'  // Add the required token
+            // }
         });
 
         socket.on('connect', () => {
@@ -435,15 +442,41 @@ function initializeSocket() {
             }
         });
 
+        socket.on('server-info', (info) => {
+            console.log('Server info:', info);
+            showNotification('Connected to device monitoring server', 'success');
+        });
+
+        socket.on('server-error', (error) => {
+            console.warn('Server error:', error);
+            showNotification('Server API temporarily unavailable', 'warning');
+        });
+
         socket.on('disconnect', () => {
             console.log('Disconnected from Socket.IO server');
+            socketConnected = false;
             showNotification('Server disconnected', 'warning');
         });
 
         socket.on('connect_error', (error) => {
             console.error(`Server connection error for ${url}:`, error);
+            
+            // Show specific error message for authentication
+            if (error.message === 'Unauthorized') {
+                showNotification('Authentication failed - invalid token', 'error');
+                return; // Don't try other URLs for auth errors
+            }
+            
             if (!socketConnected) {
                 tryConnect(urlIndex + 1);
+            }
+        });
+
+        // Handle authentication errors specifically
+        socket.on('error', (error) => {
+            console.error('Socket error:', error);
+            if (error === 'Unauthorized') {
+                showNotification('Authentication failed - check token', 'error');
             }
         });
     }

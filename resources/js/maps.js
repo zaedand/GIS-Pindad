@@ -91,7 +91,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Socket.IO connection
 function initializeSocket() {
     if (!window.userToken) {
-        console.error("JWT Token tidak ditemukan.");
+        console.error("Token tidak ditemukan.");
         return;
     }
 

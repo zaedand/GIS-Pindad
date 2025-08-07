@@ -7,7 +7,7 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $apiKey = config('services.maps.api_key'); // atau hardcode 'your-api-key';
+        $apiKey = env('SOCKET_KEY');
         return view('dashboard', compact('apiKey'));
     }
 }

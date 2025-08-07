@@ -220,9 +220,6 @@ function initializeSocket() {
         console.log('Socket already connected');
         return;
     }
-
-    console.log('=== SOCKET INITIALIZATION ===');
-
     const socketConfig = getSocketConfig();
     console.log('Socket URL:', socketConfig.url);
     console.log('Auth info:', {
