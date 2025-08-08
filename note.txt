@@ -1735,9 +1735,12 @@ async function loadActivityLogsFromDatabase() {
 2. icon dihilangkan
 <<<<<<< HEAD
 
+
+
+
 day
 1 --
-2 ranvang data
+2 rancang database
 3 figma
 4 Frontend
 -
@@ -1766,3 +1769,7 @@ day
 =======
 1 membersihkan kantor, memperbaiki error koneksi, update server
 4 uptime
+5 menambah token koneksi ke socket server
+6 melindungi route api dengan sanctum
+7 menambah user role akses, sanctum & token
+8 audiens presentasi projek 
