@@ -116,7 +116,7 @@ function initializeSocket() {
 
     socket.on("connect_error", (error) => {
         console.error("Socket connection error:", error.message);
-        showToast('Failed to connect server', 'error');
+        showToast(`Failed to connect: ${error.message}`, 'error');
     });
 
     socket.on("device-status", (statusData) => {

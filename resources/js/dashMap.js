@@ -268,7 +268,7 @@ function initializeSocket() {
             } else if (error.message.includes('timeout')) {
                 showToast('Connection timeout. Check server availability.', 'error');
             } else {
-                showToast(`Connection failed: ${error.message}`, 'error');
+                showToast(`Failed to connect: ${error.message}`, 'error');
             }
         });
 

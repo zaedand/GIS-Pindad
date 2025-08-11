@@ -1100,6 +1100,12 @@ function initializeSearch() {
                         >
                             <i class="fas fa-times mr-1"></i>Clear Filters
                         </button>
+                        <button 
+                            onclick="exportPdfReport()" 
+                            class="px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors text-sm"
+                        >
+                            <i class="fas fa-download mr-1"></i>Export PDF
+                        </button>
                         <button
                             onclick="showEndpointSummary()"
                             class="px-4 py-2 text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors text-sm"
@@ -1663,6 +1669,288 @@ function displayEndpointHistoryModal(endpoint, data) {
         }
     });
 }
+/**
+ * Export PDF Report with options
+ */
+async function exportPdfReport(options = {}) {
+    try {
+        // Show loading indicator
+        showNotification('Generating PDF report...', 'info');
+        
+        // Default options
+        const defaultOptions = {
+            period: '30',      // days
+            quarter: 'IV',     // Q1, Q2, Q3, Q4
+            year: '2024',      // year
+            format: 'download' // download or view
+        };
+        
+        const params = { ...defaultOptions, ...options };
+        
+        // Build query parameters
+        const queryParams = new URLSearchParams(params);
+        
+        // Make request to PDF export endpoint
+        const response = await fetch(`/api/history/export-pdf?${queryParams}`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/pdf',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        }
+        
+        // Get the PDF blob
+        const blob = await response.blob();
+        
+        if (params.format === 'view') {
+            // Open PDF in new window
+            const url = window.URL.createObjectURL(blob);
+            window.open(url, '_blank');
+            window.URL.revokeObjectURL(url);
+        } else {
+            // Download PDF
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `Laporan_Status_Telepon_Q${params.quarter}_${params.year}_${new Date().toISOString().split('T')[0]}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        }
+        
+        showNotification('PDF report generated successfully', 'success');
+        
+    } catch (error) {
+        console.error('Error generating PDF report:', error);
+        showNotification(`Error generating PDF report: ${error.message}`, 'error');
+    }
+}
+
+/**
+ * Show PDF export options modal
+ */
+function showPdfExportModal() {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+    
+    modal.innerHTML = `
+        <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
+            <div class="p-6 border-b border-gray-200">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800">
+                            Export Laporan PDF
+                        </h2>
+                        <p class="text-gray-600 mt-1">Generate laporan KPI status telepon</p>
+                    </div>
+                    <button onclick="this.closest('.fixed').remove()"
+                            class="text-gray-500 hover:text-gray-700 text-2xl p-2">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="p-6">
+                <form id="pdf-export-form" class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <!-- Period Selection -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Periode Monitoring
+                            </label>
+                            <select name="period" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                <option value="7">7 Hari Terakhir</option>
+                                <option value="14">14 Hari Terakhir</option>
+                                <option value="30" selected>30 Hari Terakhir</option>
+                                <option value="60">60 Hari Terakhir</option>
+                                <option value="90">90 Hari Terakhir</option>
+                            </select>
+                        </div>
+
+                        <!-- Quarter Selection -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Triwulan
+                            </label>
+                            <select name="quarter" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                <option value="I">Triwulan I</option>
+                                <option value="II">Triwulan II</option>
+                                <option value="III">Triwulan III</option>
+                                <option value="IV" selected>Triwulan IV</option>
+                            </select>
+                        </div>
+
+                        <!-- Year Selection -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Tahun
+                            </label>
+                            <select name="year" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                <option value="2023">2023</option>
+                                <option value="2024" selected>2024</option>
+                                <option value="2025">2025</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Report Preview Info -->
+                    <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                        <h4 class="text-sm font-semibold text-blue-800 mb-2">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Informasi Laporan
+                        </h4>
+                        <div class="text-sm text-blue-700 space-y-1">
+                            <p>• Laporan akan mencakup ringkasan status semua telepon</p>
+                            <p>• Data uptime dan downtime per endpoint</p>
+                            <p>• Ranking endpoint yang sering offline</p>
+                            <p>• Statistik lengkap sesuai periode yang dipilih</p>
+                        </div>
+                    </div>
+
+                    <!-- Current Statistics Preview -->
+                    <div class="bg-gray-50 rounded-xl p-4">
+                        <h4 class="text-sm font-semibold text-gray-800 mb-3">
+                            Preview Statistik Saat Ini
+                        </h4>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                            <div class="bg-white rounded-lg p-3 border">
+                                <div class="text-2xl font-bold text-blue-600" id="preview-total">-</div>
+                                <div class="text-xs text-gray-600">Total Telepon</div>
+                            </div>
+                            <div class="bg-white rounded-lg p-3 border">
+                                <div class="text-2xl font-bold text-green-600" id="preview-online">-</div>
+                                <div class="text-xs text-gray-600">Online</div>
+                            </div>
+                            <div class="bg-white rounded-lg p-3 border">
+                                <div class="text-2xl font-bold text-red-600" id="preview-offline">-</div>
+                                <div class="text-xs text-gray-600">Offline</div>
+                            </div>
+                            <div class="bg-white rounded-lg p-3 border">
+                                <div class="text-2xl font-bold text-indigo-600" id="preview-uptime">-</div>
+                                <div class="text-xs text-gray-600">Avg Uptime</div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="p-6 border-t border-gray-200 bg-gray-50 flex justify-between items-center">
+                <div class="text-sm text-gray-600">
+                    <i class="fas fa-clock mr-1"></i>
+                    Estimasi waktu: ~10-30 detik
+                </div>
+                
+                <div class="flex gap-3">
+                    <button
+                        type="button"
+                        onclick="this.closest('.fixed').remove()"
+                        class="px-4 py-2 text-gray-600 hover:text-gray-800 bg-white hover:bg-gray-100 border border-gray-300 rounded-lg transition-colors"
+                    >
+                        Batal
+                    </button>
+                    <button
+                        type="button"
+                        onclick="handlePdfExport('view')"
+                        class="px-4 py-2 text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors"
+                    >
+                        <i class="fas fa-eye mr-1"></i>
+                        Preview
+                    </button>
+                    <button
+                        type="button"
+                        onclick="handlePdfExport('download')"
+                        class="px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors"
+                    >
+                        <i class="fas fa-download mr-1"></i>
+                        Download PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Close on backdrop click
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+
+    // Update preview statistics
+    updatePdfPreviewStats();
+}
+
+/**
+ * Handle PDF export from modal
+ */
+function handlePdfExport(format = 'download') {
+    const form = document.getElementById('pdf-export-form');
+    if (!form) return;
+
+    const formData = new FormData(form);
+    const options = {
+        period: formData.get('period'),
+        quarter: formData.get('quarter'),
+        year: formData.get('year'),
+        format: format
+    };
+
+    // Close modal
+    form.closest('.fixed').remove();
+
+    // Export PDF
+    exportPdfReport(options);
+}
+
+/**
+ * Update preview statistics in modal
+ */
+function updatePdfPreviewStats() {
+    const totalEl = document.getElementById('preview-total');
+    const onlineEl = document.getElementById('preview-online');
+    const offlineEl = document.getElementById('preview-offline');
+    const uptimeEl = document.getElementById('preview-uptime');
+
+    if (!totalEl || !nodes) return;
+
+    const total = nodes.length;
+    const online = nodes.filter(n => normalizeStatus(n.status) === 'online').length;
+    const offline = total - online;
+    const avgUptime = total > 0 ? Math.round((online / total) * 100) : 0;
+
+    totalEl.textContent = total;
+    onlineEl.textContent = online;
+    offlineEl.textContent = offline;
+    uptimeEl.textContent = avgUptime + '%';
+}
+
+/**
+ * Quick PDF export with default settings
+ */
+function quickExportPdf() {
+    exportPdfReport({
+        period: '30',
+        quarter: 'IV',
+        year: '2024',
+        format: 'download'
+    });
+}
+
+// Add to existing export functions
+window.exportPdfReport = exportPdfReport;
+window.showPdfExportModal = showPdfExportModal;
+window.handlePdfExport = handlePdfExport;
+window.updatePdfPreviewStats = updatePdfPreviewStats;
+window.quickExportPdf = quickExportPdf;
 
 function getPopupContent(node, color) {
     return `

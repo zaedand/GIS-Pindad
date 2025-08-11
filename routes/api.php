@@ -19,6 +19,8 @@ Route::prefix('history')->middleware(['auth:sanctum', 'throttle:api'])->group(fu
     Route::get('/offline', [HistoryController::class, 'getCurrentOffline']);
     Route::get('/all', [HistoryController::class, 'getAllHistory']);
     Route::post('/update-status', [HistoryController::class, 'updateStatus']);
+
+    Route::get('/export-pdf', [HistoryController::class, 'exportPdf']);
 });
 
 // Testing routes
