@@ -54,7 +54,7 @@ class HistoryController extends Controller
     {
         try {
             $limit = $request->get('limit', 50);
-            
+
             $history = DeviceHistory::where('endpoint', $endpoint)
                 ->orderBy('timestamp', 'desc')
                 ->orderBy('created_at', 'desc')
@@ -92,7 +92,7 @@ class HistoryController extends Controller
                 ->whereNotNull('duration')
                 ->avg('duration');
 
-            $stats['avg_offline_duration'] = $avgDuration ? 
+            $stats['avg_offline_duration'] = $avgDuration ?
                 $this->formatDuration($avgDuration) : 'N/A';
 
             return response()->json($stats);
@@ -199,7 +199,7 @@ class HistoryController extends Controller
     private function exportToCsv($history)
     {
         $filename = 'activity_logs_' . date('Y-m-d') . '.csv';
-        
+
         $headers = [
             'Content-Type' => 'text/csv',
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
@@ -207,10 +207,10 @@ class HistoryController extends Controller
 
         $callback = function() use ($history) {
             $file = fopen('php://output', 'w');
-            
+
             // CSV Headers
             fputcsv($file, [
-                'ID', 'Endpoint', 'Node Name', 'Previous Status', 
+                'ID', 'Endpoint', 'Node Name', 'Previous Status',
                 'Current Status', 'Timestamp', 'Description', 'Created At'
             ]);
 
@@ -285,7 +285,7 @@ class HistoryController extends Controller
             $reportType = $request->get('report_type', 'summary');
             $quarter = $request->get('quarter', 'IV');
             $year = $request->get('year', date('Y'));
-            
+
             // Determine date range based on method
             if ($dateMethod === 'custom') {
                 $startDate = Carbon::parse($request->get('start_date'));
@@ -294,7 +294,7 @@ class HistoryController extends Controller
             } else {
                 $period = (int) $request->get('period', 30);
                 $timeframe = $request->get('timeframe', 'days');
-                
+
                 // Calculate dates based on timeframe
                 switch ($timeframe) {
                     case 'from_start':
@@ -313,7 +313,7 @@ class HistoryController extends Controller
             }
 
             // Validate date range
-            $daysDiff = $startDate->diffInDays($endDate) + 1;
+            $daysDiff = round($startDate->diffInDays($endDate) + 1);
             if ($daysDiff > 365) {
                 return response()->json([
                     'error' => 'Date range too large',
@@ -330,14 +330,14 @@ class HistoryController extends Controller
             // Get all nodes data
             $nodes = Node::all();
             $totalNodes = $nodes->count();
-            
+
             // Calculate current status statistics
             $onlineNodes = $nodes->where('status', 'online')->count();
             $offlineNodes = $nodes->where('status', 'offline')->count();
             $partialNodes = $nodes->where('status', 'partial')->count();
             $onlinePercentage = $totalNodes > 0 ? round(($onlineNodes / $totalNodes) * 100, 1) : 0;
             $offlinePercentage = $totalNodes > 0 ? round(($offlineNodes / $totalNodes) * 100, 1) : 0;
-            
+
             // Get period-specific data
             $periodStats = $this->getPeriodStatistics($startDate, $endDate);
             $frequentlyOfflineEndpoints = $this->getFrequentlyOfflineEndpoints($startDate, $endDate, 10);
@@ -358,7 +358,7 @@ class HistoryController extends Controller
                 'target' => '≥ 95%',
                 'realisasi' => $avgUptime . '%',
                 'status_kpi' => $avgUptime >= 95 ? 'TERCAPAI' : 'TIDAK TERCAPAI',
-                
+
                 // Report metadata
                 'report_type' => $reportType,
                 'date_method' => $dateMethod,
@@ -370,7 +370,7 @@ class HistoryController extends Controller
                 'end_date' => $endDate->format('d/m/Y'),
                 'start_date_long' => $startDate->locale('id')->translatedFormat('l, j F Y'),
                 'end_date_long' => $endDate->locale('id')->translatedFormat('l, j F Y'),
-                
+
                 // Current statistics
                 'total_phones' => $totalNodes,
                 'online_phones' => $onlineNodes,
@@ -379,29 +379,29 @@ class HistoryController extends Controller
                 'online_percentage' => $onlinePercentage,
                 'offline_percentage' => $offlinePercentage,
                 'avg_uptime' => $avgUptime,
-                
+
                 // Period statistics
                 'period_stats' => $periodStats,
                 'frequently_offline' => $frequentlyOfflineEndpoints,
-                
+
                 // Data tables
                 'endpoints_data' => $endpointsData,
                 'ranking_data' => $rankingData,
                 'history_data' => $historyData,
                 'recommendations' => $recommendations,
-                
+
                 // Report options
                 'include_charts' => $includeCharts,
                 'include_ranking' => $includeRanking,
                 'include_history' => $includeHistory,
                 'include_recommendations' => $includeRecommendations,
-                
+
                 // Report signature
                 'prepared_by' => 'Sistem Monitoring Telepon',
                 'position' => 'Admin IT',
                 'department' => 'Departemen Teknologi Informasi'
             ];
-            
+
             // Select appropriate view based on report type
             $viewName = match($reportType) {
                 'detailed' => 'reports.phone-status-detailed-pdf',
@@ -411,7 +411,7 @@ class HistoryController extends Controller
 
             // Generate PDF
             $pdf = Pdf::loadView($viewName, $reportData);
-            
+
             // Configure PDF settings based on report type
             $orientation = $reportType === 'detailed' ? 'landscape' : 'portrait';
             $pdf->setPaper('A4', $orientation);
@@ -422,18 +422,18 @@ class HistoryController extends Controller
                 'isHtml5ParserEnabled' => true,
                 'chroot' => public_path(),
             ]);
-            
+
             // Generate filename
             $filename = $this->generatePdfFilename($reportData);
-            
+
             return $pdf->download($filename);
-            
+
         } catch (\Exception $e) {
             \Log::error('PDF Export Error: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
                 'request_data' => $request->all()
             ]);
-            
+
             return response()->json([
                 'error' => 'Failed to generate PDF report',
                 'message' => $e->getMessage(),
@@ -448,7 +448,7 @@ class HistoryController extends Controller
     private function getQuarterDateRange($quarter, $year): array
     {
         $year = (int) $year;
-        
+
         switch ($quarter) {
             case 'I':
                 return [
@@ -531,8 +531,8 @@ class HistoryController extends Controller
             ->limit($limit)
             ->pluck('endpoint')
             ->toArray();
-            
-        return empty($frequentOffline) ? 'Tidak ada data untuk periode ini' : 
+
+        return empty($frequentOffline) ? 'Tidak ada data untuk periode ini' :
             'Endpoint ' . implode(', Endpoint ', $frequentOffline);
     }
 
@@ -542,12 +542,12 @@ class HistoryController extends Controller
     private function generateEndpointsData($nodes, $startDate, $endDate): array
     {
         $endpointsData = [];
-        
+
         foreach ($nodes as $node) {
             $uptimeData = $this->calculateRealUptime($node->endpoint, $startDate, $endDate);
             $statistics = $this->getEndpointStatistics($node->endpoint, $startDate, $endDate);
             $totalOffline = $this->getTotalOfflineDuration($node->endpoint, $startDate, $endDate);
-            
+
             $endpointsData[] = [
                 'endpoint' => $node->endpoint,
                 'building' => $node->name ?? 'Unknown',
@@ -561,12 +561,12 @@ class HistoryController extends Controller
                 'reliability_score' => $this->calculateReliabilityScore($uptimeData['uptimePercentage'], $statistics['offline_events'])
             ];
         }
-        
+
         // Sort by reliability score (lowest first to show problematic ones first)
         usort($endpointsData, function($a, $b) {
             return $a['reliability_score'] - $b['reliability_score'];
         });
-        
+
         return $endpointsData;
     }
 
@@ -577,7 +577,7 @@ class HistoryController extends Controller
     {
         $uptimeScore = $uptimePercentage * 0.7; // 70% weight for uptime
         $stabilityScore = max(0, 100 - ($offlineEvents * 5)) * 0.3; // 30% weight for stability
-        
+
         return (int) round($uptimeScore + $stabilityScore);
     }
 
@@ -677,9 +677,9 @@ class HistoryController extends Controller
             ->whereBetween('timestamp', [$startDate, $endDate])
             ->orderBy('timestamp', 'asc')
             ->get();
-            
+
         $totalMinutes = $startDate->diffInMinutes($endDate);
-        
+
         if ($endpointLogs->isEmpty()) {
             return [
                 'uptimePercentage' => 0,
@@ -689,14 +689,14 @@ class HistoryController extends Controller
                 'dataAvailable' => false
             ];
         }
-        
+
         $offlineMinutes = 0;
         $currentOfflineStart = null;
-        
+
         // Calculate offline duration
         foreach ($endpointLogs as $log) {
             $logTime = Carbon::parse($log->timestamp);
-            
+
             if ($log->current_status === 'offline' && !$currentOfflineStart) {
                 $currentOfflineStart = $logTime;
             } elseif ($log->current_status === 'online' && $currentOfflineStart) {
@@ -704,15 +704,15 @@ class HistoryController extends Controller
                 $currentOfflineStart = null;
             }
         }
-        
+
         // If still offline at end of period
         if ($currentOfflineStart) {
             $offlineMinutes += $currentOfflineStart->diffInMinutes($endDate);
         }
-        
+
         $onlineMinutes = max(0, $totalMinutes - $offlineMinutes);
         $uptimePercentage = $totalMinutes > 0 ? round(($onlineMinutes / $totalMinutes) * 100, 1) : 0;
-        
+
         return [
             'uptimePercentage' => $uptimePercentage,
             'totalMinutes' => $totalMinutes,
@@ -749,13 +749,13 @@ class HistoryController extends Controller
             ->whereBetween('timestamp', [$startDate, $endDate])
             ->orderBy('timestamp', 'asc')
             ->get();
-            
+
         $totalMinutes = 0;
         $currentOfflineStart = null;
-        
+
         foreach ($logs as $log) {
             $logTime = Carbon::parse($log->timestamp);
-            
+
             if ($log->current_status === 'offline' && !$currentOfflineStart) {
                 $currentOfflineStart = $logTime;
             } elseif ($log->current_status === 'online' && $currentOfflineStart) {
@@ -763,12 +763,12 @@ class HistoryController extends Controller
                 $currentOfflineStart = null;
             }
         }
-        
+
         // If still offline
         if ($currentOfflineStart) {
             $totalMinutes += $currentOfflineStart->diffInMinutes($endDate);
         }
-        
+
         return [
             'minutes' => $totalMinutes,
             'formatted' => $this->formatDuration($totalMinutes)
@@ -781,7 +781,7 @@ class HistoryController extends Controller
     private function generatePdfFilename($reportData): string
     {
         $type = ucfirst($reportData['report_type']);
-        
+
         if ($reportData['date_method'] === 'custom') {
             $start = str_replace('/', '-', $reportData['start_date']);
             $end = str_replace('/', '-', $reportData['end_date']);
@@ -808,7 +808,7 @@ class HistoryController extends Controller
             default: return 'Unknown';
         }
     }
-    
+
     /**
      * Format duration in minutes to readable format
      */
@@ -816,30 +816,30 @@ class HistoryController extends Controller
     {
         if ($minutes < 1) return 'Kurang dari 1 menit';
         if ($minutes < 60) return $minutes . ' menit';
-        
+
         $hours = floor($minutes / 60);
         $remainingMinutes = $minutes % 60;
-        
+
         if ($hours < 24) {
-            return $remainingMinutes > 0 ? 
-                "{$hours}j {$remainingMinutes}m" : 
+            return $remainingMinutes > 0 ?
+                "{$hours}j {$remainingMinutes}m" :
                 "{$hours} jam";
         }
-        
+
         $days = floor($hours / 24);
         $remainingHours = $hours % 24;
-        
-        return $remainingHours > 0 ? 
-            "{$days}h {$remainingHours}j" : 
+
+        return $remainingHours > 0 ?
+            "{$days}h {$remainingHours}j" :
             "{$days} hari";
     }
 
-    
+
     /**
      * Generate endpoints data for table
      */
-    
-    
+
+
     /**
      * Generate ranking data for frequently offline endpoints
      */
@@ -849,12 +849,12 @@ class HistoryController extends Controller
 private function generateRankingData($nodes, $startDate, $endDate)
 {
     $rankingData = [];
-    
+
     foreach ($nodes as $node) {
         $uptimeData = $this->calculateRealUptime($node->endpoint, $startDate, $endDate);
         $statistics = $this->getEndpointStatistics($node->endpoint, $startDate, $endDate);
         $totalOfflineDuration = $this->getTotalOfflineDuration($node->endpoint, $startDate, $endDate);
-        
+
         // Only include endpoints that have had offline events
         if ($statistics['offline_events'] > 0) {
             $rankingData[] = [
@@ -870,33 +870,33 @@ private function generateRankingData($nodes, $startDate, $endDate)
             ];
         }
     }
-    
+
     // Sort by offline events (descending - most problematic first)
     usort($rankingData, function($a, $b) {
         return $b['offline_score'] - $a['offline_score'];
     });
-    
+
     // Add ranking numbers
     foreach ($rankingData as $index => &$data) {
         $data['rank'] = $index + 1;
     }
-    
+
     return array_slice($rankingData, 0, 20); // Top 20 most problematic
 }
-    
+
     /**
      * Calculate real uptime for endpoint
      */
-    
+
     /**
      * Get endpoint statistics
      */
-    
-    
+
+
     /**
      * Get total offline duration for endpoint
      */
-  
+
     /**
      * Get last activity for endpoint
      */
@@ -905,20 +905,20 @@ private function generateRankingData($nodes, $startDate, $endDate)
         $lastActivity = DeviceHistory::where('endpoint', $endpoint)
             ->orderBy('timestamp', 'desc')
             ->first();
-            
-        return $lastActivity ? 
+
+        return $lastActivity ?
             Carbon::parse($lastActivity->timestamp)->format('d/m/Y H:i:s') : 'N/A';
     }
-    
+
     /**
      * Format status for display
      */
-    
-    
+
+
     /**
      * Format duration in minutes to readable format
      */
-    
-    
+
+
     // ... existing methods ...
 }

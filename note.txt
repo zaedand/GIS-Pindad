@@ -1735,6 +1735,9 @@ async function loadActivityLogsFromDatabase() {
 2. icon dihilangkan
 <<<<<<< HEAD
 
+note: mungkin di controllernya, masalah ketika input status/jumlah telepon yang online dan offline itu diambil dari database, padahal dari realtimenya terbaca online, mungkin itu menimpa ya, apakah bisa, ketika data diekspor pada waktu tsb ketika endpoin mendapat update dari websocket, maka total status telepon diambil berdasarkan tampilan yg diterima
+
+
 
 
 
@@ -1748,7 +1751,7 @@ day
 8 mengerjakan tampilan map pada menu dashboard dengan leaflet
 9  -
 10 -
-11 membuat crud dengan map 
+11 membuat crud dengan map
 -
 14 pengerjaan koneksi database dengan api
 15 - tambah modal koneksi
@@ -1772,8 +1775,8 @@ day
 5 menambah token koneksi ke socket server
 6 melindungi route api dengan sanctum
 7 menambah user role akses, sanctum & token
-8 audiens presentasi projek 
+8 audiens presentasi projek
 =======
 11 menambah fitur export
-12 merancang tampilan laporan 
-13 menambah periode waktu eksport 
+12 merancang tampilan laporan
+13 menambah periode waktu eksport
