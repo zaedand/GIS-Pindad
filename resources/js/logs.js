@@ -1101,7 +1101,7 @@ function initializeSearch() {
                             <i class="fas fa-times mr-1"></i>Clear Filters
                         </button>
                         <button 
-                            onclick="exportPdfReport()" 
+                            onclick="showPdfExportModal()" 
                             class="px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors text-sm"
                         >
                             <i class="fas fa-download mr-1"></i>Export PDF
@@ -1672,204 +1672,267 @@ function displayEndpointHistoryModal(endpoint, data) {
 /**
  * Export PDF Report with options
  */
-async function exportPdfReport(options = {}) {
-    try {
-        // Show loading indicator
-        showNotification('Generating PDF report...', 'info');
-        
-        // Default options
-        const defaultOptions = {
-            period: '30',      // days
-            quarter: 'IV',     // Q1, Q2, Q3, Q4
-            year: '2024',      // year
-            format: 'download' // download or view
-        };
-        
-        const params = { ...defaultOptions, ...options };
-        
-        // Build query parameters
-        const queryParams = new URLSearchParams(params);
-        
-        // Make request to PDF export endpoint
-        const response = await fetch(`/api/history/export-pdf?${queryParams}`, {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/pdf',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            }
-        });
-        
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-        }
-        
-        // Get the PDF blob
-        const blob = await response.blob();
-        
-        if (params.format === 'view') {
-            // Open PDF in new window
-            const url = window.URL.createObjectURL(blob);
-            window.open(url, '_blank');
-            window.URL.revokeObjectURL(url);
-        } else {
-            // Download PDF
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            a.download = `Laporan_Status_Telepon_Q${params.quarter}_${params.year}_${new Date().toISOString().split('T')[0]}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-        }
-        
-        showNotification('PDF report generated successfully', 'success');
-        
-    } catch (error) {
-        console.error('Error generating PDF report:', error);
-        showNotification(`Error generating PDF report: ${error.message}`, 'error');
-    }
-}
 
-/**
- * Show PDF export options modal
- */
 function showPdfExportModal() {
     const modal = document.createElement('div');
     modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
     
+    // Calculate default date ranges
+    const today = new Date();
+    const lastWeek = new Date(today.getTime() - (7 * 24 * 60 * 60 * 1000));
+    const lastMonth = new Date(today.getTime() - (30 * 24 * 60 * 60 * 1000));
+    const lastQuarter = new Date(today.getTime() - (90 * 24 * 60 * 60 * 1000));
+    
     modal.innerHTML = `
-        <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
-            <div class="p-6 border-b border-gray-200">
+        <div class="bg-white rounded-2xl max-w-4xl w-full max-h-[95vh] overflow-hidden shadow-2xl">
+            <div class="p-6 border-b border-gray-200 bg-red-500 text-white">
                 <div class="flex justify-between items-center">
                     <div>
-                        <h2 class="text-2xl font-bold text-gray-800">
-                            Export Laporan PDF
+                        <h2 class="text-2xl font-bold">
+                            <i class="fas fa-file-pdf mr-2"></i>Export Laporan PDF
                         </h2>
-                        <p class="text-gray-600 mt-1">Generate laporan KPI status telepon</p>
+                        <p class="mt-1 opacity-90">Generate laporan KPI status telepon dengan periode custom</p>
                     </div>
-                    <button onclick="this.closest('.fixed').remove()"
-                            class="text-gray-500 hover:text-gray-700 text-2xl p-2">
+                    <button onclick="closePdfModal(this)"
+                            class="text-white/80 hover:text-white text-2xl p-2 hover:bg-white/20 rounded-lg transition-colors">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
             </div>
 
-            <div class="p-6">
-                <form id="pdf-export-form" class="space-y-6">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <!-- Period Selection -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                Periode Monitoring
-                            </label>
-                            <select name="period" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                                <option value="7">7 Hari Terakhir</option>
-                                <option value="14">14 Hari Terakhir</option>
-                                <option value="30" selected>30 Hari Terakhir</option>
-                                <option value="60">60 Hari Terakhir</option>
-                                <option value="90">90 Hari Terakhir</option>
-                            </select>
+            <div class="p-6 overflow-y-auto max-h-[75vh]">
+                <form id="pdf-export-form" class="space-y-8">
+                    <!-- Date Range Selection Methods -->
+                    <div class="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                            <i class="fas fa-calendar-alt text-indigo-500"></i>
+                            Pilih Metode Periode
+                        </h3>
+                        
+                        <!-- Date Range Method Selection -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                            <div class="space-y-3">
+                                <label class="flex items-center p-4 bg-white border-2 border-gray-200 rounded-lg hover:border-indigo-300 cursor-pointer transition-colors">
+                                    <input type="radio" name="dateMethod" value="preset" checked 
+                                           class="mr-3 text-indigo-600 focus:ring-indigo-500" 
+                                           onchange="toggleDateMethod('preset')">
+                                    <div>
+                                        <div class="font-semibold text-gray-800">Periode Preset</div>
+                                        <div class="text-sm text-gray-600">Pilih dari periode yang sudah ditentukan</div>
+                                    </div>
+                                </label>
+                                
+                                <label class="flex items-center p-4 bg-white border-2 border-gray-200 rounded-lg hover:border-indigo-300 cursor-pointer transition-colors">
+                                    <input type="radio" name="dateMethod" value="custom" 
+                                           class="mr-3 text-indigo-600 focus:ring-indigo-500"
+                                           onchange="toggleDateMethod('custom')">
+                                    <div>
+                                        <div class="font-semibold text-gray-800">Tanggal Custom</div>
+                                        <div class="text-sm text-gray-600">Pilih tanggal mulai dan akhir sendiri</div>
+                                    </div>
+                                </label>
+                            </div>
+                            
+                            <!-- Quick preset buttons -->
+                            <div class="space-y-2">
+                                <div class="text-sm font-medium text-gray-700 mb-2">Quick Select:</div>
+                                <div class="space-y-2">
+                                    <button type="button" onclick="setQuickDate('today')" 
+                                            class="w-full text-left px-3 py-2 text-sm bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition-colors">
+                                        <i class="fas fa-calendar-day mr-2"></i>Hari Ini
+                                    </button>
+                                    <button type="button" onclick="setQuickDate('thisWeek')" 
+                                            class="w-full text-left px-3 py-2 text-sm bg-green-50 hover:bg-green-100 text-green-700 rounded-lg transition-colors">
+                                        <i class="fas fa-calendar-week mr-2"></i>Minggu Ini
+                                    </button>
+                                    <button type="button" onclick="setQuickDate('thisMonth')" 
+                                            class="w-full text-left px-3 py-2 text-sm bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg transition-colors">
+                                        <i class="fas fa-calendar mr-2"></i>Bulan Ini
+                                    </button>
+                                    <button type="button" onclick="setQuickDate('lastMonth')" 
+                                            class="w-full text-left px-3 py-2 text-sm bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-lg transition-colors">
+                                        <i class="fas fa-calendar-minus mr-2"></i>Bulan Lalu
+                                    </button>
+                                </div>
+                            </div>
                         </div>
 
-                        <!-- Quarter Selection -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                Triwulan
-                            </label>
-                            <select name="quarter" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                                <option value="I">Triwulan I</option>
-                                <option value="II">Triwulan II</option>
-                                <option value="III">Triwulan III</option>
-                                <option value="IV" selected>Triwulan IV</option>
-                            </select>
+                        <!-- Preset Period Options -->
+                        <div id="preset-options" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Periode Preset</label>
+                                <select name="period" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option value="1">1 Hari</option>
+                                    <option value="3">3 Hari</option>
+                                    <option value="7">7 Hari</option>
+                                    <option value="14">14 Hari</option>
+                                    <option value="30" selected>30 Hari</option>
+                                    <option value="60">60 Hari</option>
+                                    <option value="90">90 Hari</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Triwulan</label>
+                                <select name="quarter" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option value="I">Triwulan I</option>
+                                    <option value="II">Triwulan II</option>
+                                    <option value="III">Triwulan III</option>
+                                    <option value="IV" selected>Triwulan IV</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Tahun</label>
+                                <select name="year" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option value="2023">2023</option>
+                                    <option value="2024" selected>2024</option>
+                                    <option value="2025">2025</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Format Waktu</label>
+                                <select name="timeframe" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option value="days">Hari Terakhir</option>
+                                    <option value="from_start">Dari Awal Tahun</option>
+                                    <option value="quarter">Per Triwulan</option>
+                                </select>
+                            </div>
                         </div>
 
-                        <!-- Year Selection -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                Tahun
-                            </label>
-                            <select name="year" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                                <option value="2023">2023</option>
-                                <option value="2024" selected>2024</option>
-                                <option value="2025">2025</option>
-                            </select>
+                        <!-- Custom Date Range Options -->
+                        <div id="custom-options" class=" grid-cols-1 md:grid-cols-2 gap-6 hidden">
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        <i class="fas fa-calendar-plus mr-1"></i>Tanggal Mulai
+                                    </label>
+                                    <input type="date" name="start_date" 
+                                           value="${lastMonth.toISOString().split('T')[0]}"
+                                           max="${today.toISOString().split('T')[0]}"
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        <i class="fas fa-calendar-check mr-1"></i>Tanggal Akhir
+                                    </label>
+                                    <input type="date" name="end_date" 
+                                           value="${today.toISOString().split('T')[0]}"
+                                           max="${today.toISOString().split('T')[0]}"
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                </div>
+                            </div>
+
+                            <!-- Custom date preview -->
+                            <div class="bg-white rounded-lg border border-gray-200 p-4">
+                                <h4 class="text-sm font-semibold text-gray-800 mb-3">
+                                    <i class="fas fa-info-circle text-blue-500 mr-1"></i>Preview Periode
+                                </h4>
+                                <div id="date-preview" class="space-y-2 text-sm text-gray-600">
+                                    <div class="flex justify-between">
+                                        <span>Dari:</span>
+                                        <span id="preview-start-date" class="font-medium">-</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span>Sampai:</span>
+                                        <span id="preview-end-date" class="font-medium">-</span>
+                                    </div>
+                                    <div class="flex justify-between pt-2 border-t">
+                                        <span>Total Hari:</span>
+                                        <span id="preview-total-days" class="font-medium text-indigo-600">-</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Report Preview Info -->
-                    <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                        <h4 class="text-sm font-semibold text-blue-800 mb-2">
-                            <i class="fas fa-info-circle mr-1"></i>
-                            Informasi Laporan
-                        </h4>
-                        <div class="text-sm text-blue-700 space-y-1">
-                            <p>• Laporan akan mencakup ringkasan status semua telepon</p>
-                            <p>• Data uptime dan downtime per endpoint</p>
-                            <p>• Ranking endpoint yang sering offline</p>
-                            <p>• Statistik lengkap sesuai periode yang dipilih</p>
+                    <!-- Report Options -->
+                    <div class="bg-white rounded-xl p-6 border border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                            <i class="fas fa-cog text-indigo-500"></i>
+                            Opsi Laporan
+                        </h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Report Type -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-3">Jenis Laporan</label>
+                                <div class="space-y-2">
+                                    <label class="flex items-center">
+                                        <input type="radio" name="report_type" value="summary" checked 
+                                               class="mr-2 text-indigo-600 focus:ring-indigo-500">
+                                        <span class="text-sm">Format laporan</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Additional Options -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-3">Opsi Tambahan</label>
+                                <div class="space-y-2">
+                                    <label class="flex items-center">
+                                        <input type="checkbox" name="include_ranking" checked 
+                                               class="mr-2 text-indigo-600 focus:ring-indigo-500 rounded">
+                                        <span class="text-sm">Rank Endpoint Offline</span>
+                                    </label>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
                     <!-- Current Statistics Preview -->
-                    <div class="bg-gray-50 rounded-xl p-4">
-                        <h4 class="text-sm font-semibold text-gray-800 mb-3">
-                            Preview Statistik Saat Ini
+                    <div class="bg-blue-100 rounded-xl p-6 border border-black-200">
+                        <h4 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                            <i class="fas fa-chart-pie text-blue-600"></i>
+                            Preview Statistik yang Akan Dilaporkan
                         </h4>
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                            <div class="bg-white rounded-lg p-3 border">
+                        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
+                            <div class="bg-white rounded-lg p-4 shadow-sm">
                                 <div class="text-2xl font-bold text-blue-600" id="preview-total">-</div>
                                 <div class="text-xs text-gray-600">Total Telepon</div>
                             </div>
-                            <div class="bg-white rounded-lg p-3 border">
+                            <div class="bg-white rounded-lg p-4 shadow-sm">
                                 <div class="text-2xl font-bold text-green-600" id="preview-online">-</div>
                                 <div class="text-xs text-gray-600">Online</div>
                             </div>
-                            <div class="bg-white rounded-lg p-3 border">
+                            <div class="bg-white rounded-lg p-4 shadow-sm">
                                 <div class="text-2xl font-bold text-red-600" id="preview-offline">-</div>
                                 <div class="text-xs text-gray-600">Offline</div>
                             </div>
-                            <div class="bg-white rounded-lg p-3 border">
+                            <div class="bg-white rounded-lg p-4 shadow-sm">
                                 <div class="text-2xl font-bold text-indigo-600" id="preview-uptime">-</div>
                                 <div class="text-xs text-gray-600">Avg Uptime</div>
+                            </div>
+                            <div class="bg-white rounded-lg p-4 shadow-sm">
+                                <div class="text-2xl font-bold text-purple-600" id="preview-period">-</div>
+                                <div class="text-xs text-gray-600">Periode (Hari)</div>
                             </div>
                         </div>
                     </div>
                 </form>
             </div>
 
+            <!-- Footer Actions -->
             <div class="p-6 border-t border-gray-200 bg-gray-50 flex justify-between items-center">
-                <div class="text-sm text-gray-600">
-                    <i class="fas fa-clock mr-1"></i>
-                    Estimasi waktu: ~10-30 detik
+                <div class="text-sm text-gray-600 flex items-center gap-2">
+                    <i class="fas fa-clock"></i>
+                    <span>Estimasi waktu: ~10-45 detik</span>
                 </div>
                 
                 <div class="flex gap-3">
-                    <button
-                        type="button"
-                        onclick="this.closest('.fixed').remove()"
-                        class="px-4 py-2 text-gray-600 hover:text-gray-800 bg-white hover:bg-gray-100 border border-gray-300 rounded-lg transition-colors"
-                    >
-                        Batal
+                    <button type="button" onclick="closePdfModal(this)"
+                            class="px-4 py-2 text-gray-600 hover:text-gray-800 bg-white hover:bg-gray-100 border border-gray-300 rounded-lg transition-colors">
+                        <i class="fas fa-times mr-1"></i>Batal
                     </button>
-                    <button
-                        type="button"
-                        onclick="handlePdfExport('view')"
-                        class="px-4 py-2 text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors"
-                    >
-                        <i class="fas fa-eye mr-1"></i>
-                        Preview
+                    <button type="button" onclick="handlePdfExport('view')"
+                            class="px-4 py-2 text-blue-600 hover:text-blue-800 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors">
+                        <i class="fas fa-eye mr-1"></i>Preview
                     </button>
-                    <button
-                        type="button"
-                        onclick="handlePdfExport('download')"
-                        class="px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors"
-                    >
-                        <i class="fas fa-download mr-1"></i>
-                        Download PDF
+                    <button type="button" onclick="handlePdfExport('download')"
+                            class="px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors shadow-lg">
+                        <i class="fas fa-download mr-1"></i>Download PDF
                     </button>
                 </div>
             </div>
@@ -1885,52 +1948,445 @@ function showPdfExportModal() {
         }
     });
 
-    // Update preview statistics
+    // Initialize date preview and statistics
     updatePdfPreviewStats();
+    updateCustomDatePreview();
+    
+    // Setup event listeners for date inputs
+    setupDateEventListeners();
 }
 
 /**
- * Handle PDF export from modal
+ * Close PDF modal function
+ */
+function closePdfModal(button) {
+    const modal = button.closest('.fixed');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+/**
+ * Toggle between preset and custom date methods
+ */
+function toggleDateMethod(method) {
+    const presetOptions = document.getElementById('preset-options');
+    const customOptions = document.getElementById('custom-options');
+    
+    if (!presetOptions || !customOptions) {
+        console.error('Date method elements not found');
+        return;
+    }
+    
+    if (method === 'preset') {
+        presetOptions.classList.remove('hidden');
+        customOptions.classList.add('hidden');
+    } else {
+        presetOptions.classList.add('hidden');
+        customOptions.classList.remove('hidden');
+        updateCustomDatePreview();
+    }
+}
+
+/**
+ * Set quick date selections
+ */
+function setQuickDate(period) {
+    const today = new Date();
+    const startDateInput = document.querySelector('input[name="start_date"]');
+    const endDateInput = document.querySelector('input[name="end_date"]');
+    const customRadio = document.querySelector('input[name="dateMethod"][value="custom"]');
+    
+    if (!startDateInput || !endDateInput || !customRadio) {
+        console.error('Date input elements not found');
+        return;
+    }
+    
+    let startDate, endDate;
+    
+    switch(period) {
+        case 'today':
+            startDate = today;
+            endDate = today;
+            break;
+        case 'thisWeek':
+            startDate = new Date(today.getTime() - (today.getDay() * 24 * 60 * 60 * 1000));
+            endDate = today;
+            break;
+        case 'thisMonth':
+            startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+            endDate = today;
+            break;
+        case 'lastMonth':
+            const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+            const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+            startDate = lastMonth;
+            endDate = lastMonthEnd;
+            break;
+        default:
+            console.warn('Unknown period:', period);
+            return;
+    }
+    
+    // Switch to custom mode and set dates
+    customRadio.checked = true;
+    toggleDateMethod('custom');
+    
+    startDateInput.value = startDate.toISOString().split('T')[0];
+    endDateInput.value = endDate.toISOString().split('T')[0];
+    
+    updateCustomDatePreview();
+}
+
+/**
+ * Setup event listeners for date inputs
+ */
+function setupDateEventListeners() {
+    const startDateInput = document.querySelector('input[name="start_date"]');
+    const endDateInput = document.querySelector('input[name="end_date"]');
+    
+    if (startDateInput && endDateInput) {
+        startDateInput.addEventListener('change', () => {
+            // Ensure end date is not before start date
+            if (endDateInput.value < startDateInput.value) {
+                endDateInput.value = startDateInput.value;
+            }
+            endDateInput.min = startDateInput.value;
+            updateCustomDatePreview();
+        });
+        
+        endDateInput.addEventListener('change', () => {
+            // Ensure start date is not after end date
+            if (startDateInput.value > endDateInput.value) {
+                startDateInput.value = endDateInput.value;
+            }
+            updateCustomDatePreview();
+        });
+    }
+}
+
+/**
+ * Update custom date preview
+ */
+function updateCustomDatePreview() {
+    const startDateInput = document.querySelector('input[name="start_date"]');
+    const endDateInput = document.querySelector('input[name="end_date"]');
+    const previewStartDate = document.getElementById('preview-start-date');
+    const previewEndDate = document.getElementById('preview-end-date');
+    const previewTotalDays = document.getElementById('preview-total-days');
+    
+    if (!startDateInput || !endDateInput || !previewStartDate) return;
+    
+    try {
+        const startDate = new Date(startDateInput.value);
+        const endDate = new Date(endDateInput.value);
+        
+        if (startDate && endDate && !isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) {
+            // Format dates for display
+            const options = { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                weekday: 'long'
+            };
+            
+            previewStartDate.textContent = startDate.toLocaleDateString('id-ID', options);
+            previewEndDate.textContent = endDate.toLocaleDateString('id-ID', options);
+            
+            // Calculate total days
+            const timeDiff = endDate.getTime() - startDate.getTime();
+            const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1; // +1 to include both dates
+            previewTotalDays.textContent = `${daysDiff} hari`;
+            
+            // Update preview period in statistics
+            const previewPeriodEl = document.getElementById('preview-period');
+            if (previewPeriodEl) {
+                previewPeriodEl.textContent = daysDiff;
+            }
+        }
+    } catch (error) {
+        console.error('Error updating date preview:', error);
+        if (previewStartDate) previewStartDate.textContent = 'Error';
+        if (previewEndDate) previewEndDate.textContent = 'Error';
+        if (previewTotalDays) previewTotalDays.textContent = 'Error';
+    }
+}
+
+/**
+ * Enhanced PDF export handler with proper error handling
  */
 function handlePdfExport(format = 'download') {
     const form = document.getElementById('pdf-export-form');
-    if (!form) return;
+    if (!form) {
+        console.error('PDF export form not found');
+        showNotification('Form tidak ditemukan', 'error');
+        return;
+    }
 
-    const formData = new FormData(form);
-    const options = {
-        period: formData.get('period'),
-        quarter: formData.get('quarter'),
-        year: formData.get('year'),
-        format: format
-    };
+    try {
+        const formData = new FormData(form);
+        const dateMethod = formData.get('dateMethod');
+        
+        let options = {
+            format: format,
+            report_type: formData.get('report_type') || 'summary',
+            include_charts: formData.get('include_charts') ? 'true' : 'false',
+            include_ranking: formData.get('include_ranking') ? 'true' : 'false',
+            include_history: formData.get('include_history') ? 'true' : 'false',
+            include_recommendations: formData.get('include_recommendations') ? 'true' : 'false'
+        };
+        
+        if (dateMethod === 'custom') {
+            // Custom date range
+            const startDate = formData.get('start_date');
+            const endDate = formData.get('end_date');
+            
+            if (!startDate || !endDate) {
+                showNotification('Mohon pilih tanggal mulai dan akhir', 'warning');
+                return;
+            }
+            
+            options.date_method = 'custom';
+            options.start_date = startDate;
+            options.end_date = endDate;
+            
+            // Calculate period in days for backward compatibility
+            const startDateObj = new Date(startDate);
+            const endDateObj = new Date(endDate);
+            const periodDays = Math.ceil((endDateObj.getTime() - startDateObj.getTime()) / (1000 * 3600 * 24)) + 1;
+            options.period = periodDays.toString();
+        } else {
+            // Preset period
+            options.date_method = 'preset';
+            options.period = formData.get('period') || '30';
+            options.timeframe = formData.get('timeframe') || 'days';
+        }
+        
+        // Always include quarter and year for report metadata
+        options.quarter = formData.get('quarter') || 'IV';
+        options.year = formData.get('year') || new Date().getFullYear().toString();
 
-    // Close modal
-    form.closest('.fixed').remove();
+        // Close modal
+        const modal = form.closest('.fixed');
+        if (modal) {
+            modal.remove();
+        }
 
-    // Export PDF
-    exportPdfReport(options);
+        // Show notification based on estimated time
+        const estimatedTime = options.report_type === 'detailed' ? '30-45 detik' : '10-30 detik';
+        showNotification(`Memproses ${options.report_type} report... Estimasi: ${estimatedTime}`, 'info');
+
+        // Export PDF with enhanced options
+        exportPdfReport(options);
+        
+    } catch (error) {
+        console.error('Error in handlePdfExport:', error);
+        showNotification('Terjadi kesalahan saat memproses export PDF', 'error');
+    }
+}
+
+/**
+ * Main PDF export function with proper error handling
+ */
+async function exportPdfReport(options = {}) {
+    try {
+        // Default params with validation
+        const params = {
+            format: options.format || 'download',
+            period: options.period || '30',
+            quarter: options.quarter || 'IV',
+            year: options.year || new Date().getFullYear().toString(),
+            report_type: options.report_type || 'summary',
+            include_charts: options.include_charts || 'true',
+            include_ranking: options.include_ranking || 'true',
+            include_history: options.include_history || 'false',
+            include_recommendations: options.include_recommendations || 'false',
+            date_method: options.date_method || 'preset',
+            timeframe: options.timeframe || 'days'
+        };
+
+        // Add custom dates if provided
+        if (options.start_date) params.start_date = options.start_date;
+        if (options.end_date) params.end_date = options.end_date;
+
+        // Generate filename
+        const timestamp = new Date().toISOString().split('T')[0];
+        params.filename = `phone-status-report-${params.period}days-${timestamp}.pdf`;
+
+        console.log('Export PDF with params:', params);
+
+        // Call the export function
+        await exportHistory(params);
+        
+    } catch (error) {
+        console.error('Error in exportPdfReport:', error);
+        showNotification(`Gagal export PDF: ${error.message}`, 'error');
+    }
+}
+
+/**
+ * Enhanced export history function with better error handling
+ */
+async function exportHistory(params = {}) {
+    try {
+        // Validate required parameters
+        if (!params.format) {
+            throw new Error('Format parameter is required');
+        }
+
+        // Default params
+        params.filename = params.filename || 'history-report.pdf';
+
+        // Show loading notification
+        showNotification('Mempersiapkan laporan PDF...', 'info');
+
+        // Build query string
+        const query = new URLSearchParams();
+        Object.keys(params).forEach(key => {
+            if (params[key] !== null && params[key] !== undefined && params[key] !== '') {
+                query.append(key, params[key]);
+            }
+        });
+
+        console.log('Fetching PDF from:', `/api/history/export-pdf?${query.toString()}`);
+
+        // Fetch PDF from server with timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+
+        const response = await fetch(`/api/history/export-pdf?${query.toString()}`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/pdf',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+            },
+            signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            const errorText = await response.text().catch(() => 'Unknown error');
+            throw new Error(`Server error: ${response.status} - ${errorText}`);
+        }
+
+        // Check if response is actually PDF
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/pdf')) {
+            throw new Error('Server did not return a PDF file');
+        }
+
+        // Get PDF blob
+        const blob = await response.blob();
+        
+        if (blob.size === 0) {
+            throw new Error('PDF file is empty');
+        }
+
+        // Handle PDF display/download
+        if (params.format === 'view') {
+            // Open in new tab
+            const url = window.URL.createObjectURL(blob);
+            const newWindow = window.open(url, '_blank');
+            
+            if (!newWindow) {
+                // If popup blocked, fallback to download
+                console.warn('Popup blocked, falling back to download');
+                downloadBlob(blob, params.filename);
+            } else {
+                // Clean up URL after a delay to allow the browser to load the PDF
+                setTimeout(() => {
+                    window.URL.revokeObjectURL(url);
+                }, 10000);
+            }
+        } else {
+            // Direct download
+            downloadBlob(blob, params.filename);
+        }
+
+        showNotification('Laporan PDF berhasil dibuat', 'success');
+
+    } catch (error) {
+        console.error('Export PDF Error:', error);
+        
+        let errorMessage = 'Gagal membuat laporan PDF';
+        
+        if (error.name === 'AbortError') {
+            errorMessage = 'Timeout: Server terlalu lama merespons';
+        } else if (error.message.includes('Server error')) {
+            errorMessage = `Server error: ${error.message}`;
+        } else if (error.message.includes('NetworkError') || error.message.includes('fetch')) {
+            errorMessage = 'Koneksi ke server bermasalah';
+        } else {
+            errorMessage = error.message || errorMessage;
+        }
+        
+        showNotification(errorMessage, 'error');
+    }
+}
+
+/**
+ * Helper function to download blob as file
+ */
+function downloadBlob(blob, filename) {
+    try {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = filename;
+        
+        document.body.appendChild(a);
+        a.click();
+        
+        // Clean up
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        
+    } catch (error) {
+        console.error('Error downloading blob:', error);
+        throw new Error('Gagal mendownload file');
+    }
 }
 
 /**
  * Update preview statistics in modal
  */
 function updatePdfPreviewStats() {
-    const totalEl = document.getElementById('preview-total');
-    const onlineEl = document.getElementById('preview-online');
-    const offlineEl = document.getElementById('preview-offline');
-    const uptimeEl = document.getElementById('preview-uptime');
+    try {
+        const totalEl = document.getElementById('preview-total');
+        const onlineEl = document.getElementById('preview-online');
+        const offlineEl = document.getElementById('preview-offline');
+        const uptimeEl = document.getElementById('preview-uptime');
 
-    if (!totalEl || !nodes) return;
+        if (!totalEl) {
+            console.warn('Preview elements not found');
+            return;
+        }
 
-    const total = nodes.length;
-    const online = nodes.filter(n => normalizeStatus(n.status) === 'online').length;
-    const offline = total - online;
-    const avgUptime = total > 0 ? Math.round((online / total) * 100) : 0;
+        // Check if nodes data is available
+        if (!window.nodes || !Array.isArray(window.nodes)) {
+            console.warn('Nodes data not available for preview');
+            totalEl.textContent = '0';
+            onlineEl.textContent = '0';
+            offlineEl.textContent = '0';
+            uptimeEl.textContent = '0%';
+            return;
+        }
 
-    totalEl.textContent = total;
-    onlineEl.textContent = online;
-    offlineEl.textContent = offline;
-    uptimeEl.textContent = avgUptime + '%';
+        const total = window.nodes.length;
+        const online = window.nodes.filter(n => normalizeStatus(n.status) === 'online').length;
+        const offline = total - online;
+        const avgUptime = total > 0 ? Math.round((online / total) * 100) : 0;
+
+        totalEl.textContent = total;
+        onlineEl.textContent = online;
+        offlineEl.textContent = offline;
+        uptimeEl.textContent = avgUptime + '%';
+        
+    } catch (error) {
+        console.error('Error updating preview stats:', error);
+    }
 }
 
 /**
@@ -1940,18 +2396,58 @@ function quickExportPdf() {
     exportPdfReport({
         period: '30',
         quarter: 'IV',
-        year: '2024',
+        year: new Date().getFullYear().toString(),
+        format: 'download',
+        report_type: 'summary'
+    });
+}
+
+/**
+ * Legacy export function wrapper for backward compatibility
+ */
+async function exportPdf(period = 30, quarter = 'IV', year = new Date().getFullYear()) {
+    console.warn('exportPdf is deprecated, use exportPdfReport instead');
+    return exportPdfReport({
+        period: period.toString(),
+        quarter: quarter,
+        year: year.toString(),
         format: 'download'
     });
 }
 
-// Add to existing export functions
-window.exportPdfReport = exportPdfReport;
-window.showPdfExportModal = showPdfExportModal;
-window.handlePdfExport = handlePdfExport;
-window.updatePdfPreviewStats = updatePdfPreviewStats;
-window.quickExportPdf = quickExportPdf;
+// Export functions to global scope with error handling
+try {
+    // Main export functions
+    window.showPdfExportModal = showPdfExportModal;
+    window.handlePdfExport = handlePdfExport;
+    window.exportPdfReport = exportPdfReport;
+    window.exportHistory = exportHistory;
+    window.quickExportPdf = quickExportPdf;
+    window.exportPdf = exportPdf; // Legacy support
+    
+    // Helper functions
+    window.closePdfModal = closePdfModal;
+    window.toggleDateMethod = toggleDateMethod;
+    window.setQuickDate = setQuickDate;
+    window.setupDateEventListeners = setupDateEventListeners;
+    window.updateCustomDatePreview = updateCustomDatePreview;
+    window.updatePdfPreviewStats = updatePdfPreviewStats;
+    window.downloadBlob = downloadBlob;
+    
+    console.log('PDF export functions loaded successfully');
+    
+} catch (error) {
+    console.error('Error loading PDF export functions:', error);
+}
 
+// Auto-initialize when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('PDF export module initialized');
+    });
+} else {
+    console.log('PDF export module initialized');
+}
 function getPopupContent(node, color) {
     return `
         <div>

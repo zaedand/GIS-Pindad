@@ -18,7 +18,7 @@
         }
         
         .logo { 
-            width: 80px; 
+            width: 120px; 
             position: absolute; 
             left: 0; 
             top: 0; 
@@ -108,10 +108,6 @@
         .data-table td {
             font-size: 8px;
         }
-        
-        .status-online { color: #10b981; font-weight: bold; }
-        .status-offline { color: #ef4444; font-weight: bold; }
-        .status-partial { color: #f59e0b; font-weight: bold; }
         
         .uptime-good { color: #10b981; font-weight: bold; }
         .uptime-warning { color: #f59e0b; font-weight: bold; }
@@ -233,12 +229,10 @@
                 <th style="width: 12%;">Endpoint</th>
                 <th style="width: 20%;">Gedung</th>
                 <th style="width: 15%;">Alamat IP</th>
-                <th style="width: 10%;">Status</th>
-                <th style="width: 8%;">Uptime<br>(30 hari)</th>
+                <th style="width: 8%;">Uptime<br>(Periode)</th>
                 <th style="width: 8%;">Total<br>Events</th>
                 <th style="width: 7%;">Offline<br>Events</th>
                 <th style="width: 7%;">Online<br>Events</th>
-                <th style="width: 15%;">Last Seen</th>
             </tr>
         </thead>
         <tbody>
@@ -248,27 +242,19 @@
                 <td class="text-center font-bold">{{ $endpoint['endpoint'] }}</td>
                 <td>{{ $endpoint['building'] }}</td>
                 <td class="text-center">{{ $endpoint['ip_address'] }}</td>
-                <td class="text-center 
-                    @if($endpoint['current_status'] === 'Online') status-online
-                    @elseif($endpoint['current_status'] === 'Offline') status-offline  
-                    @else status-partial
-                    @endif">
-                    {{ $endpoint['current_status'] }}
-                </td>
                 <td class="text-center
                     @php
-                        $uptime = (int)str_replace('%', '', $endpoint['uptime_30d']);
+                        $uptime = (int)str_replace('%', '', $endpoint['uptime_period']);
                     @endphp
                     @if($uptime >= 95) uptime-good
                     @elseif($uptime >= 80) uptime-warning
                     @else uptime-critical
                     @endif">
-                    {{ $endpoint['uptime_30d'] }}
+                    {{ $endpoint['uptime_period'] }}
                 </td>
                 <td class="text-center">{{ $endpoint['total_events'] }}</td>
                 <td class="text-center">{{ $endpoint['offline_events'] }}</td>
                 <td class="text-center">{{ $endpoint['online_events'] }}</td>
-                <td class="text-center">{{ $endpoint['last_seen'] }}</td>
             </tr>
             @endforeach
         </tbody>
@@ -279,14 +265,14 @@
     <div class="page-break"></div>
 
     <!-- Ranking Section -->
-    <div class="section-title">Ranking Endpoint Sering Offline (Top 20)</div>
+    <div class="section-title">Rank Endpoint Offline (Top 20)</div>
     <table class="data-table">
         <thead>
             <tr>
                 <th style="width: 6%;">Rank</th>
                 <th style="width: 12%;">Endpoint</th>
                 <th style="width: 22%;">Gedung</th>
-                <th style="width: 10%;">Uptime<br>(30 hari)</th>
+                <th style="width: 10%;">Uptime<br>(Periode)</th>
                 <th style="width: 12%;">Total Offline<br>Duration</th>
                 <th style="width: 8%;">Total<br>Events</th>
                 <th style="width: 8%;">Offline<br>Events</th>
@@ -302,13 +288,13 @@
                 <td>{{ $data['building'] }}</td>
                 <td class="text-center
                     @php
-                        $uptime = (int)str_replace('%', '', $data['uptime_30d']);
+                        $uptime = (int)str_replace('%', '', $data['uptime_period']);
                     @endphp
                     @if($uptime >= 95) uptime-good
                     @elseif($uptime >= 80) uptime-warning
                     @else uptime-critical
                     @endif">
-                    {{ $data['uptime_30d'] }}
+                    {{ $data['uptime_period'] }}
                 </td>
                 <td class="text-center">{{ $data['total_offline_duration'] }}</td>
                 <td class="text-center">{{ $data['total_events'] }}</td>
