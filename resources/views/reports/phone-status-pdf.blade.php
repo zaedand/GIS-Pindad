@@ -5,7 +5,7 @@
     <style>
         body { 
             font-family: Arial, sans-serif; 
-            font-size: 11px; 
+            font-size: 12px; 
             margin: 0; 
             padding: 20px;
             line-height: 1.4;
@@ -26,14 +26,15 @@
         
         .header h3 {
             margin: 0 0 10px 0;
-            font-size: 16px;
+            font-size: 18px;
             font-weight: bold;
         }
         
         .header p {
             margin: 0;
-            font-size: 12px;
+            font-size: 18px;
             line-height: 1.5;
+            font-weight: bold;
         }
         
         .metadata-table { 
@@ -45,7 +46,7 @@
         .metadata-table td { 
             padding: 6px 8px; 
             vertical-align: top; 
-            font-size: 11px;
+            font-size: 12px;
         }
         
         .metadata-table td:first-child {
@@ -89,7 +90,7 @@
             width: 100%; 
             border-collapse: collapse; 
             margin-bottom: 20px;
-            font-size: 9px;
+            font-size: 12px;
         }
         
         .data-table th, .data-table td { 
@@ -102,33 +103,16 @@
             background-color: #f0f0f0; 
             font-weight: bold; 
             text-align: center;
-            font-size: 9px;
+            font-size: 12px;
         }
         
         .data-table td {
-            font-size: 8px;
+            font-size: 12px;
         }
         
         .uptime-good { color: #10b981; font-weight: bold; }
         .uptime-warning { color: #f59e0b; font-weight: bold; }
         .uptime-critical { color: #ef4444; font-weight: bold; }
-        
-        .signature-section {
-            margin-top: 50px;
-            display: flex;
-            justify-content: space-between;
-        }
-        
-        .signature-box {
-            text-align: center;
-            width: 200px;
-        }
-        
-        .signature-line {
-            border-top: 1px solid #333;
-            margin-top: 60px;
-            padding-top: 5px;
-        }
         
         .page-break {
             page-break-before: always;
@@ -308,25 +292,34 @@
     @endif
 
     <!-- Signature Section -->
-    <div class="signature-section">
-        <div class="signature-box">
-            <div>Mengetahui,</div>
-            <div style="margin-top: 5px;">Kepala Departemen</div>
-            <div class="signature-line">
-                <div>Nama Kepala Departemen</div>
-                <div>NIP: _______________</div>
-            </div>
-        </div>
-        
-        <div class="signature-box">
-            <div>Dibuat oleh,</div>
-            <div style="margin-top: 5px;">{{ $position }}</div>
-            <div class="signature-line">
-                <div>{{ $prepared_by }}</div>
-                <div>NIP: _______________</div>
-            </div>
-        </div>
-    </div>
+    <table style="width: 100%; margin-top: 40px;">
+    <tr>
+        <!-- Kiri -->
+        <td style="width: 50%; text-align: left; vertical-align: top;">
+            Mengetahui,<br>
+            Manager Departemen Teknologi Informasi
+            <br><br><br><br>
+            ____________________________<br>
+            Wilanto Sumargo, S.H<br>
+            NIP: ________________
+        </td>
+
+        <!-- Kanan -->
+        <td style="width: 50%; text-align: left; vertical-align: top; padding-left: 400px;">
+            Malang, {{ \Carbon\Carbon::createFromFormat('d/m/Y H:i:s', $generated_date, 'Asia/Jakarta')
+            ->locale('id')
+            ->translatedFormat('d F Y') }}
+            <br>Disiapkan oleh,<br>
+            Officer Infrastruktur jaringan
+            <br><br><br><br>
+            ____________________________<br>
+            -nama-<br>
+            NIP: ________________
+        </td>
+    </tr>
+</table>
+
+
 
     <!-- Footer -->
     <div style="margin-top: 30px; font-size: 9px; color: #666; text-align: center;">

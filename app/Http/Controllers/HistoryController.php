@@ -109,25 +109,38 @@ class HistoryController extends Controller
      * Get currently offline devices
      * GET /api/history/offline
      */
-    public function getCurrentOffline(): JsonResponse
+        public function getCurrentOfflineFromHistory(): JsonResponse
     {
         try {
-            // Get latest status for each endpoint
-            $latestStatuses = DeviceHistory::selectRaw('endpoint, current_status, MAX(timestamp) as latest_timestamp')
-                ->groupBy('endpoint', 'current_status')
-                ->havingRaw('current_status = "offline"')
-                ->orderBy('latest_timestamp', 'desc')
-                ->get();
+            $currentStats = $this->getLatestStatusStatisticsOptimized();
+            
+            $offlineDevices = $currentStats['latest_statuses']
+                ->where('current_status', 'offline')
+                ->map(function($status) {
+                    return [
+                        'endpoint' => $status->endpoint,
+                        'node_name' => $status->node_name,
+                        'current_status' => $status->current_status,
+                        'last_update' => Carbon::parse($status->timestamp)->format('d/m/Y H:i:s'),
+                        'duration_offline' => Carbon::parse($status->timestamp)->diffForHumans(Carbon::now(), true)
+                    ];
+                })
+                ->values()
+                ->toArray();
 
-            return response()->json($latestStatuses->toArray());
+            return response()->json([
+                'total_offline' => count($offlineDevices),
+                'offline_devices' => $offlineDevices
+            ]);
 
         } catch (\Exception $e) {
             return response()->json([
-                'error' => 'Failed to fetch offline devices',
+                'error' => 'Failed to fetch offline devices from history',
                 'message' => $e->getMessage()
             ], 500);
         }
     }
+
 
     /**
      * Update device status
@@ -254,10 +267,74 @@ class HistoryController extends Controller
      * Generate PDF Report
      * GET /api/history/export-pdf
      */
+    private function getLatestStatusStatistics(): array
+    {
+        // Get latest status for each endpoint
+        $latestStatuses = DeviceHistory::select('endpoint', 'current_status', 'timestamp')
+            ->whereIn('id', function($query) {
+                $query->select(\DB::raw('MAX(id)'))
+                    ->from('device_history')
+                    ->groupBy('endpoint');
+            })
+            ->get();
+
+        $totalNodes = $latestStatuses->count();
+        $onlineNodes = $latestStatuses->where('current_status', 'online')->count();
+        $offlineNodes = $latestStatuses->where('current_status', 'offline')->count();
+        $partialNodes = $latestStatuses->where('current_status', 'partial')->count();
+
+        $onlinePercentage = $totalNodes > 0 ? round(($onlineNodes / $totalNodes) * 100, 1) : 0;
+        $offlinePercentage = $totalNodes > 0 ? round(($offlineNodes / $totalNodes) * 100, 1) : 0;
+
+        return [
+            'total_nodes' => $totalNodes,
+            'online_nodes' => $onlineNodes,
+            'offline_nodes' => $offlineNodes,
+            'partial_nodes' => $partialNodes,
+            'online_percentage' => $onlinePercentage,
+            'offline_percentage' => $offlinePercentage,
+            'latest_statuses' => $latestStatuses
+        ];
+    }
+
+    /**
+     * Alternative method using subquery for better performance
+     */
+    private function getLatestStatusStatisticsOptimized(): array
+    {
+        $latestStatuses = \DB::table('device_history as dh1')
+            ->select('dh1.endpoint', 'dh1.current_status', 'dh1.timestamp', 'dh1.node_name')
+            ->whereRaw('dh1.timestamp = (
+                SELECT MAX(dh2.timestamp) 
+                FROM device_history dh2 
+                WHERE dh2.endpoint = dh1.endpoint
+            )')
+            ->groupBy('dh1.endpoint', 'dh1.current_status', 'dh1.timestamp', 'dh1.node_name')
+            ->get();
+
+        $totalNodes = $latestStatuses->count();
+        $onlineNodes = $latestStatuses->where('current_status', 'online')->count();
+        $offlineNodes = $latestStatuses->where('current_status', 'offline')->count();
+        $partialNodes = $latestStatuses->where('current_status', 'partial')->count();
+
+        $onlinePercentage = $totalNodes > 0 ? round(($onlineNodes / $totalNodes) * 100, 1) : 0;
+        $offlinePercentage = $totalNodes > 0 ? round(($offlineNodes / $totalNodes) * 100, 1) : 0;
+
+        return [
+            'total_nodes' => $totalNodes,
+            'online_nodes' => $onlineNodes,
+            'offline_nodes' => $offlineNodes,
+            'partial_nodes' => $partialNodes,
+            'online_percentage' => $onlinePercentage,
+            'offline_percentage' => $offlinePercentage,
+            'latest_statuses' => $latestStatuses
+        ];
+    }
      public function exportPdf(Request $request)
     {
         try {
-            // Validate request parameters
+            // ... existing validation code ...
+
             $validator = Validator::make($request->all(), [
                 'date_method' => 'string|in:preset,custom',
                 'start_date' => 'nullable|date|required_if:date_method,custom',
@@ -295,7 +372,6 @@ class HistoryController extends Controller
                 $period = (int) $request->get('period', 30);
                 $timeframe = $request->get('timeframe', 'days');
 
-                // Calculate dates based on timeframe
                 switch ($timeframe) {
                     case 'from_start':
                         $startDate = Carbon::create($year, 1, 1)->startOfDay();
@@ -327,27 +403,29 @@ class HistoryController extends Controller
             $includeHistory = $request->get('include_history', 'false') === 'true';
             $includeRecommendations = $request->get('include_recommendations', 'false') === 'true';
 
-            // Get all nodes data
-            $nodes = Node::all();
-            $totalNodes = $nodes->count();
-
-            // Calculate current status statistics
-            $onlineNodes = $nodes->where('status', 'online')->count();
-            $offlineNodes = $nodes->where('status', 'offline')->count();
-            $partialNodes = $nodes->where('status', 'partial')->count();
-            $onlinePercentage = $totalNodes > 0 ? round(($onlineNodes / $totalNodes) * 100, 1) : 0;
-            $offlinePercentage = $totalNodes > 0 ? round(($offlineNodes / $totalNodes) * 100, 1) : 0;
+            // *** MODIFIED: Get current status from history instead of nodes table ***
+            $currentStats = $this->getLatestStatusStatisticsOptimized();
+            
+            $totalNodes = $currentStats['total_nodes'];
+            $onlineNodes = $currentStats['online_nodes'];
+            $offlineNodes = $currentStats['offline_nodes'];
+            $partialNodes = $currentStats['partial_nodes'];
+            $onlinePercentage = $currentStats['online_percentage'];
+            $offlinePercentage = $currentStats['offline_percentage'];
 
             // Get period-specific data
             $periodStats = $this->getPeriodStatistics($startDate, $endDate);
             $frequentlyOfflineEndpoints = $this->getFrequentlyOfflineEndpoints($startDate, $endDate, 10);
-            $endpointsData = $this->generateEndpointsData($nodes, $startDate, $endDate);
-            $rankingData = $includeRanking ? $this->generateRankingData($nodes, $startDate, $endDate) : [];
+            
+            // *** MODIFIED: Use history-based data for endpoints ***
+            $endpointsData = $this->generateEndpointsDataFromHistory($currentStats['latest_statuses'], $startDate, $endDate);
+            $rankingData = $includeRanking ? $this->generateRankingDataFromHistory($currentStats['latest_statuses'], $startDate, $endDate) : [];
             $historyData = $includeHistory ? $this->generateHistoryData($startDate, $endDate) : [];
+            
+            // *** MODIFIED: Calculate average uptime from history data ***
+            $avgUptime = $this->calculateAverageUptimeFromHistory($currentStats['latest_statuses'], $startDate, $endDate);
+            
             $recommendations = $includeRecommendations ? $this->generateRecommendations($endpointsData, $periodStats) : [];
-
-            // Calculate average uptime for the period
-            $avgUptime = $this->calculateAverageUptime($nodes, $startDate, $endDate);
 
             // Prepare report data
             $reportData = [
@@ -365,13 +443,13 @@ class HistoryController extends Controller
                 'quarter' => $quarter,
                 'year' => $year,
                 'period_days' => $daysDiff,
-                'generated_date' => Carbon::now()->format('d/m/Y H:i:s'),
+                'generated_date' => Carbon::now('Asia/Jakarta')->format('d/m/Y H:i:s'),
                 'start_date' => $startDate->format('d/m/Y'),
                 'end_date' => $endDate->format('d/m/Y'),
                 'start_date_long' => $startDate->locale('id')->translatedFormat('l, j F Y'),
                 'end_date_long' => $endDate->locale('id')->translatedFormat('l, j F Y'),
 
-                // Current statistics
+                // Current statistics (from history table)
                 'total_phones' => $totalNodes,
                 'online_phones' => $onlineNodes,
                 'offline_phones' => $offlineNodes,
@@ -539,20 +617,26 @@ class HistoryController extends Controller
     /**
      * Generate enhanced endpoints data
      */
-    private function generateEndpointsData($nodes, $startDate, $endDate): array
+    private function generateEndpointsDataFromHistory($latestStatuses, $startDate, $endDate): array
     {
         $endpointsData = [];
 
-        foreach ($nodes as $node) {
-            $uptimeData = $this->calculateRealUptime($node->endpoint, $startDate, $endDate);
-            $statistics = $this->getEndpointStatistics($node->endpoint, $startDate, $endDate);
-            $totalOffline = $this->getTotalOfflineDuration($node->endpoint, $startDate, $endDate);
+        foreach ($latestStatuses as $status) {
+            $uptimeData = $this->calculateRealUptime($status->endpoint, $startDate, $endDate);
+            $statistics = $this->getEndpointStatistics($status->endpoint, $startDate, $endDate);
+            $totalOffline = $this->getTotalOfflineDuration($status->endpoint, $startDate, $endDate);
+
+            // Try to get building name from nodes table, fallback to node_name from history
+            $node = Node::where('endpoint', $status->endpoint)->first();
+            $buildingName = $node ? $node->name : $status->node_name;
+            $ipAddress = $node ? $node->ip_address : 'Unknown';
 
             $endpointsData[] = [
-                'endpoint' => $node->endpoint,
-                'building' => $node->name ?? 'Unknown',
-                'ip_address' => $node->ip_address,
-                'current_status' => $this->formatStatus($node->status ?? 'offline'),
+                'endpoint' => $status->endpoint,
+                'building' => $buildingName ?? 'Unknown',
+                'ip_address' => $ipAddress,
+                'current_status' => $this->formatStatus($status->current_status),
+                'last_update' => Carbon::parse($status->timestamp)->format('d/m/Y H:i:s'),
                 'uptime_period' => $uptimeData['uptimePercentage'] . '%',
                 'total_offline_duration' => $totalOffline['formatted'],
                 'total_events' => $statistics['total_events'],
@@ -652,13 +736,13 @@ class HistoryController extends Controller
     /**
      * Calculate average uptime for all nodes in period
      */
-    private function calculateAverageUptime($nodes, $startDate, $endDate): float
+    private function calculateAverageUptimeFromHistory($latestStatuses, $startDate, $endDate): float
     {
         $totalUptime = 0;
         $nodeCount = 0;
 
-        foreach ($nodes as $node) {
-            $uptimeData = $this->calculateRealUptime($node->endpoint, $startDate, $endDate);
+        foreach ($latestStatuses as $status) {
+            $uptimeData = $this->calculateRealUptime($status->endpoint, $startDate, $endDate);
             if ($uptimeData['dataAvailable']) {
                 $totalUptime += $uptimeData['uptimePercentage'];
                 $nodeCount++;
@@ -846,43 +930,48 @@ class HistoryController extends Controller
     /**
  * Generate ranking data for frequently offline endpoints
  */
-private function generateRankingData($nodes, $startDate, $endDate)
-{
-    $rankingData = [];
+private function generateRankingDataFromHistory($latestStatuses, $startDate, $endDate)
+    {
+        $rankingData = [];
 
-    foreach ($nodes as $node) {
-        $uptimeData = $this->calculateRealUptime($node->endpoint, $startDate, $endDate);
-        $statistics = $this->getEndpointStatistics($node->endpoint, $startDate, $endDate);
-        $totalOfflineDuration = $this->getTotalOfflineDuration($node->endpoint, $startDate, $endDate);
+        foreach ($latestStatuses as $status) {
+            $uptimeData = $this->calculateRealUptime($status->endpoint, $startDate, $endDate);
+            $statistics = $this->getEndpointStatistics($status->endpoint, $startDate, $endDate);
+            $totalOfflineDuration = $this->getTotalOfflineDuration($status->endpoint, $startDate, $endDate);
 
-        // Only include endpoints that have had offline events
-        if ($statistics['offline_events'] > 0) {
-            $rankingData[] = [
-                'endpoint' => $node->endpoint,
-                'building' => $node->name ?? 'Unknown',
-                'uptime_period' => $uptimeData['uptimePercentage'] . '%',
-                'total_offline_duration' => $totalOfflineDuration['formatted'],
-                'total_events' => $statistics['total_events'],
-                'offline_events' => $statistics['offline_events'],
-                'online_events' => $statistics['online_events'],
-                'last_activity' => $this->getLastActivity($node->endpoint),
-                'offline_score' => $statistics['offline_events'] // For sorting
-            ];
+            // Only include endpoints that have had offline events
+            if ($statistics['offline_events'] > 0) {
+                // Try to get building name from nodes table, fallback to node_name from history
+                $node = Node::where('endpoint', $status->endpoint)->first();
+                $buildingName = $node ? $node->name : $status->node_name;
+
+                $rankingData[] = [
+                    'endpoint' => $status->endpoint,
+                    'building' => $buildingName ?? 'Unknown',
+                    'current_status' => $this->formatStatus($status->current_status),
+                    'uptime_period' => $uptimeData['uptimePercentage'] . '%',
+                    'total_offline_duration' => $totalOfflineDuration['formatted'],
+                    'total_events' => $statistics['total_events'],
+                    'offline_events' => $statistics['offline_events'],
+                    'online_events' => $statistics['online_events'],
+                    'last_activity' => Carbon::parse($status->timestamp)->format('d/m/Y H:i:s'),
+                    'offline_score' => $statistics['offline_events'] // For sorting
+                ];
+            }
         }
+
+        // Sort by offline events (descending - most problematic first)
+        usort($rankingData, function($a, $b) {
+            return $b['offline_score'] - $a['offline_score'];
+        });
+
+        // Add ranking numbers
+        foreach ($rankingData as $index => &$data) {
+            $data['rank'] = $index + 1;
+        }
+
+        return array_slice($rankingData, 0, 20); // Top 20 most problematic
     }
-
-    // Sort by offline events (descending - most problematic first)
-    usort($rankingData, function($a, $b) {
-        return $b['offline_score'] - $a['offline_score'];
-    });
-
-    // Add ranking numbers
-    foreach ($rankingData as $index => &$data) {
-        $data['rank'] = $index + 1;
-    }
-
-    return array_slice($rankingData, 0, 20); // Top 20 most problematic
-}
 
     /**
      * Calculate real uptime for endpoint

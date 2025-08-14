@@ -9,8 +9,6 @@ let markers = {};
 let previousStatusMap = {};
 let deviceHistoryTracker;
 let phoneMonitoring;
-
-// Pagination settings
 let currentPage = 1;
 let itemsPerPage = 10;
 let totalPages = 1;
@@ -22,7 +20,6 @@ const apiHeaders = {
     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
 };
 
-// Time
 function formatDateTime(dateString, format = 'full') {
     if (!dateString) return 'N/A';
 
@@ -69,7 +66,6 @@ function formatRelativeTime(dateString) {
         if (diffHours < 24) return `${diffHours} jam yang lalu`;
         if (diffDays < 7) return `${diffDays} hari yang lalu`;
 
-        // For older dates, show absolute date
         return formatDateTime(dateString, 'short');
     } catch (error) {
         console.error('Error calculating relative time:', error);
@@ -81,12 +77,11 @@ function formatRelativeTime(dateString) {
 function calculateRealUptime(endpoint, timeRangeHours = 24) {
     const endpointLogs = disconnectLogs
         .filter(log => log.endpoint === endpoint)
-        .sort((a, b) => new Date(a.time) - new Date(b.time)); // Sort chronologically
+        .sort((a, b) => new Date(a.time) - new Date(b.time)); 
 
     if (endpointLogs.length === 0) {
-        // No logs means we assume it's been online (or we have no data)
-        return {
-            uptimePercentage: 0, // Conservative approach - no data means unknown
+            return {
+            uptimePercentage: 0, 
             totalMinutes: timeRangeHours * 60,
             onlineMinutes: 0,
             offlineMinutes: 0,
@@ -107,7 +102,7 @@ function calculateRealUptime(endpoint, timeRangeHours = 24) {
     if (logsInRange.length === 0) {
         const lastLogBeforeRange = endpointLogs
             .filter(log => new Date(log.time) < rangeStart)
-            .pop(); // Get most recent log
+            .pop(); 
 
         if (lastLogBeforeRange) {
             const totalMinutes = timeRangeHours * 60;
@@ -154,7 +149,6 @@ function calculateRealUptime(endpoint, timeRangeHours = 24) {
     if (lastLogBeforeRange) {
         currentStatus = lastLogBeforeRange.to;
     } else if (logsInRange.length > 0) {
-        // If no log before range, assume the opposite of the first status change
         currentStatus = logsInRange[0].from || 'online';
     }
 
@@ -165,7 +159,6 @@ function calculateRealUptime(endpoint, timeRangeHours = 24) {
         const logTime = new Date(log.time);
         const durationMinutes = Math.floor((logTime - lastTimestamp) / (1000 * 60));
 
-        // Add duration for the previous status
         if (currentStatus === 'online') {
             totalOnlineMinutes += durationMinutes;
         } else if (currentStatus === 'offline') {
@@ -188,7 +181,6 @@ function calculateRealUptime(endpoint, timeRangeHours = 24) {
     const totalMinutes = timeRangeHours * 60;
     const accountedMinutes = totalOnlineMinutes + totalOfflineMinutes;
 
-    // Handle any unaccounted time (assuming online for conservative calculation)
     const unaccountedMinutes = Math.max(0, totalMinutes - accountedMinutes);
     if (unaccountedMinutes > 0) {
         totalOnlineMinutes += unaccountedMinutes;
@@ -230,12 +222,10 @@ function getUptimeDisplay(endpoint, period = '24h') {
     }
 }
 
-// Initialize everything when DOM is loaded
 document.addEventListener('DOMContentLoaded', async () => {
     try {
 
         await fetchNodes();
-        // Initialize device history tracker
         deviceHistoryTracker = new DeviceHistoryTracker();
         initializeSocket();
         initializePhoneMonitoring();
@@ -264,10 +254,8 @@ async function fetchNodes() {
             }
         });
 
-        // Load existing activity logs from database using History API
         await loadActivityLogsFromDatabase();
 
-        // Apply any existing live status
         applyLiveStatus();
         updateRealtimeStats(latestStatus);
 
@@ -402,8 +390,6 @@ function initializeSocket() {
 
         const url = socketUrls[urlIndex];
         console.log(`Attempting socket connection to: ${url}`);
-        console.log("Token:", window.userToken);  // Harus muncul string token valid
-
 
         socket = io(url, {
             transports: ['websocket', 'polling'],
