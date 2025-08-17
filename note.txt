@@ -1780,7 +1780,39 @@ day
 11 menambah fitur export
 12 merancang tampilan laporan
 13 menambah periode waktu eksport
+14 menambah fitur input (disahkan, didetujui, ..) margin 1 cm
 
+menambah fitur input (disahkan, didetujui, ..) margin 1 cm
+bagian yang diinput terdiri dari 14 input oleh user untuk digenerate ke laporan yakni
+header
+triwulan: (sudah)
+tahun: (sudah)
+
+Indikator :
+Nama Indikator :
+Formula :
+Target :
+Realisasi :
+periode : (sudah)
+
+footer
+kolom disiapkan oleh
+jabatan:
+nama:
+tanggal:
+kolom disetujui oleh
+jabatan:
+nama:
+tanggal:
+kolom disahkan oleh
+jabatan:
+nama:
+tanggal:
+
+hilangkan opsi laporan karena format laporannya hanya itu saja
+
+*pada tabel data semua status endpoint dihilangkan/diubah menjadi diagram lingkaran yang menghitung uptime(hijau)
+dan downtime(merah)
 <?php
 
 namespace App\Http\Controllers;
@@ -1838,8 +1870,8 @@ class HistoryController extends Controller
         $latestStatuses = \DB::table('device_histories as dh1')
             ->select('dh1.endpoint', 'dh1.current_status', 'dh1.timestamp', 'dh1.node_name')
             ->whereRaw('dh1.timestamp = (
-                SELECT MAX(dh2.timestamp) 
-                FROM device_histories dh2 
+                SELECT MAX(dh2.timestamp)
+                FROM device_histories dh2
                 WHERE dh2.endpoint = dh1.endpoint
             )')
             ->groupBy('dh1.endpoint', 'dh1.current_status', 'dh1.timestamp', 'dh1.node_name')
@@ -1942,7 +1974,7 @@ class HistoryController extends Controller
 
             // *** MODIFIED: Get current status from history instead of nodes table ***
             $currentStats = $this->getLatestStatusStatisticsOptimized();
-            
+
             $totalNodes = $currentStats['total_nodes'];
             $onlineNodes = $currentStats['online_nodes'];
             $offlineNodes = $currentStats['offline_nodes'];
@@ -1953,15 +1985,15 @@ class HistoryController extends Controller
             // Get period-specific data
             $periodStats = $this->getPeriodStatistics($startDate, $endDate);
             $frequentlyOfflineEndpoints = $this->getFrequentlyOfflineEndpoints($startDate, $endDate, 10);
-            
+
             // *** MODIFIED: Use history-based data for endpoints ***
             $endpointsData = $this->generateEndpointsDataFromHistory($currentStats['latest_statuses'], $startDate, $endDate);
             $rankingData = $includeRanking ? $this->generateRankingDataFromHistory($currentStats['latest_statuses'], $startDate, $endDate) : [];
             $historyData = $includeHistory ? $this->generateHistoryData($startDate, $endDate) : [];
-            
+
             // *** MODIFIED: Calculate average uptime from history data ***
             $avgUptime = $this->calculateAverageUptimeFromHistory($currentStats['latest_statuses'], $startDate, $endDate);
-            
+
             $recommendations = $includeRecommendations ? $this->generateRecommendations($endpointsData, $periodStats) : [];
 
             // Prepare report data
@@ -2170,7 +2202,7 @@ class HistoryController extends Controller
     {
         try {
             $currentStats = $this->getLatestStatusStatisticsOptimized();
-            
+
             $offlineDevices = $currentStats['latest_statuses']
                 ->where('current_status', 'offline')
                 ->map(function($status) {

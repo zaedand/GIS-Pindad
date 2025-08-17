@@ -77,11 +77,11 @@ function formatRelativeTime(dateString) {
 function calculateRealUptime(endpoint, timeRangeHours = 24) {
     const endpointLogs = disconnectLogs
         .filter(log => log.endpoint === endpoint)
-        .sort((a, b) => new Date(a.time) - new Date(b.time)); 
+        .sort((a, b) => new Date(a.time) - new Date(b.time));
 
     if (endpointLogs.length === 0) {
             return {
-            uptimePercentage: 0, 
+            uptimePercentage: 0,
             totalMinutes: timeRangeHours * 60,
             onlineMinutes: 0,
             offlineMinutes: 0,
@@ -102,7 +102,7 @@ function calculateRealUptime(endpoint, timeRangeHours = 24) {
     if (logsInRange.length === 0) {
         const lastLogBeforeRange = endpointLogs
             .filter(log => new Date(log.time) < rangeStart)
-            .pop(); 
+            .pop();
 
         if (lastLogBeforeRange) {
             const totalMinutes = timeRangeHours * 60;

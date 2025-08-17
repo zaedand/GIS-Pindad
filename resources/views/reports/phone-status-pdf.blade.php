@@ -3,73 +3,85 @@
 <head>
     <meta charset="UTF-8">
     <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            font-size: 12px; 
-            margin: 0; 
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            margin: 0;
             padding: 20px;
             line-height: 1.4;
         }
-        
-        .header { 
-            text-align: center; 
-            margin-bottom: 30px;
-            position: relative;
+
+        <style>
+.header {
+    display: flex;
+    align-items: center; /* sejajarkan vertikal tengah */
+    margin-bottom: 20px;
+}
+
+.header .logo {
+    width: 100px;   /* atur besar logo */
+    height: auto;
+    margin-right: 15px; /* jarak logo ke teks */
+}
+
+.header .title {
+    font-size: 20px;
+    font-weight: bold;
+    margin: 0; /* hilangkan margin default h3 */
+}
+
+.header .header-text {
+    flex: 1;
+    text-align: center; /* teks di tengah */
+}
+
+.header .header-text h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: bold;
+}
+.header .header-text p {
+    margin: 0;
+    font-size: 16px;
+    font-weight: bold;
+    line-height: 1.4;
+}
+
+
+
+        .metadata-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 25px;
         }
-        
-        .logo { 
-            width: 120px; 
-            position: absolute; 
-            left: 0; 
-            top: 0; 
-        }
-        
-        .header h3 {
-            margin: 0 0 10px 0;
-            font-size: 18px;
-            font-weight: bold;
-        }
-        
-        .header p {
-            margin: 0;
-            font-size: 18px;
-            line-height: 1.5;
-            font-weight: bold;
-        }
-        
-        .metadata-table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            margin-bottom: 25px; 
-        }
-        
-        .metadata-table td { 
-            padding: 6px 8px; 
-            vertical-align: top; 
+
+        .metadata-table td {
+            padding: 6px 8px;
+            vertical-align: top;
             font-size: 12px;
         }
-        
+
         .metadata-table td:first-child {
             width: 150px;
             font-weight: bold;
         }
-        
-        .section-title { 
-            font-weight: bold; 
+
+        .section-title {
+            font-weight: bold;
             font-size: 13px;
-            margin: 25px 0 10px 0; 
+            margin: 25px 0 10px 0;
             color: #333;
             border-bottom: 2px solid #333;
             padding-bottom: 5px;
         }
-        
+
         .summary-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 20px;
             margin-bottom: 20px;
         }
-        
+
         .summary-item {
             display: flex;
             justify-content: space-between;
@@ -77,68 +89,100 @@
             padding: 8px 0;
             border-bottom: 1px dotted #ccc;
         }
-        
+
         .summary-label {
             font-weight: bold;
         }
-        
+
         .summary-value {
             font-weight: normal;
         }
-        
-        .data-table { 
-            width: 100%; 
-            border-collapse: collapse; 
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
             margin-bottom: 20px;
             font-size: 12px;
         }
-        
-        .data-table th, .data-table td { 
-            border: 1px solid #333; 
-            padding: 4px 3px; 
-            text-align: left; 
+
+        .data-table th, .data-table td {
+            border: 1px solid #333;
+            padding: 4px 3px;
+            text-align: left;
         }
-        
-        .data-table th { 
-            background-color: #f0f0f0; 
-            font-weight: bold; 
+
+        .data-table th {
+            background-color: #f0f0f0;
+            font-weight: bold;
             text-align: center;
             font-size: 12px;
         }
-        
+
         .data-table td {
             font-size: 12px;
         }
-        
+
         .uptime-good { color: #10b981; font-weight: bold; }
         .uptime-warning { color: #f59e0b; font-weight: bold; }
         .uptime-critical { color: #ef4444; font-weight: bold; }
-        
+
         .page-break {
             page-break-before: always;
         }
-        
+
         .text-center { text-align: center; }
         .text-right { text-align: right; }
         .font-bold { font-weight: bold; }
-        
+
         /* Print styles */
         @media print {
             body { margin: 0; }
             .page-break { page-break-before: always; }
         }
+        .footer-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 40px;
+            font-size: 12px;
+            text-align: center;
+        }
+
+        .footer-table th,
+        .footer-table td {
+            border: 1px solid #333;
+            padding: 6px;
+            vertical-align: middle;
+        }
+
+        .footer-table th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+        }
+
+        .footer-table td:first-child {
+            font-weight: bold;
+            text-align: left;
+            width: 18%;
+        }
+
+        .signature-space td {
+            height: 60px;
+        }
+
     </style>
 </head>
 <body>
     <!-- Header Section -->
     <div class="header">
-        @php
-            $logoPath = public_path('img/logo_PINDAD_sedang10.jpg');
-            $logoBase64 = base64_encode(file_get_contents($logoPath));
-        @endphp
+    @php
+        $logoPath = public_path('img/logo_PINDAD_sedang10.jpg');
+        $logoBase64 = base64_encode(file_get_contents($logoPath));
+    @endphp
 
-        <img src="data:image/jpeg;base64,{{ $logoBase64 }}" class="logo" alt="Logo Pindad">
-        <h3>PT PINDAD (Persero)</h3>
+    <img src="data:image/jpeg;base64,{{ $logoBase64 }}" class="logo" alt="Logo Pindad"><h3 class="title">PT PINDAD (Persero)</h3>
+
+    <div class="header-text">
+
         <p>
             PENGUKURAN KEY PERFORMANCE INDICATORS<br>
             TRIWULAN {{ $quarter }} TAHUN {{ $year }}<br>
@@ -146,6 +190,8 @@
             {{ strtoupper($department) }}
         </p>
     </div>
+</div>
+
 
     <!-- Report Metadata -->
     <table class="metadata-table">
@@ -292,39 +338,44 @@
     @endif
 
     <!-- Signature Section -->
-    <table style="width: 100%; margin-top: 40px;">
-    <tr>
-        <!-- Kiri -->
-        <td style="width: 50%; text-align: left; vertical-align: top;">
-            Mengetahui,<br>
-            Manager Departemen Teknologi Informasi
-            <br><br><br><br>
-            ____________________________<br>
-            Wilanto Sumargo, S.H<br>
-            NIP: ________________
-        </td>
-
-        <!-- Kanan -->
-        <td style="width: 50%; text-align: left; vertical-align: top; padding-left: 400px;">
-            Malang, {{ \Carbon\Carbon::createFromFormat('d/m/Y H:i:s', $generated_date, 'Asia/Jakarta')
-            ->locale('id')
-            ->translatedFormat('d F Y') }}
-            <br>Disiapkan oleh,<br>
-            Officer Infrastruktur jaringan
-            <br><br><br><br>
-            ____________________________<br>
-            -nama-<br>
-            NIP: ________________
-        </td>
-    </tr>
+<table class="footer-table">
+    <thead>
+        <tr>
+            <th></th>
+            <th>DISIAPKAN OLEH</th>
+            <th>DISETUJUI OLEH</th>
+            <th>DISAHKAN OLEH</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>JABATAN</strong></td>
+            <td>OFFICER MANAJEMEN SISTEM KOMPUTER TUREN</td>
+            <td>MANAGER</td>
+            <td>MANAGER LAYANAN TI BANDUNG TUREN</td>
+        </tr>
+        <tr>
+            <td><strong>NAMA</strong></td>
+            <td>MUHAMMAD</td>
+            <td></td>
+            <td>RIZKY</td>
+        </tr>
+        <tr>
+            <td><strong>TANGGAL</strong></td>
+            <td>08 Agustus 2025</td>
+            <td></td>
+            <td>08 Agustus 2025</td>
+        </tr>
+        <tr class="signature-space">
+            <td><strong>TANDA TANGAN</strong></td>
+            <td></td>
+            <td></td>
+            <td></td>
+        </tr>
+    </tbody>
 </table>
 
 
 
-    <!-- Footer -->
-    <div style="margin-top: 30px; font-size: 9px; color: #666; text-align: center;">
-        <p>Laporan ini dibuat secara otomatis oleh sistem monitoring telepon internal PT Pindad (Persero)</p>
-        <p>Generated on {{ $generated_date }}</p>
-    </div>
 </body>
 </html>
