@@ -1689,7 +1689,7 @@ function showPdfExportModal() {
             <!-- Content - Scrollable -->
             <div class="flex-1 overflow-y-auto p-4 sm:p-6">
                 <form id="pdf-export-form" class="space-y-6 sm:space-y-8">
-                    
+
                     <!-- Header Information Section -->
                     <div class="bg-blue-50 rounded-xl p-4 sm:p-6 border border-blue-200">
                         <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
@@ -1732,17 +1732,17 @@ function showPdfExportModal() {
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Indikator</label>
-                                <input type="text" name="indikator" value="KPI-TI-001" 
+                                <input type="text" name="indikator" value="KPI-TI-001"
                                        class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500">
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Nama Indikator</label>
-                                <input type="text" name="nama_indikator" value="Inventarisasi PC PMN Monitoring Produksi Munisi dan Seat Management (PC, Laptop & Printer) Area PT Pindad Turen (Lengkap dan Update Per Triwulan)" 
+                                <input type="text" name="nama_indikator" value="Inventarisasi PC PMN Monitoring Produksi Munisi dan Seat Management (PC, Laptop & Printer) Area PT Pindad Turen (Lengkap dan Update Per Triwulan)"
                                        class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500">
                             </div>
                             <div class="md:col-span-2">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Formula</label>
-                                <input type="text" name="formula" value="Inventarisasi PC PMN Monitoring Produksi Munisi dan Seat Management (PC, Laptop & Printer) Area PT Pindad Turen (Lengkap dan Update Per Triwulan)" 
+                                <input type="text" name="formula" value="Inventarisasi PC PMN Monitoring Produksi Munisi dan Seat Management (PC, Laptop & Printer) Area PT Pindad Turen (Lengkap dan Update Per Triwulan)"
                                        class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500">
                             </div>
                             <div>
@@ -1751,14 +1751,14 @@ function showPdfExportModal() {
                                        class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Realisasi (akan dihitung otomatis)</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Realisasi</label>
                                 <input type="text" name="realisasi" value="Tercapai 1 dokumen"
-                                       class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl bg-gray-100">
+                                       class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500">
                             </div>
                         </div>
                     </div>
 
-                    <!-- Date Range Selection Methods -->
+                    <!-- Date Range Selection -->
                     <div class="bg-gray-50 rounded-xl p-4 sm:p-6 border border-gray-200">
                         <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                             <i class="fas fa-calendar-alt text-indigo-500"></i>
@@ -1814,7 +1814,7 @@ function showPdfExportModal() {
                         </div>
 
                         <!-- Preset Period Options -->
-                        <div id="preset-options" class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+                        <div id="preset-options" class="grid grid-cols-2 md:grid-cols-2 gap-4 mb-6">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Periode Preset</label>
                                 <select name="period" onchange="updatePdfPreviewStats()" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
@@ -1836,14 +1836,6 @@ function showPdfExportModal() {
                                     <option value="quarter">Per Triwulan</option>
                                 </select>
                             </div>
-
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Include Ranking</label>
-                                <select name="include_ranking" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                                    <option value="true" selected>Ya, Sertakan</option>
-                                    <option value="false">Tidak</option>
-                                </select>
-                            </div>
                         </div>
 
                         <!-- Custom Date Range Options -->
@@ -1856,7 +1848,8 @@ function showPdfExportModal() {
                                     <input type="date" name="start_date"
                                            value="${new Date(today.getTime() - (30 * 24 * 60 * 60 * 1000)).toISOString().split('T')[0]}"
                                            max="${today.toISOString().split('T')[0]}"
-                                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                           onchange="updateCustomDatePreview()">
                                 </div>
 
                                 <div>
@@ -1866,7 +1859,8 @@ function showPdfExportModal() {
                                     <input type="date" name="end_date"
                                            value="${today.toISOString().split('T')[0]}"
                                            max="${today.toISOString().split('T')[0]}"
-                                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                           onchange="updateCustomDatePreview()">
                                 </div>
                             </div>
 
@@ -1899,24 +1893,24 @@ function showPdfExportModal() {
                             <i class="fas fa-signature text-purple-500"></i>
                             Informasi Footer & Tanda Tangan
                         </h3>
-                        
+
                         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             <!-- Disiapkan Oleh -->
                             <div class="space-y-4">
                                 <h4 class="font-semibold text-gray-700 border-b pb-2">DISIAPKAN OLEH</h4>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Jabatan</label>
-                                    <input type="text" name="prepared_jabatan" value="OFFICER MANAJEMEN SISTEM KOMPUTER TUREN" 
+                                    <input type="text" name="prepared_jabatan" value="OFFICER MANAJEMEN SISTEM KOMPUTER TUREN"
                                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Nama</label>
-                                    <input type="text" name="prepared_nama" value="MUHAMMAD" 
+                                    <input type="text" name="prepared_nama" value="MUHAMMAD"
                                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Tanggal</label>
-                                    <input type="date" name="prepared_tanggal" value="${today.toISOString().split('T')[0]}" 
+                                    <input type="date" name="prepared_tanggal" value="${today.toISOString().split('T')[0]}"
                                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
                                 </div>
                             </div>
@@ -1926,7 +1920,7 @@ function showPdfExportModal() {
                                 <h4 class="font-semibold text-gray-700 border-b pb-2">DISETUJUI OLEH</h4>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Jabatan</label>
-                                    <input type="text" name="approved_jabatan" value="MANAGER" 
+                                    <input type="text" name="approved_jabatan" value="MANAGER"
                                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
                                 </div>
                                 <div>
@@ -1936,7 +1930,7 @@ function showPdfExportModal() {
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Tanggal</label>
-                                    <input type="date" name="approved_tanggal" value="" 
+                                    <input type="date" name="approved_tanggal" value=""
                                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
                                 </div>
                             </div>
@@ -1946,17 +1940,17 @@ function showPdfExportModal() {
                                 <h4 class="font-semibold text-gray-700 border-b pb-2">DISAHKAN OLEH</h4>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Jabatan</label>
-                                    <input type="text" name="validated_jabatan" value="MANAGER LAYANAN TI BANDUNG TUREN" 
+                                    <input type="text" name="validated_jabatan" value="MANAGER LAYANAN TI BANDUNG TUREN"
                                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Nama</label>
-                                    <input type="text" name="validated_nama" value="RIZKY" 
+                                    <input type="text" name="validated_nama" value="RIZKY"
                                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Tanggal</label>
-                                    <input type="date" name="validated_tanggal" value="${today.toISOString().split('T')[0]}" 
+                                    <input type="date" name="validated_tanggal" value="${today.toISOString().split('T')[0]}"
                                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
                                 </div>
                             </div>
@@ -2008,10 +2002,6 @@ function showPdfExportModal() {
                                 class="flex-1 sm:flex-none px-3 sm:px-4 py-2 text-sm text-gray-600 hover:text-gray-800 bg-white hover:bg-gray-100 border border-gray-300 rounded-lg transition-colors">
                             <i class="fas fa-times mr-1"></i>Batal
                         </button>
-                        <button type="button" onclick="handlePdfExport('view')"
-                                class="flex-1 sm:flex-none px-3 sm:px-4 py-2 text-sm text-blue-600 hover:text-blue-800 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors">
-                            <i class="fas fa-eye mr-1"></i>Preview
-                        </button>
                         <button type="button" onclick="handlePdfExport('download')"
                                 class="flex-1 sm:flex-none px-3 sm:px-4 py-2 text-sm text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors shadow-lg">
                             <i class="fas fa-download mr-1"></i>Download PDF
@@ -2042,7 +2032,7 @@ function showPdfExportModal() {
     setupDateEventListeners();
 }
 
-// Update the handlePdfExport function to include new fields
+
 function handlePdfExport(format = 'download') {
     const form = document.getElementById('pdf-export-form');
     if (!form) {
@@ -2055,36 +2045,42 @@ function handlePdfExport(format = 'download') {
         const formData = new FormData(form);
         const dateMethod = formData.get('dateMethod');
 
+        // Validasi form sebelum submit
+        if (!validatePdfForm(formData, dateMethod)) {
+            return; // Validation failed, stop execution
+        }
+
         let options = {
             format: format,
             report_type: 'kpi', // Fixed to KPI format only
             include_ranking: formData.get('include_ranking') || 'true',
-            
+
             // Header information
             quarter: formData.get('quarter') || 'IV',
             year: formData.get('year') || new Date().getFullYear().toString(),
             department: formData.get('department') || 'DEPARTEMEN SERVICE RESPRESENTATIVE TI TUREN',
-            
-            // KPI Information
-            indikator: formData.get('indikator') || 'KPI-TI-001',
-            nama_indikator: formData.get('nama_indikator') || 'Inventarisasi PC PMN Monitoring Produksi Munisi dan Seat Management (PC, Laptop & Printer) Area PT Pindad Turen',
-            formula: formData.get('formula') || 'Inventarisasi PC PMN Monitoring Produksi Munisi dan Seat Management (PC, Laptop & Printer) Area PT Pindad Turen (Lengkap dan Update Per Triwulan)',
-            target: formData.get('target') || '1 Dokumen',
-            
+
+            // KPI Information - pastikan semua field terkirim
+            realisasi: formData.get('realisasi') ?? 'Tercapai 1 dokumen',
+            indikator: formData.get('indikator') ?? 'KPI-TI-001',
+            nama_indikator: formData.get('nama_indikator') ?? 'Inventarisasi PC PMN Monitoring...',
+            formula: formData.get('formula') ?? 'Inventarisasi PC PMN Monitoring...',
+            target: formData.get('target') ?? '1 Dokumen',
+
             // Footer/Signature Information
             prepared_jabatan: formData.get('prepared_jabatan') || 'OFFICER MANAJEMEN SISTEM KOMPUTER TUREN',
             prepared_nama: formData.get('prepared_nama') || 'MUHAMMAD',
-            prepared_tanggal: formData.get('prepared_tanggal') || new Date().toLocaleDateString('id-ID'),
+            prepared_tanggal: formData.get('prepared_tanggal') || new Date().toISOString().split('T')[0],
             approved_jabatan: formData.get('approved_jabatan') || 'MANAGER',
             approved_nama: formData.get('approved_nama') || '',
             approved_tanggal: formData.get('approved_tanggal') || '',
             validated_jabatan: formData.get('validated_jabatan') || 'MANAGER LAYANAN TI BANDUNG TUREN',
             validated_nama: formData.get('validated_nama') || 'RIZKY',
-            validated_tanggal: formData.get('validated_tanggal') || new Date().toLocaleDateString('id-ID')
+            validated_tanggal: formData.get('validated_tanggal') || new Date().toISOString().split('T')[0]
         };
 
+        // Date handling
         if (dateMethod === 'custom') {
-            // Custom date range
             const startDate = formData.get('start_date');
             const endDate = formData.get('end_date');
 
@@ -2093,21 +2089,35 @@ function handlePdfExport(format = 'download') {
                 return;
             }
 
+            // Validasi tanggal
+            const startDateObj = new Date(startDate);
+            const endDateObj = new Date(endDate);
+
+            if (startDateObj > endDateObj) {
+                showNotification('Tanggal mulai tidak boleh lebih besar dari tanggal akhir', 'warning');
+                return;
+            }
+
+            // Check date range limit (max 365 days)
+            const daysDiff = Math.ceil((endDateObj.getTime() - startDateObj.getTime()) / (1000 * 3600 * 24)) + 1;
+            if (daysDiff > 365) {
+                showNotification('Periode maksimal 365 hari. Periode saat ini: ' + daysDiff + ' hari', 'warning');
+                return;
+            }
+
             options.date_method = 'custom';
             options.start_date = startDate;
             options.end_date = endDate;
-
-            // Calculate period in days for backward compatibility
-            const startDateObj = new Date(startDate);
-            const endDateObj = new Date(endDate);
-            const periodDays = Math.ceil((endDateObj.getTime() - startDateObj.getTime()) / (1000 * 3600 * 24)) + 1;
-            options.period = periodDays.toString();
+            options.period = daysDiff.toString();
         } else {
             // Preset period
             options.date_method = 'preset';
             options.period = formData.get('period') || '30';
             options.timeframe = formData.get('timeframe') || 'days';
         }
+
+        // Debug log untuk melihat data yang akan dikirim
+        console.log('PDF Export Options:', options);
 
         // Close modal
         const modal = form.closest('.fixed');
@@ -2116,16 +2126,55 @@ function handlePdfExport(format = 'download') {
             document.body.style.overflow = ''; // Restore scroll
         }
 
-        // Show notification
-        showNotification('Memproses laporan KPI... Estimasi: 10-30 detik', 'info');
+        // Show loading notification
+        const loadingMsg = format === 'download' ?
+            'Mengunduh laporan KPI... Estimasi: 10-30 detik' :
+            'Membuka preview laporan... Estimasi: 10-30 detik';
+
+        showNotification(loadingMsg, 'info');
 
         // Export PDF with enhanced options
         exportPdfReport(options);
 
     } catch (error) {
         console.error('Error in handlePdfExport:', error);
-        showNotification('Terjadi kesalahan saat memproses export PDF', 'error');
+        showNotification('Terjadi kesalahan saat memproses export PDF: ' + error.message, 'error');
     }
+}
+
+/**
+ * Validate PDF form before submission
+ */
+function validatePdfForm(formData, dateMethod) {
+    // Validasi field wajib
+    const requiredFields = {
+        'indikator': 'Indikator KPI',
+        'nama_indikator': 'Nama Indikator',
+        'target': 'Target KPI',
+        'prepared_nama': 'Nama Penyusun',
+        'validated_nama': 'Nama Validator'
+    };
+
+    for (const [field, label] of Object.entries(requiredFields)) {
+        const value = formData.get(field);
+        if (!value || value.trim() === '') {
+            showNotification(`Field "${label}" tidak boleh kosong`, 'warning');
+            return false;
+        }
+    }
+
+    // Validasi tanggal custom
+    if (dateMethod === 'custom') {
+        const startDate = formData.get('start_date');
+        const endDate = formData.get('end_date');
+
+        if (!startDate || !endDate) {
+            showNotification('Tanggal mulai dan akhir harus diisi untuk periode custom', 'warning');
+            return false;
+        }
+    }
+
+    return true;
 }
 
 // Keep all existing helper functions
@@ -2388,10 +2437,6 @@ async function exportPdfReport(options = {}) {
             quarter: options.quarter || 'IV',
             year: options.year || new Date().getFullYear().toString(),
             report_type: options.report_type || 'summary',
-            include_charts: options.include_charts || 'true',
-            include_ranking: options.include_ranking || 'true',
-            include_history: options.include_history || 'false',
-            include_recommendations: options.include_recommendations || 'false',
             date_method: options.date_method || 'preset',
             timeframe: options.timeframe || 'days'
         };
@@ -2428,11 +2473,22 @@ async function exportHistory(params = {}) {
         // Show loading notification
         showNotification('Mempersiapkan laporan PDF...', 'info');
 
-        // Build query string
+        // Build query string with proper array handling
         const query = new URLSearchParams();
         Object.keys(params).forEach(key => {
-            if (params[key] !== null && params[key] !== undefined && params[key] !== '') {
-                query.append(key, params[key]);
+            const value = params[key];
+            if (value !== null && value !== undefined && value !== '') {
+                // Handle arrays properly
+                if (Array.isArray(value)) {
+                    // Option 1: Send as JSON string
+                    query.append(key, JSON.stringify(value));
+
+                    // Option 2: Send multiple parameters with same key (uncomment if preferred)
+                    // value.forEach(item => query.append(key + '[]', item));
+                } else {
+                    // Ensure non-array values are converted to strings
+                    query.append(key, String(value));
+                }
             }
         });
 

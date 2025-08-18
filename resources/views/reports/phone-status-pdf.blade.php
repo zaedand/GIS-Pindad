@@ -11,43 +11,40 @@
             line-height: 1.4;
         }
 
-        <style>
-.header {
-    display: flex;
-    align-items: center; /* sejajarkan vertikal tengah */
-    margin-bottom: 20px;
-}
+        .header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
 
-.header .logo {
-    width: 100px;   /* atur besar logo */
-    height: auto;
-    margin-right: 15px; /* jarak logo ke teks */
-}
+        .header .logo {
+            width: 100px;
+            height: auto;
+            margin-right: 15px;
+        }
 
-.header .title {
-    font-size: 20px;
-    font-weight: bold;
-    margin: 0; /* hilangkan margin default h3 */
-}
+        .header .title {
+            font-size: 20px;
+            font-weight: bold;
+            margin: 0; /* hilangkan margin default h3 */
+        }
 
-.header .header-text {
-    flex: 1;
-    text-align: center; /* teks di tengah */
-}
+        .header .header-text {
+            flex: 1;
+            text-align: center; /* teks di tengah */
+        }
 
-.header .header-text h3 {
-    margin: 0;
-    font-size: 18px;
-    font-weight: bold;
-}
-.header .header-text p {
-    margin: 0;
-    font-size: 16px;
-    font-weight: bold;
-    line-height: 1.4;
-}
-
-
+        .header .header-text h3 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .header .header-text p {
+            margin: 0;
+            font-size: 16px;
+            font-weight: bold;
+            line-height: 1.4;
+        }
 
         .metadata-table {
             width: 100%;
@@ -235,17 +232,25 @@
             </div>
             <div class="summary-item">
                 <span class="summary-label">Telepon Online</span>
-                <span class="summary-value">: {{ $online_phones }} ({{ $online_percentage }}%)</span>
+                <span class="summary-value">: {{ $online_phones }} ({{ $online_percentage }})</span>
             </div>
         </div>
         <div>
             <div class="summary-item">
                 <span class="summary-label">Telepon Offline</span>
-                <span class="summary-value">: {{ $offline_phones }} ({{ $offline_percentage }}%)</span>
+                <span class="summary-value">: {{ $offline_phones }} ({{ $offline_percentage }})</span>
             </div>
             <div class="summary-item">
                 <span class="summary-label">Telepon Yang Sering Offline</span>
-                <span class="summary-value">: {{ $frequently_offline }}</span>
+                <span class="summary-value">
+                    :
+                    @if(!empty($frequently_offline))
+                        {{ implode(', ', array_map(fn($item) => $item['endpoint'] ?? $item, $frequently_offline)) }}
+                    @else
+                        Tidak ada
+                    @endif
+                </span>
+            </div>
             </div>
         </div>
     </div>
@@ -266,31 +271,37 @@
             </tr>
         </thead>
         <tbody>
-            @foreach($endpoints_data as $index => $endpoint)
-            <tr>
-                <td class="text-center">{{ $index + 1 }}</td>
-                <td class="text-center font-bold">{{ $endpoint['endpoint'] }}</td>
-                <td>{{ $endpoint['building'] }}</td>
-                <td class="text-center">{{ $endpoint['ip_address'] }}</td>
-                <td class="text-center
-                    @php
-                        $uptime = (int)str_replace('%', '', $endpoint['uptime_period']);
-                    @endphp
-                    @if($uptime >= 95) uptime-good
-                    @elseif($uptime >= 80) uptime-warning
-                    @else uptime-critical
-                    @endif">
-                    {{ $endpoint['uptime_period'] }}
-                </td>
-                <td class="text-center">{{ $endpoint['total_events'] }}</td>
-                <td class="text-center">{{ $endpoint['offline_events'] }}</td>
-                <td class="text-center">{{ $endpoint['online_events'] }}</td>
-            </tr>
-            @endforeach
+            @if(is_array($endpoints_data) && count($endpoints_data) > 0)
+                @foreach($endpoints_data as $index => $endpoint)
+                <tr>
+                    <td class="text-center">{{ $index + 1 }}</td>
+                    <td class="text-center font-bold">{{ $endpoint['endpoint'] ?? 'N/A' }}</td>
+                    <td>{{ $endpoint['building'] ?? 'N/A' }}</td>
+                    <td class="text-center">{{ $endpoint['ip_address'] ?? 'N/A' }}</td>
+                    <td class="text-center
+                        @php
+                            $uptime = (int)str_replace('%', '', $endpoint['uptime_period'] ?? '0%');
+                        @endphp
+                        @if($uptime >= 95) uptime-good
+                        @elseif($uptime >= 80) uptime-warning
+                        @else uptime-critical
+                        @endif">
+                        {{ $endpoint['uptime_period'] ?? '0%' }}
+                    </td>
+                    <td class="text-center">{{ $endpoint['total_events'] ?? 0 }}</td>
+                    <td class="text-center">{{ $endpoint['offline_events'] ?? 0 }}</td>
+                    <td class="text-center">{{ $endpoint['online_events'] ?? 0 }}</td>
+                </tr>
+                @endforeach
+            @else
+                <tr>
+                    <td colspan="8" class="text-center">Tidak ada data endpoint tersedia</td>
+                </tr>
+            @endif
         </tbody>
     </table>
 
-    @if(count($ranking_data) > 0)
+    @if(is_array($ranking_data) && count($ranking_data) > 0)
     <!-- Page Break -->
     <div class="page-break"></div>
 
@@ -313,24 +324,24 @@
         <tbody>
             @foreach($ranking_data as $data)
             <tr>
-                <td class="text-center font-bold">{{ $data['rank'] }}</td>
-                <td class="text-center font-bold">{{ $data['endpoint'] }}</td>
-                <td>{{ $data['building'] }}</td>
+                <td class="text-center font-bold">{{ $data['rank'] ?? 'N/A' }}</td>
+                <td class="text-center font-bold">{{ $data['endpoint'] ?? 'N/A' }}</td>
+                <td>{{ $data['building'] ?? 'N/A' }}</td>
                 <td class="text-center
                     @php
-                        $uptime = (int)str_replace('%', '', $data['uptime_period']);
+                        $uptime = (int)str_replace('%', '', $data['uptime_period'] ?? '0%');
                     @endphp
                     @if($uptime >= 95) uptime-good
                     @elseif($uptime >= 80) uptime-warning
                     @else uptime-critical
                     @endif">
-                    {{ $data['uptime_period'] }}
+                    {{ $data['uptime_period'] ?? '0%' }}
                 </td>
-                <td class="text-center">{{ $data['total_offline_duration'] }}</td>
-                <td class="text-center">{{ $data['total_events'] }}</td>
-                <td class="text-center font-bold status-offline">{{ $data['offline_events'] }}</td>
-                <td class="text-center">{{ $data['online_events'] }}</td>
-                <td class="text-center">{{ $data['last_activity'] }}</td>
+                <td class="text-center">{{ $data['total_offline_duration'] ?? 'N/A' }}</td>
+                <td class="text-center">{{ $data['total_events'] ?? 0 }}</td>
+                <td class="text-center font-bold status-offline">{{ $data['offline_events'] ?? 0 }}</td>
+                <td class="text-center">{{ $data['online_events'] ?? 0 }}</td>
+                <td class="text-center">{{ $data['last_activity'] ?? 'N/A' }}</td>
             </tr>
             @endforeach
         </tbody>
@@ -362,10 +373,9 @@
         </tr>
         <tr>
             <td><strong>TANGGAL</strong></td>
-            
-            <td>{{ \Carbon\Carbon::parse($prepared_tanggal)->translatedFormat('d F Y') }}</td>
-            <td>{{ \Carbon\Carbon::parse($approved_tanggal)->translatedFormat('d F Y') }}</td>
-            <td>{{ \Carbon\Carbon::parse($validated_tanggal)->translatedFormat('d F Y') }}</td>
+            <td>{{ $prepared_tanggal }}</td>
+            <td>{{ $approved_tanggal ?: '-' }}</td>
+            <td>{{ $validated_tanggal }}</td>
         </tr>
         <tr class="signature-space">
             <td><strong>TANDA TANGAN</strong></td>
@@ -375,8 +385,6 @@
         </tr>
     </tbody>
 </table>
-
-
 
 </body>
 </html>

@@ -91,7 +91,7 @@
                 <i class="fas fa-spinner fa-spin text-3xl mb-3"></i>
                 <p>Memuat log aktivitas...</p>
             </div>
-            
+
         </div>
 
         <!-- Pagination Controls Container - Will be populated by JavaScript -->
@@ -99,14 +99,15 @@
             <!-- JavaScript will populate this with pagination controls -->
         </div>
     </div>
-<!-- <script>
+{{-- <!-- <script>
     @auth
         window.userToken = @json(auth()->user()->createToken('map-token')->plainTextToken);
     @else
         window.userToken = null;
         window.location.href = '/login';
     @endauth
-</script> -->
+</script> --> --}}
+
 <script>
     window.userToken = "{{ $apiKey }}";
 </script>
