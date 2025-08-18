@@ -1782,18 +1782,19 @@ day
 13 menambah periode waktu eksport
 14 menambah fitur input (disahkan, didetujui, ..) margin 1 cm
 
-menambah fitur input (disahkan, didetujui, ..) margin 1 cm
+menambah fitur input (disiapkan, disetujui, disahkan)
 bagian yang diinput terdiri dari 14 input oleh user untuk digenerate ke laporan yakni
 header
 triwulan: (sudah)
 tahun: (sudah)
+department (drpdown isi: DEPARTEMEN SERVICE RESPRESENTATIVE TI TUREN)
 
 Indikator :
 Nama Indikator :
 Formula :
 Target :
 Realisasi :
-periode : (sudah)
+
 
 footer
 kolom disiapkan oleh
@@ -1813,6 +1814,13 @@ hilangkan opsi laporan karena format laporannya hanya itu saja
 
 *pada tabel data semua status endpoint dihilangkan/diubah menjadi diagram lingkaran yang menghitung uptime(hijau)
 dan downtime(merah)
+Example:
+total uptime all(misal 9 device)			900
+total uptime all(online)			817,5
+total downtime all (offline)			82,5
+
+kalau untuk yang ranking biarkan
+
 <?php
 
 namespace App\Http\Controllers;

@@ -350,21 +350,22 @@
     <tbody>
         <tr>
             <td><strong>JABATAN</strong></td>
-            <td>OFFICER MANAJEMEN SISTEM KOMPUTER TUREN</td>
-            <td>MANAGER</td>
-            <td>MANAGER LAYANAN TI BANDUNG TUREN</td>
+            <td>{{ $prepared_jabatan }}</td>
+            <td>{{ $approved_jabatan }}</td>
+            <td>{{ $validated_jabatan }}</td>
         </tr>
         <tr>
             <td><strong>NAMA</strong></td>
-            <td>MUHAMMAD</td>
-            <td></td>
-            <td>RIZKY</td>
+            <td>{{ $prepared_nama }}</td>
+            <td>{{ $approved_nama }}</td>
+            <td>{{ $validated_nama }}</td>
         </tr>
         <tr>
             <td><strong>TANGGAL</strong></td>
-            <td>08 Agustus 2025</td>
-            <td></td>
-            <td>08 Agustus 2025</td>
+            
+            <td>{{ \Carbon\Carbon::parse($prepared_tanggal)->translatedFormat('d F Y') }}</td>
+            <td>{{ \Carbon\Carbon::parse($approved_tanggal)->translatedFormat('d F Y') }}</td>
+            <td>{{ \Carbon\Carbon::parse($validated_tanggal)->translatedFormat('d F Y') }}</td>
         </tr>
         <tr class="signature-space">
             <td><strong>TANDA TANGAN</strong></td>

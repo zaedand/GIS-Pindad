@@ -1665,20 +1665,19 @@ function showPdfExportModal() {
 
     // Calculate default date ranges
     const today = new Date();
-    const lastWeek = new Date(today.getTime() - (7 * 24 * 60 * 60 * 1000));
-    const lastMonth = new Date(today.getTime() - (30 * 24 * 60 * 60 * 1000));
-    const lastQuarter = new Date(today.getTime() - (90 * 24 * 60 * 60 * 1000));
+    const currentYear = today.getFullYear();
+    const currentQuarter = Math.ceil((today.getMonth() + 1) / 3);
 
     modal.innerHTML = `
-        <div class="bg-white rounded-2xl w-full max-w-6xl flex flex-col shadow-2xl" style="max-height: 95vh; min-height: 60vh;">
+        <div class="bg-white rounded-2xl w-full max-w-7xl flex flex-col shadow-2xl" style="max-height: 95vh; min-height: 70vh;">
             <!-- Header - Fixed -->
             <div class="flex-shrink-0 p-4 sm:p-6 border-b border-gray-200 bg-red-500 text-white rounded-t-2xl">
                 <div class="flex justify-between items-center">
                     <div>
                         <h2 class="text-xl sm:text-2xl font-bold">
-                            <i class="fas fa-file-pdf mr-2"></i>Export Laporan PDF
+                            <i class="fas fa-file-pdf mr-2"></i>Export Laporan KPI PDF
                         </h2>
-                        <p class="mt-1 opacity-90 text-sm sm:text-base">Generate laporan KPI status telepon dengan periode custom</p>
+                        <p class="mt-1 opacity-90 text-sm sm:text-base">Generate laporan KPI status telepon dengan informasi lengkap</p>
                     </div>
                     <button onclick="closePdfModal(this)"
                             class="text-white/80 hover:text-white text-xl sm:text-2xl p-2 hover:bg-white/20 rounded-lg transition-colors flex-shrink-0">
@@ -1690,11 +1689,80 @@ function showPdfExportModal() {
             <!-- Content - Scrollable -->
             <div class="flex-1 overflow-y-auto p-4 sm:p-6">
                 <form id="pdf-export-form" class="space-y-6 sm:space-y-8">
+                    
+                    <!-- Header Information Section -->
+                    <div class="bg-blue-50 rounded-xl p-4 sm:p-6 border border-blue-200">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                            <i class="fas fa-info-circle text-blue-500"></i>
+                            Informasi Header Laporan
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Triwulan</label>
+                                <select name="quarter" onchange="updatePdfPreviewStats()" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="I" ${currentQuarter === 1 ? 'selected' : ''}>Triwulan I</option>
+                                    <option value="II" ${currentQuarter === 2 ? 'selected' : ''}>Triwulan II</option>
+                                    <option value="III" ${currentQuarter === 3 ? 'selected' : ''}>Triwulan III</option>
+                                    <option value="IV" ${currentQuarter === 4 ? 'selected' : ''}>Triwulan IV</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Tahun</label>
+                                <select name="year" onchange="updatePdfPreviewStats()" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="2023">2023</option>
+                                    <option value="2024" ${currentYear === 2024 ? 'selected' : ''}>2024</option>
+                                    <option value="2025" ${currentYear === 2025 ? 'selected' : ''}>2025</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Departemen</label>
+                                <select name="department" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="DEPARTEMEN SERVICE RESPRESENTATIVE TI TUREN" selected>DEPARTEMEN SERVICE RESPRESENTATIVE TI TUREN</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- KPI Information Section -->
+                    <div class="bg-green-50 rounded-xl p-4 sm:p-6 border border-green-200">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                            <i class="fas fa-chart-line text-green-500"></i>
+                            Informasi KPI
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Indikator</label>
+                                <input type="text" name="indikator" value="KPI-TI-001" 
+                                       class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Nama Indikator</label>
+                                <input type="text" name="nama_indikator" value="Inventarisasi PC PMN Monitoring Produksi Munisi dan Seat Management (PC, Laptop & Printer) Area PT Pindad Turen (Lengkap dan Update Per Triwulan)" 
+                                       class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Formula</label>
+                                <input type="text" name="formula" value="Inventarisasi PC PMN Monitoring Produksi Munisi dan Seat Management (PC, Laptop & Printer) Area PT Pindad Turen (Lengkap dan Update Per Triwulan)" 
+                                       class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Target</label>
+                                <input type="text" name="target" value="1 Dokumen"
+                                       class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Realisasi (akan dihitung otomatis)</label>
+                                <input type="text" name="realisasi" value="Tercapai 1 dokumen"
+                                       class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl bg-gray-100">
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Date Range Selection Methods -->
                     <div class="bg-gray-50 rounded-xl p-4 sm:p-6 border border-gray-200">
                         <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                             <i class="fas fa-calendar-alt text-indigo-500"></i>
-                            Pilih Metode Periode
+                            Pilih Periode Laporan
                         </h3>
 
                         <!-- Date Range Method Selection -->
@@ -1746,7 +1814,7 @@ function showPdfExportModal() {
                         </div>
 
                         <!-- Preset Period Options -->
-                        <div id="preset-options" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                        <div id="preset-options" class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Periode Preset</label>
                                 <select name="period" onchange="updatePdfPreviewStats()" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
@@ -1761,30 +1829,19 @@ function showPdfExportModal() {
                             </div>
 
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Triwulan</label>
-                                <select name="quarter" onchange="updatePdfPreviewStats()" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                                    <option value="I">Triwulan I</option>
-                                    <option value="II">Triwulan II</option>
-                                    <option value="III">Triwulan III</option>
-                                    <option value="IV" selected>Triwulan IV</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Tahun</label>
-                                <select name="year" onchange="updatePdfPreviewStats()" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                                    <option value="2023">2023</option>
-                                    <option value="2024" selected>2024</option>
-                                    <option value="2025">2025</option>
-                                </select>
-                            </div>
-
-                            <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Format Waktu</label>
                                 <select name="timeframe" onchange="updatePdfPreviewStats()" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                                     <option value="days">Hari Terakhir</option>
                                     <option value="from_start">Dari Awal Tahun</option>
                                     <option value="quarter">Per Triwulan</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Include Ranking</label>
+                                <select name="include_ranking" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option value="true" selected>Ya, Sertakan</option>
+                                    <option value="false">Tidak</option>
                                 </select>
                             </div>
                         </div>
@@ -1797,7 +1854,7 @@ function showPdfExportModal() {
                                         <i class="fas fa-calendar-plus mr-1"></i>Tanggal Mulai
                                     </label>
                                     <input type="date" name="start_date"
-                                           value="${lastMonth.toISOString().split('T')[0]}"
+                                           value="${new Date(today.getTime() - (30 * 24 * 60 * 60 * 1000)).toISOString().split('T')[0]}"
                                            max="${today.toISOString().split('T')[0]}"
                                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                                 </div>
@@ -1836,35 +1893,71 @@ function showPdfExportModal() {
                         </div>
                     </div>
 
-                    <!-- Report Options -->
-                    <div class="bg-white rounded-xl p-4 sm:p-6 border border-gray-200">
+                    <!-- Footer Information Section -->
+                    <div class="bg-purple-50 rounded-xl p-4 sm:p-6 border border-purple-200">
                         <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                            <i class="fas fa-cog text-indigo-500"></i>
-                            Opsi Laporan
+                            <i class="fas fa-signature text-purple-500"></i>
+                            Informasi Footer & Tanda Tangan
                         </h3>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <!-- Report Type -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-3">Jenis Laporan</label>
-                                <div class="space-y-2">
-                                    <label class="flex items-center">
-                                        <input type="radio" name="report_type" value="summary" checked
-                                               class="mr-2 text-indigo-600 focus:ring-indigo-500">
-                                        <span class="text-sm">Format laporan</span>
-                                    </label>
+                        
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <!-- Disiapkan Oleh -->
+                            <div class="space-y-4">
+                                <h4 class="font-semibold text-gray-700 border-b pb-2">DISIAPKAN OLEH</h4>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Jabatan</label>
+                                    <input type="text" name="prepared_jabatan" value="OFFICER MANAJEMEN SISTEM KOMPUTER TUREN" 
+                                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Nama</label>
+                                    <input type="text" name="prepared_nama" value="MUHAMMAD" 
+                                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Tanggal</label>
+                                    <input type="date" name="prepared_tanggal" value="${today.toISOString().split('T')[0]}" 
+                                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
                                 </div>
                             </div>
 
-                            <!-- Additional Options -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-3">Opsi Tambahan</label>
-                                <div class="space-y-2">
-                                    <label class="flex items-center">
-                                        <input type="checkbox" name="include_ranking" checked
-                                               class="mr-2 text-indigo-600 focus:ring-indigo-500 rounded">
-                                        <span class="text-sm">Rank Endpoint Offline</span>
-                                    </label>
+                            <!-- Disetujui Oleh -->
+                            <div class="space-y-4">
+                                <h4 class="font-semibold text-gray-700 border-b pb-2">DISETUJUI OLEH</h4>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Jabatan</label>
+                                    <input type="text" name="approved_jabatan" value="MANAGER" 
+                                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Nama</label>
+                                    <input type="text" name="approved_nama" value="" placeholder="Masukkan nama..."
+                                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Tanggal</label>
+                                    <input type="date" name="approved_tanggal" value="" 
+                                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                                </div>
+                            </div>
+
+                            <!-- Disahkan Oleh -->
+                            <div class="space-y-4">
+                                <h4 class="font-semibold text-gray-700 border-b pb-2">DISAHKAN OLEH</h4>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Jabatan</label>
+                                    <input type="text" name="validated_jabatan" value="MANAGER LAYANAN TI BANDUNG TUREN" 
+                                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Nama</label>
+                                    <input type="text" name="validated_nama" value="RIZKY" 
+                                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Tanggal</label>
+                                    <input type="date" name="validated_tanggal" value="${today.toISOString().split('T')[0]}" 
+                                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
                                 </div>
                             </div>
                         </div>
@@ -1949,11 +2042,97 @@ function showPdfExportModal() {
     setupDateEventListeners();
 }
 
+// Update the handlePdfExport function to include new fields
+function handlePdfExport(format = 'download') {
+    const form = document.getElementById('pdf-export-form');
+    if (!form) {
+        console.error('PDF export form not found');
+        showNotification('Form tidak ditemukan', 'error');
+        return;
+    }
+
+    try {
+        const formData = new FormData(form);
+        const dateMethod = formData.get('dateMethod');
+
+        let options = {
+            format: format,
+            report_type: 'kpi', // Fixed to KPI format only
+            include_ranking: formData.get('include_ranking') || 'true',
+            
+            // Header information
+            quarter: formData.get('quarter') || 'IV',
+            year: formData.get('year') || new Date().getFullYear().toString(),
+            department: formData.get('department') || 'DEPARTEMEN SERVICE RESPRESENTATIVE TI TUREN',
+            
+            // KPI Information
+            indikator: formData.get('indikator') || 'KPI-TI-001',
+            nama_indikator: formData.get('nama_indikator') || 'Inventarisasi PC PMN Monitoring Produksi Munisi dan Seat Management (PC, Laptop & Printer) Area PT Pindad Turen',
+            formula: formData.get('formula') || 'Inventarisasi PC PMN Monitoring Produksi Munisi dan Seat Management (PC, Laptop & Printer) Area PT Pindad Turen (Lengkap dan Update Per Triwulan)',
+            target: formData.get('target') || '1 Dokumen',
+            
+            // Footer/Signature Information
+            prepared_jabatan: formData.get('prepared_jabatan') || 'OFFICER MANAJEMEN SISTEM KOMPUTER TUREN',
+            prepared_nama: formData.get('prepared_nama') || 'MUHAMMAD',
+            prepared_tanggal: formData.get('prepared_tanggal') || new Date().toLocaleDateString('id-ID'),
+            approved_jabatan: formData.get('approved_jabatan') || 'MANAGER',
+            approved_nama: formData.get('approved_nama') || '',
+            approved_tanggal: formData.get('approved_tanggal') || '',
+            validated_jabatan: formData.get('validated_jabatan') || 'MANAGER LAYANAN TI BANDUNG TUREN',
+            validated_nama: formData.get('validated_nama') || 'RIZKY',
+            validated_tanggal: formData.get('validated_tanggal') || new Date().toLocaleDateString('id-ID')
+        };
+
+        if (dateMethod === 'custom') {
+            // Custom date range
+            const startDate = formData.get('start_date');
+            const endDate = formData.get('end_date');
+
+            if (!startDate || !endDate) {
+                showNotification('Mohon pilih tanggal mulai dan akhir', 'warning');
+                return;
+            }
+
+            options.date_method = 'custom';
+            options.start_date = startDate;
+            options.end_date = endDate;
+
+            // Calculate period in days for backward compatibility
+            const startDateObj = new Date(startDate);
+            const endDateObj = new Date(endDate);
+            const periodDays = Math.ceil((endDateObj.getTime() - startDateObj.getTime()) / (1000 * 3600 * 24)) + 1;
+            options.period = periodDays.toString();
+        } else {
+            // Preset period
+            options.date_method = 'preset';
+            options.period = formData.get('period') || '30';
+            options.timeframe = formData.get('timeframe') || 'days';
+        }
+
+        // Close modal
+        const modal = form.closest('.fixed');
+        if (modal) {
+            modal.remove();
+            document.body.style.overflow = ''; // Restore scroll
+        }
+
+        // Show notification
+        showNotification('Memproses laporan KPI... Estimasi: 10-30 detik', 'info');
+
+        // Export PDF with enhanced options
+        exportPdfReport(options);
+
+    } catch (error) {
+        console.error('Error in handlePdfExport:', error);
+        showNotification('Terjadi kesalahan saat memproses export PDF', 'error');
+    }
+}
+
+// Keep all existing helper functions
 function closePdfModal(button) {
     const modal = button.closest('.fixed');
     if (modal) {
         modal.remove();
-        // Restore body scroll
         document.body.style.overflow = '';
     }
 }
@@ -1970,13 +2149,11 @@ function toggleDateMethod(method) {
     if (method === 'preset') {
         presetOptions.classList.remove('hidden');
         customOptions.classList.add('hidden');
-        // Update stats when switching to preset
         updatePdfPreviewStats();
     } else {
         presetOptions.classList.add('hidden');
         customOptions.classList.remove('hidden');
         updateCustomDatePreview();
-        // Update stats when switching to custom
         updatePdfPreviewStats();
     }
 }
@@ -2018,7 +2195,6 @@ function setQuickDate(period) {
             return;
     }
 
-    // Switch to custom mode and set dates
     customRadio.checked = true;
     toggleDateMethod('custom');
 
@@ -2034,22 +2210,20 @@ function setupDateEventListeners() {
 
     if (startDateInput && endDateInput) {
         startDateInput.addEventListener('change', () => {
-            // Ensure end date is not before start date
             if (endDateInput.value < startDateInput.value) {
                 endDateInput.value = startDateInput.value;
             }
             endDateInput.min = startDateInput.value;
             updateCustomDatePreview();
-            updatePdfPreviewStats(); // Update stats when date changes
+            updatePdfPreviewStats();
         });
 
         endDateInput.addEventListener('change', () => {
-            // Ensure start date is not after end date
             if (startDateInput.value > endDateInput.value) {
                 startDateInput.value = endDateInput.value;
             }
             updateCustomDatePreview();
-            updatePdfPreviewStats(); // Update stats when date changes
+            updatePdfPreviewStats();
         });
     }
 }
@@ -2068,7 +2242,6 @@ function updateCustomDatePreview() {
         const endDate = new Date(endDateInput.value);
 
         if (startDate && endDate && !isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) {
-            // Format dates for display
             const options = {
                 year: 'numeric',
                 month: 'long',
@@ -2079,12 +2252,10 @@ function updateCustomDatePreview() {
             previewStartDate.textContent = startDate.toLocaleDateString('id-ID', options);
             previewEndDate.textContent = endDate.toLocaleDateString('id-ID', options);
 
-            // Calculate total days
             const timeDiff = endDate.getTime() - startDate.getTime();
-            const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1; // +1 to include both dates
+            const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
             previewTotalDays.textContent = `${daysDiff} hari`;
 
-            // Update preview period in statistics
             const previewPeriodEl = document.getElementById('preview-period');
             if (previewPeriodEl) {
                 previewPeriodEl.textContent = daysDiff;
@@ -2098,75 +2269,111 @@ function updateCustomDatePreview() {
     }
 }
 
-function handlePdfExport(format = 'download') {
-    const form = document.getElementById('pdf-export-form');
-    if (!form) {
-        console.error('PDF export form not found');
-        showNotification('Form tidak ditemukan', 'error');
+function updatePdfPreviewStats() {
+    try {
+        const totalEl = document.getElementById('preview-total');
+        const onlineEl = document.getElementById('preview-online');
+        const offlineEl = document.getElementById('preview-offline');
+        const uptimeEl = document.getElementById('preview-uptime');
+        const periodEl = document.getElementById('preview-period');
+        const realizationInput = document.querySelector('input[name="realisasi"]');
+
+        if (!totalEl) {
+            console.warn('Preview elements not found');
+            return;
+        }
+
+        const form = document.getElementById('pdf-export-form');
+        let currentPeriod = 30;
+
+        if (form) {
+            const formData = new FormData(form);
+            const dateMethod = formData.get('dateMethod');
+
+            if (dateMethod === 'custom') {
+                const startDate = formData.get('start_date');
+                const endDate = formData.get('end_date');
+
+                if (startDate && endDate) {
+                    const start = new Date(startDate);
+                    const end = new Date(endDate);
+                    const timeDiff = end.getTime() - start.getTime();
+                    currentPeriod = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
+                }
+            } else {
+                currentPeriod = parseInt(formData.get('period')) || 30;
+            }
+        }
+
+        if (periodEl) {
+            periodEl.textContent = currentPeriod;
+        }
+
+        // Get nodes data or use sample data
+        let nodesData = window.nodes || [
+            {status: 'online'}, {status: 'online'}, {status: 'offline'},
+            {status: 'online'}, {status: 'online'}, {status: 'online'},
+            {status: 'offline'}, {status: 'online'}, {status: 'online'},
+            {status: 'online'}
+        ];
+
+        const total = nodesData.length;
+        const online = nodesData.filter(n => {
+            const status = (n.status || '').toLowerCase();
+            return status === 'online' || status === 'aktif';
+        }).length;
+        const offline = total - online;
+        const avgUptime = total > 0 ? Math.round((online / total) * 100) : 0;
+
+        // Update display with animation
+        animateNumberUpdate(totalEl, parseInt(totalEl.textContent) || 0, total);
+        animateNumberUpdate(onlineEl, parseInt(onlineEl.textContent) || 0, online);
+        animateNumberUpdate(offlineEl, parseInt(offlineEl.textContent) || 0, offline);
+        animateNumberUpdate(uptimeEl, parseInt(uptimeEl.textContent) || 0, avgUptime, '%');
+
+        // Update realization input
+        if (realizationInput) {
+            realizationInput.value = avgUptime + '%';
+        }
+
+        // Update uptime color
+        if (avgUptime >= 90) {
+            uptimeEl.className = uptimeEl.className.replace(/text-\w+-600/, 'text-green-600');
+        } else if (avgUptime >= 75) {
+            uptimeEl.className = uptimeEl.className.replace(/text-\w+-600/, 'text-yellow-600');
+        } else {
+            uptimeEl.className = uptimeEl.className.replace(/text-\w+-600/, 'text-red-600');
+        }
+
+    } catch (error) {
+        console.error('Error updating preview stats:', error);
+    }
+}
+
+function animateNumberUpdate(element, startValue, endValue, suffix = '') {
+    if (!element || startValue === endValue) {
+        if (element) element.textContent = endValue + suffix;
         return;
     }
 
-    try {
-        const formData = new FormData(form);
-        const dateMethod = formData.get('dateMethod');
+    const duration = 500;
+    const startTime = performance.now();
+    const difference = endValue - startValue;
 
-        let options = {
-            format: format,
-            report_type: formData.get('report_type') || 'summary',
-            include_charts: formData.get('include_charts') ? 'true' : 'false',
-            include_ranking: formData.get('include_ranking') ? 'true' : 'false',
-            include_history: formData.get('include_history') ? 'true' : 'false',
-            include_recommendations: formData.get('include_recommendations') ? 'true' : 'false'
-        };
+    function updateNumber(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const easeProgress = 1 - Math.pow(1 - progress, 3);
+        const currentValue = Math.round(startValue + (difference * easeProgress));
 
-        if (dateMethod === 'custom') {
-            // Custom date range
-            const startDate = formData.get('start_date');
-            const endDate = formData.get('end_date');
+        element.textContent = currentValue + suffix;
 
-            if (!startDate || !endDate) {
-                showNotification('Mohon pilih tanggal mulai dan akhir', 'warning');
-                return;
-            }
-
-            options.date_method = 'custom';
-            options.start_date = startDate;
-            options.end_date = endDate;
-
-            // Calculate period in days for backward compatibility
-            const startDateObj = new Date(startDate);
-            const endDateObj = new Date(endDate);
-            const periodDays = Math.ceil((endDateObj.getTime() - startDateObj.getTime()) / (1000 * 3600 * 24)) + 1;
-            options.period = periodDays.toString();
-        } else {
-            // Preset period
-            options.date_method = 'preset';
-            options.period = formData.get('period') || '30';
-            options.timeframe = formData.get('timeframe') || 'days';
+        if (progress < 1) {
+            requestAnimationFrame(updateNumber);
         }
-
-        // Always include quarter and year for report metadata
-        options.quarter = formData.get('quarter') || 'IV';
-        options.year = formData.get('year') || new Date().getFullYear().toString();
-
-        // Close modal
-        const modal = form.closest('.fixed');
-        if (modal) {
-            modal.remove();
-            document.body.style.overflow = ''; // Restore scroll
-        }
-
-        // Show notification based on estimated time
-        const estimatedTime = options.report_type === 'detailed' ? '30-45 detik' : '10-30 detik';
-        showNotification(`Memproses ${options.report_type} report... Estimasi: ${estimatedTime}`, 'info');
-
-        // Export PDF with enhanced options
-        exportPdfReport(options);
-
-    } catch (error) {
-        console.error('Error in handlePdfExport:', error);
-        showNotification('Terjadi kesalahan saat memproses export PDF', 'error');
     }
+
+    requestAnimationFrame(updateNumber);
 }
 
 /**
@@ -2328,158 +2535,6 @@ function downloadBlob(blob, filename) {
         console.error('Error downloading blob:', error);
         throw new Error('Gagal mendownload file');
     }
-}
-
-/**
- * Update preview statistics in modal - Enhanced Version
- */
-function updatePdfPreviewStats() {
-    try {
-        const totalEl = document.getElementById('preview-total');
-        const onlineEl = document.getElementById('preview-online');
-        const offlineEl = document.getElementById('preview-offline');
-        const uptimeEl = document.getElementById('preview-uptime');
-        const periodEl = document.getElementById('preview-period');
-
-        if (!totalEl) {
-            console.warn('Preview elements not found');
-            return;
-        }
-
-        // Get current form data to determine period
-        const form = document.getElementById('pdf-export-form');
-        let currentPeriod = 30; // default
-
-        if (form) {
-            const formData = new FormData(form);
-            const dateMethod = formData.get('dateMethod');
-
-            if (dateMethod === 'custom') {
-                const startDate = formData.get('start_date');
-                const endDate = formData.get('end_date');
-
-                if (startDate && endDate) {
-                    const start = new Date(startDate);
-                    const end = new Date(endDate);
-                    const timeDiff = end.getTime() - start.getTime();
-                    currentPeriod = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
-                }
-            } else {
-                currentPeriod = parseInt(formData.get('period')) || 30;
-            }
-        }
-
-        // Update period display
-        if (periodEl) {
-            periodEl.textContent = currentPeriod;
-        }
-
-        // Check if nodes data is available
-        if (!window.nodes || !Array.isArray(window.nodes)) {
-            // Try to get data from global variables or DOM
-            let nodesData = [];
-
-            // Check if data is available in window object
-            if (window.phoneData && Array.isArray(window.phoneData)) {
-                nodesData = window.phoneData;
-            } else if (window.endpointData && Array.isArray(window.endpointData)) {
-                nodesData = window.endpointData;
-            } else {
-                // Try to get from table if available
-                const table = document.querySelector('#phone-table tbody, #status-table tbody');
-                if (table) {
-                    const rows = table.querySelectorAll('tr');
-                    nodesData = Array.from(rows).map(row => {
-                        const statusCell = row.querySelector('.status-badge, .badge');
-                        const status = statusCell ? statusCell.textContent.toLowerCase() : 'unknown';
-                        return {
-                            status: status.includes('online') || status.includes('aktif') ? 'online' : 'offline'
-                        };
-                    });
-                }
-            }
-
-            if (nodesData.length === 0) {
-                console.warn('No nodes data available for preview, using sample data');
-                // Use sample data for demonstration
-                nodesData = [
-                    {status: 'online'}, {status: 'online'}, {status: 'offline'},
-                    {status: 'online'}, {status: 'online'}, {status: 'online'},
-                    {status: 'offline'}, {status: 'online'}, {status: 'online'},
-                    {status: 'online'}
-                ];
-            }
-
-            window.nodes = nodesData;
-        }
-
-        const total = window.nodes.length;
-        const online = window.nodes.filter(n => {
-            const status = normalizeStatus(n.status);
-            return status === 'online' || status === 'aktif';
-        }).length;
-        const offline = total - online;
-        const avgUptime = total > 0 ? Math.round((online / total) * 100) : 0;
-
-        // Update display with animation
-        animateNumberUpdate(totalEl, parseInt(totalEl.textContent) || 0, total);
-        animateNumberUpdate(onlineEl, parseInt(onlineEl.textContent) || 0, online);
-        animateNumberUpdate(offlineEl, parseInt(offlineEl.textContent) || 0, offline);
-        animateNumberUpdate(uptimeEl, parseInt(uptimeEl.textContent) || 0, avgUptime, '%');
-
-        // Update colors based on status
-        if (avgUptime >= 90) {
-            uptimeEl.className = uptimeEl.className.replace(/text-\w+-600/, 'text-green-600');
-        } else if (avgUptime >= 75) {
-            uptimeEl.className = uptimeEl.className.replace(/text-\w+-600/, 'text-yellow-600');
-        } else {
-            uptimeEl.className = uptimeEl.className.replace(/text-\w+-600/, 'text-red-600');
-        }
-
-    } catch (error) {
-        console.error('Error updating preview stats:', error);
-        // Fallback to static values
-        const totalEl = document.getElementById('preview-total');
-        const onlineEl = document.getElementById('preview-online');
-        const offlineEl = document.getElementById('preview-offline');
-        const uptimeEl = document.getElementById('preview-uptime');
-
-        if (totalEl) totalEl.textContent = '0';
-        if (onlineEl) onlineEl.textContent = '0';
-        if (offlineEl) offlineEl.textContent = '0';
-        if (uptimeEl) uptimeEl.textContent = '0%';
-    }
-}
-
-/**
- * Animate number updates for better UX
- */
-function animateNumberUpdate(element, startValue, endValue, suffix = '') {
-    if (!element || startValue === endValue) {
-        if (element) element.textContent = endValue + suffix;
-        return;
-    }
-
-    const duration = 500; // 500ms animation
-    const startTime = performance.now();
-    const difference = endValue - startValue;
-
-    function updateNumber(currentTime) {
-        const elapsed = currentTime - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-
-        // Ease out animation
-        const easeProgress = 1 - Math.pow(1 - progress, 3);
-        const currentValue = Math.round(startValue + (difference * easeProgress));
-
-        element.textContent = currentValue + suffix;
-
-        if (progress < 1) {
-            requestAnimationFrame(updateNumber);
-        }
-    }
-
-    requestAnimationFrame(updateNumber);
 }
 
 function quickExportPdf() {

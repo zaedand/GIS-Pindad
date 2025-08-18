@@ -330,170 +330,135 @@ class HistoryController extends Controller
             'latest_statuses' => $latestStatuses
         ];
     }
-     public function exportPdf(Request $request)
-    {
-        try {
-            // ... existing validation code ...
+public function exportPdf(Request $request)
+{
+    try {
+        $validator = Validator::make($request->all(), [
+            'date_method' => 'string|in:preset,custom',
+            'start_date' => 'nullable|date|required_if:date_method,custom',
+            'end_date' => 'nullable|date|required_if:date_method,custom|after_or_equal:start_date',
+            'period' => 'nullable|integer|min:1|max:365',
+            'quarter' => 'string|in:I,II,III,IV',
+            'year' => 'integer|min:2020|max:2030',
+            'report_type' => 'string|in:summary,detailed,kpi',
+            'include_charts' => 'string|in:true,false',
+            'include_ranking' => 'string|in:true,false',
+            'include_history' => 'string|in:true,false',
+            'include_recommendations' => 'string|in:true,false',
+            'timeframe' => 'string|in:days,from_start,quarter',
+        ]);
 
-            $validator = Validator::make($request->all(), [
-                'date_method' => 'string|in:preset,custom',
-                'start_date' => 'nullable|date|required_if:date_method,custom',
-                'end_date' => 'nullable|date|required_if:date_method,custom|after_or_equal:start_date',
-                'period' => 'nullable|integer|min:1|max:365',
-                'quarter' => 'string|in:I,II,III,IV',
-                'year' => 'integer|min:2020|max:2030',
-                'report_type' => 'string|in:summary,detailed,kpi',
-                'include_charts' => 'string|in:true,false',
-                'include_ranking' => 'string|in:true,false',
-                'include_history' => 'string|in:true,false',
-                'include_recommendations' => 'string|in:true,false',
-                'timeframe' => 'string|in:days,from_start,quarter'
-            ]);
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => 'Invalid parameters',
+                'messages' => $validator->errors()
+            ], 400);
+        }
 
-            if ($validator->fails()) {
-                return response()->json([
-                    'error' => 'Invalid parameters',
-                    'messages' => $validator->errors()
-                ], 400);
+        // --- proses tanggal sama persis seperti kode kamu ---
+        $dateMethod = $request->get('date_method', 'preset');
+        $reportType = $request->get('report_type', 'summary');
+        $quarter = $request->get('quarter', 'IV');
+        $year = $request->get('year', date('Y'));
+
+        if ($dateMethod === 'custom') {
+            $startDate = Carbon::parse($request->get('start_date'));
+            $endDate = Carbon::parse($request->get('end_date'))->endOfDay();
+            $period = $startDate->diffInDays($endDate) + 1;
+        } else {
+            $period = (int) $request->get('period', 30);
+            $timeframe = $request->get('timeframe', 'days');
+            switch ($timeframe) {
+                case 'from_start':
+                    $startDate = Carbon::create($year, 1, 1)->startOfDay();
+                    $endDate = Carbon::now()->endOfDay();
+                    break;
+                case 'quarter':
+                    [$startDate, $endDate] = $this->getQuarterDateRange($quarter, $year);
+                    break;
+                case 'days':
+                default:
+                    $endDate = Carbon::now()->endOfDay();
+                    $startDate = Carbon::now()->subDays($period - 1)->startOfDay();
+                    break;
             }
+        }
 
-            // Get and process parameters
-            $dateMethod = $request->get('date_method', 'preset');
-            $reportType = $request->get('report_type', 'summary');
-            $quarter = $request->get('quarter', 'IV');
-            $year = $request->get('year', date('Y'));
+        $daysDiff = round($startDate->diffInDays($endDate) + 1);
+        if ($daysDiff > 365) {
+            return response()->json([
+                'error' => 'Date range too large',
+                'message' => 'Maximum date range is 365 days'
+            ], 400);
+        }
 
-            // Determine date range based on method
-            if ($dateMethod === 'custom') {
-                $startDate = Carbon::parse($request->get('start_date'));
-                $endDate = Carbon::parse($request->get('end_date'))->endOfDay();
-                $period = $startDate->diffInDays($endDate) + 1;
-            } else {
-                $period = (int) $request->get('period', 30);
-                $timeframe = $request->get('timeframe', 'days');
+        // --- ambil statistik dari history ---
+        $currentStats = $this->getLatestStatusStatisticsOptimized();
+        $periodStats = $this->getPeriodStatistics($startDate, $endDate);
+        $frequentlyOfflineEndpoints = $this->getFrequentlyOfflineEndpoints($startDate, $endDate, 10);
 
-                switch ($timeframe) {
-                    case 'from_start':
-                        $startDate = Carbon::create($year, 1, 1)->startOfDay();
-                        $endDate = Carbon::now()->endOfDay();
-                        break;
-                    case 'quarter':
-                        [$startDate, $endDate] = $this->getQuarterDateRange($quarter, $year);
-                        break;
-                    case 'days':
-                    default:
-                        $endDate = Carbon::now()->endOfDay();
-                        $startDate = Carbon::now()->subDays($period - 1)->startOfDay();
-                        break;
-                }
-            }
+        $endpointsData = $this->generateEndpointsDataFromHistory($currentStats['latest_statuses'], $startDate, $endDate);
+        $rankingData = $request->get('include_ranking', 'true') === 'true'
+            ? $this->generateRankingDataFromHistory($currentStats['latest_statuses'], $startDate, $endDate)
+            : [];
 
-            // Validate date range
-            $daysDiff = round($startDate->diffInDays($endDate) + 1);
-            if ($daysDiff > 365) {
-                return response()->json([
-                    'error' => 'Date range too large',
-                    'message' => 'Maximum date range is 365 days'
-                ], 400);
-            }
+        $avgUptime = $this->calculateAverageUptimeFromHistory($currentStats['latest_statuses'], $startDate, $endDate);
 
-            // Get report options
-            $includeCharts = $request->get('include_charts', 'true') === 'true';
-            $includeRanking = $request->get('include_ranking', 'true') === 'true';
-            $includeHistory = $request->get('include_history', 'false') === 'true';
-            $includeRecommendations = $request->get('include_recommendations', 'false') === 'true';
+        // --- data laporan ---
+        $reportData = [
+            // KPI Information
+            'indikator' => $request->indikator ?? 'KPI-TI-001',
+            'nama_indikator' => $request->nama_indikator ?? 'Availability Sistem Telepon Internal',
+            'formula' => $request->formula ?? '(Total Waktu Online / Total Waktu Monitoring) × 100%',
+            'target' => $request->target ?? '≥ 95%',
+            'realisasi' => $avgUptime . '%',
+            'status_kpi' => $avgUptime >= 95 ? 'TERCAPAI' : 'TIDAK TERCAPAI',
 
-            // *** MODIFIED: Get current status from history instead of nodes table ***
-            $currentStats = $this->getLatestStatusStatisticsOptimized();
-            
-            $totalNodes = $currentStats['total_nodes'];
-            $onlineNodes = $currentStats['online_nodes'];
-            $offlineNodes = $currentStats['offline_nodes'];
-            $partialNodes = $currentStats['partial_nodes'];
-            $onlinePercentage = $currentStats['online_percentage'];
-            $offlinePercentage = $currentStats['offline_percentage'];
+            // Metadata
+            'quarter' => $quarter,
+            'year' => $year,
+            'period_days' => $daysDiff,
+            'generated_date' => Carbon::now('Asia/Jakarta')->format('d/m/Y H:i:s'),
+            'start_date' => $startDate->format('d/m/Y'),
+            'end_date' => $endDate->format('d/m/Y'),
 
-            // Get period-specific data
-            $periodStats = $this->getPeriodStatistics($startDate, $endDate);
-            $frequentlyOfflineEndpoints = $this->getFrequentlyOfflineEndpoints($startDate, $endDate, 10);
-            
-            // *** MODIFIED: Use history-based data for endpoints ***
-            $endpointsData = $this->generateEndpointsDataFromHistory($currentStats['latest_statuses'], $startDate, $endDate);
-            $rankingData = $includeRanking ? $this->generateRankingDataFromHistory($currentStats['latest_statuses'], $startDate, $endDate) : [];
-            $historyData = $includeHistory ? $this->generateHistoryData($startDate, $endDate) : [];
-            
-            // *** MODIFIED: Calculate average uptime from history data ***
-            $avgUptime = $this->calculateAverageUptimeFromHistory($currentStats['latest_statuses'], $startDate, $endDate);
-            
-            $recommendations = $includeRecommendations ? $this->generateRecommendations($endpointsData, $periodStats) : [];
+            // Statistik
+            'total_phones' => $currentStats['total_nodes'],
+            'online_phones' => $currentStats['online_nodes'],
+            'offline_phones' => $currentStats['offline_nodes'],
+            'partial_phones' => $currentStats['partial_nodes'],
+            'online_percentage' => $currentStats['online_percentage'],
+            'offline_percentage' => $currentStats['offline_percentage'],
+            'avg_uptime' => $avgUptime,
 
-            // Prepare report data
-            $reportData = [
-                // KPI Information
-                'indikator' => 'KPI-TI-001',
-                'nama_indikator' => 'Availability Sistem Telepon Internal',
-                'formula' => '(Total Waktu Online / Total Waktu Monitoring) × 100%',
-                'target' => '≥ 95%',
-                'realisasi' => $avgUptime . '%',
-                'status_kpi' => $avgUptime >= 95 ? 'TERCAPAI' : 'TIDAK TERCAPAI',
+            // Data tabel
+            'endpoints_data' => $endpointsData,
+            'ranking_data' => $rankingData,
+            'period_stats' => $periodStats,
+            'frequently_offline' => $frequentlyOfflineEndpoints,
 
-                // Report metadata
-                'report_type' => $reportType,
-                'date_method' => $dateMethod,
-                'quarter' => $quarter,
-                'year' => $year,
-                'period_days' => $daysDiff,
-                'generated_date' => Carbon::now('Asia/Jakarta')->format('d/m/Y H:i:s'),
-                'start_date' => $startDate->format('d/m/Y'),
-                'end_date' => $endDate->format('d/m/Y'),
-                'start_date_long' => $startDate->locale('id')->translatedFormat('l, j F Y'),
-                'end_date_long' => $endDate->locale('id')->translatedFormat('l, j F Y'),
+            // Signature dari input user
+            'prepared_jabatan' => $request->prepared_jabatan ?? 'OFFICER MANAJEMEN SISTEM KOMPUTER TUREN',
+            'prepared_nama' => $request->prepared_nama ?? 'MUHAMMAD',
+            'prepared_tanggal' => $request->prepared_tanggal ?? Carbon::now()->locale('id')->translatedFormat('d F Y'),
+            'approved_jabatan' => $request->approved_jabatan ?? 'MANAGER',
+            'approved_nama' => $request->approved_nama ?? '',
+            'approved_tanggal' => $request->approved_tanggal ?? '',
+            'validated_jabatan' => $request->validated_jabatan ?? 'MANAGER LAYANAN TI BANDUNG TUREN',
+            'validated_nama' => $request->validated_nama ?? 'RIZKY',
+            'validated_tanggal' => $request->validated_tanggal ?? Carbon::now()->locale('id')->translatedFormat('d F Y'),
+        ];
 
-                // Current statistics (from history table)
-                'total_phones' => $totalNodes,
-                'online_phones' => $onlineNodes,
-                'offline_phones' => $offlineNodes,
-                'partial_phones' => $partialNodes,
-                'online_percentage' => $onlinePercentage,
-                'offline_percentage' => $offlinePercentage,
-                'avg_uptime' => $avgUptime,
+        // --- pilih view ---
+        $viewName = match($reportType) {
+            'detailed' => 'reports.phone-status-detailed-pdf',
+            'kpi' => 'reports.phone-status-pdf',
+            default => 'reports.phone-status-pdf'
+        };
 
-                // Period statistics
-                'period_stats' => $periodStats,
-                'frequently_offline' => $frequentlyOfflineEndpoints,
-
-                // Data tables
-                'endpoints_data' => $endpointsData,
-                'ranking_data' => $rankingData,
-                'history_data' => $historyData,
-                'recommendations' => $recommendations,
-
-                // Report options
-                'include_charts' => $includeCharts,
-                'include_ranking' => $includeRanking,
-                'include_history' => $includeHistory,
-                'include_recommendations' => $includeRecommendations,
-
-                // Report signature
-                'prepared_by' => 'Sistem Monitoring Telepon',
-                'position' => 'Admin IT',
-                'department' => 'Departemen Teknologi Informasi'
-            ];
-
-            // Select appropriate view based on report type
-            $viewName = match($reportType) {
-                'detailed' => 'reports.phone-status-detailed-pdf',
-                'kpi' => 'reports.phone-status-kpi-pdf',
-                default => 'reports.phone-status-pdf'
-            };
-
-            // Generate PDF
-            $pdf = Pdf::loadView($viewName, $reportData);
-
-            // Configure PDF settings based on report type
-            $orientation = $reportType === 'detailed' ? 'landscape' : 'portrait';
-            $pdf->setPaper('A4', $orientation);
-            $pdf->setOptions([
+        $pdf = Pdf::loadView($viewName, $reportData)
+            ->setPaper('A4', $reportType === 'detailed' ? 'landscape' : 'portrait')
+            ->setOptions([
                 'dpi' => 150,
                 'defaultFont' => 'DejaVu Sans',
                 'isRemoteEnabled' => true,
@@ -501,24 +466,24 @@ class HistoryController extends Controller
                 'chroot' => public_path(),
             ]);
 
-            // Generate filename
-            $filename = $this->generatePdfFilename($reportData);
+        $filename = $this->generatePdfFilename($reportData);
 
-            return $pdf->download($filename);
+        return $pdf->download($filename);
 
-        } catch (\Exception $e) {
-            \Log::error('PDF Export Error: ' . $e->getMessage(), [
-                'trace' => $e->getTraceAsString(),
-                'request_data' => $request->all()
-            ]);
+    } catch (\Exception $e) {
+        \Log::error('PDF Export Error: ' . $e->getMessage(), [
+            'trace' => $e->getTraceAsString(),
+            'request_data' => $request->all()
+        ]);
 
-            return response()->json([
-                'error' => 'Failed to generate PDF report',
-                'message' => $e->getMessage(),
-                'code' => $e->getCode()
-            ], 500);
-        }
+        return response()->json([
+            'error' => 'Failed to generate PDF report',
+            'message' => $e->getMessage(),
+            'code' => $e->getCode()
+        ], 500);
     }
+}
+
 
     /**
      * Get quarter date range
@@ -919,17 +884,6 @@ class HistoryController extends Controller
     }
 
 
-    /**
-     * Generate endpoints data for table
-     */
-
-
-    /**
-     * Generate ranking data for frequently offline endpoints
-     */
-    /**
- * Generate ranking data for frequently offline endpoints
- */
 private function generateRankingDataFromHistory($latestStatuses, $startDate, $endDate)
     {
         $rankingData = [];
@@ -973,22 +927,6 @@ private function generateRankingDataFromHistory($latestStatuses, $startDate, $en
         return array_slice($rankingData, 0, 20); // Top 20 most problematic
     }
 
-    /**
-     * Calculate real uptime for endpoint
-     */
-
-    /**
-     * Get endpoint statistics
-     */
-
-
-    /**
-     * Get total offline duration for endpoint
-     */
-
-    /**
-     * Get last activity for endpoint
-     */
     private function getLastActivity($endpoint)
     {
         $lastActivity = DeviceHistory::where('endpoint', $endpoint)
@@ -998,16 +936,6 @@ private function generateRankingDataFromHistory($latestStatuses, $startDate, $en
         return $lastActivity ?
             Carbon::parse($lastActivity->timestamp)->format('d/m/Y H:i:s') : 'N/A';
     }
-
-    /**
-     * Format status for display
-     */
-
-
-    /**
-     * Format duration in minutes to readable format
-     */
-
 
     // ... existing methods ...
 }
