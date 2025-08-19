@@ -15,6 +15,9 @@ class HistoryController extends Controller
     public function exportPdf(Request $request)
     {
         try {
+            \Log::info('Data masuk export PDF:', $request->all());
+
+            // Validasi dengan field yang lebih lengkap
             $validator = Validator::make($request->all(), [
                 'date_method' => 'string|in:preset,custom',
                 'start_date' => 'nullable|date|required_if:date_method,custom',
@@ -23,13 +26,19 @@ class HistoryController extends Controller
                 'quarter' => 'string|in:I,II,III,IV',
                 'year' => 'integer|min:2020|max:2030',
                 'timeframe' => 'string|in:days,from_start,quarter',
-                // KPI Information validation
+                'format' => 'string|in:download,view',
+                'report_type' => 'string|in:kpi,summary',
+                'filename' => 'nullable|string',
+                
+                // KPI Information validation - PERBAIKAN: nullable untuk field opsional
                 'indikator' => 'nullable|string|max:255',
-                'nama_indikator' => 'nullable|string|max:500',
-                'formula' => 'nullable|string|max:500',
+                'nama_indikator' => 'nullable|string|max:1000',
+                'formula' => 'nullable|string|max:1000',
                 'target' => 'nullable|string|max:255',
                 'realisasi' => 'nullable|string|max:255',
-                // Footer/Signature validation
+                'department' => 'nullable|string|max:255',
+                
+                // Footer/Signature validation - PERBAIKAN: nullable untuk field opsional
                 'prepared_jabatan' => 'nullable|string|max:255',
                 'prepared_nama' => 'nullable|string|max:255',
                 'prepared_tanggal' => 'nullable|date',
@@ -39,19 +48,27 @@ class HistoryController extends Controller
                 'validated_jabatan' => 'nullable|string|max:255',
                 'validated_nama' => 'nullable|string|max:255',
                 'validated_tanggal' => 'nullable|date',
-                'department' => 'nullable|string|max:255',
+                'include_ranking' => 'nullable|string|in:true,false',
             ]);
 
             if ($validator->fails()) {
+                \Log::error('Validation failed:', $validator->errors()->toArray());
                 return response()->json([
                     'error' => 'Invalid parameters',
                     'messages' => $validator->errors()
                 ], 400);
             }
 
-            // --- Process dates ---
+            // Log semua data yang masuk untuk debugging
+            \Log::info('PDF Export Request Data:', $request->all());
+
+            // === PERBAIKAN: Ekstrak data KPI dengan benar ===
+            $kpiData = $this->extractKpiDataFromRequest($request);
+            \Log::info('Extracted KPI Data:', $kpiData);
+
+            // === Process dates ===
             $dateMethod = $request->get('date_method', 'preset');
-            $quarter = $request->get('quarter', 'IV');
+            $quarter = $request->get('quarter', 'III');
             $year = $request->get('year', date('Y'));
             $timeframe = $request->get('timeframe', 'days');
 
@@ -85,31 +102,27 @@ class HistoryController extends Controller
                 ], 400);
             }
 
-            // --- Get statistics from history ---
+            // === Get statistics from history ===
             $currentStats = $this->getLatestStatusStatisticsOptimized();
             $periodStats = $this->getPeriodStatistics($startDate, $endDate);
-
-            // FIX: Convert collection to array and handle empty results
             $frequentlyOfflineEndpoints = $this->getFrequentlyOfflineEndpoints($startDate, $endDate, 10);
-
             $endpointsData = $this->generateEndpointsDataFromHistory($currentStats['latest_statuses'], $startDate, $endDate);
             $rankingData = $request->get('include_ranking', 'true') === 'true'
                 ? $this->generateRankingDataFromHistory($currentStats['latest_statuses'], $startDate, $endDate)
                 : [];
-
             $avgUptime = $this->calculateAverageUptimeFromHistory($currentStats['latest_statuses'], $startDate, $endDate);
 
-            // --- FIX: Ensure all data is properly formatted for template ---
+            // === PERBAIKAN UTAMA: Buat reportData dengan data yang benar ===
             $reportData = [
-                // KPI Information
-                'indikator' => (string) $request->get('indikator', ),
-                'nama_indikator' => (string) $request->get('nama_indikator', ),
-                'formula' => (string) $request->get('formula', ),
-                'target' => (string) $request->get('target', ),
-                'realisasi' => (string) $request->get('realisasi', ),
+                // KPI Information - MENGGUNAKAN data yang sudah diekstrak
+                'indikator' => $kpiData['indikator'],
+                'nama_indikator' => $kpiData['nama_indikator'],
+                'formula' => $kpiData['formula'],
+                'target' => $kpiData['target'],
+                'realisasi' => $kpiData['realisasi'],
 
                 // Department/Organization info
-                'department' => (string) $request->get('department', 'DEPARTEMEN 0'),
+                'department' => $kpiData['department'],
 
                 // Metadata
                 'quarter' => (string) $quarter,
@@ -119,7 +132,7 @@ class HistoryController extends Controller
                 'start_date' => $startDate->format('d/m/Y'),
                 'end_date' => $endDate->format('d/m/Y'),
 
-                // Statistics - ensure all are proper types
+                // Statistics
                 'total_phones' => (int) $currentStats['total_nodes'],
                 'online_phones' => (int) $currentStats['online_nodes'],
                 'offline_phones' => (int) $currentStats['offline_nodes'],
@@ -128,43 +141,51 @@ class HistoryController extends Controller
                 'offline_percentage' => (string) $currentStats['offline_percentage'] . '%',
                 'avg_uptime' => (float) $avgUptime,
 
-                // Table data - ensure arrays
+                // Table data
                 'endpoints_data' => is_array($endpointsData) ? $endpointsData : [],
                 'ranking_data' => is_array($rankingData) ? $rankingData : [],
                 'period_stats' => is_array($periodStats) ? $periodStats : [],
                 'frequently_offline' => is_array($frequentlyOfflineEndpoints) ? $frequentlyOfflineEndpoints : [],
 
-                // Signature information - ensure strings
-                'prepared_jabatan' => (string) $request->get('prepared_jabatan', 'OFFICER MANAJEMEN SISTEM KOMPUTER TUREN'),
-                'prepared_nama' => (string) $request->get('prepared_nama', 'MUHAMMAD'),
-                'prepared_tanggal' => $request->get('prepared_tanggal') ?
-                    Carbon::parse($request->get('prepared_tanggal'))->locale('id')->translatedFormat('d F Y') :
-                    Carbon::now()->locale('id')->translatedFormat('d F Y'),
+                // Signature information - MENGGUNAKAN data yang sudah diekstrak
+                'prepared_jabatan' => $kpiData['prepared_jabatan'],
+                'prepared_nama' => $kpiData['prepared_nama'],
+                'prepared_tanggal' => $kpiData['prepared_tanggal'],
 
-                'approved_jabatan' => (string) $request->get('approved_jabatan', 'MANAGER'),
-                'approved_nama' => (string) $request->get('approved_nama', ''),
-                'approved_tanggal' => $request->get('approved_tanggal') ?
-                    Carbon::parse($request->get('approved_tanggal'))->locale('id')->translatedFormat('d F Y') :
-                    null,
+                'approved_jabatan' => $kpiData['approved_jabatan'],
+                'approved_nama' => $kpiData['approved_nama'],
+                'approved_tanggal' => $kpiData['approved_tanggal'],
 
-                'validated_jabatan' => (string) $request->get('validated_jabatan', 'MANAGER LAYANAN TI BANDUNG TUREN'),
-                'validated_nama' => (string) $request->get('validated_nama', 'RIZKY'),
-                'validated_tanggal' => $request->get('validated_tanggal') ?
-                    Carbon::parse($request->get('validated_tanggal'))->locale('id')->translatedFormat('d F Y') :
-                    Carbon::now()->locale('id')->translatedFormat('d F Y'),
+                'validated_jabatan' => $kpiData['validated_jabatan'],
+                'validated_nama' => $kpiData['validated_nama'],
+                'validated_tanggal' => $kpiData['validated_tanggal'],
 
                 // Additional info for template
                 'report_title' => (string) $this->generateReportTitle($quarter, $year),
                 'period_description' => (string) $this->generatePeriodDescription($startDate, $endDate, $timeframe),
             ];
 
-            // Debug log to check data types before PDF generation
+            // Debug: Log processed report data untuk memastikan data benar
+            \Log::info('PDF Report Data (Final):', [
+                'indikator' => $reportData['indikator'],
+                'nama_indikator' => $reportData['nama_indikator'],
+                'target' => $reportData['target'],
+                'realisasi' => $reportData['realisasi'],
+                'prepared_nama' => $reportData['prepared_nama'],
+                'approved_nama' => $reportData['approved_nama'],
+                'validated_nama' => $reportData['validated_nama'],
+                'quarter' => $reportData['quarter'],
+                'year' => $reportData['year'],
+                'department' => $reportData['department']
+            ]);
+
+            // Cek data types untuk debugging
             \Log::info('PDF Report Data Types Check:', [
                 'endpoints_data_type' => gettype($reportData['endpoints_data']),
                 'endpoints_data_count' => is_array($reportData['endpoints_data']) ? count($reportData['endpoints_data']) : 'not_array',
                 'ranking_data_type' => gettype($reportData['ranking_data']),
                 'frequently_offline_type' => gettype($reportData['frequently_offline']),
-                'period_stats_type' => gettype($reportData['period_stats']),
+                'period_stats_type' => gettype($reportData['period_stats'])
             ]);
 
             // Generate PDF
@@ -197,6 +218,75 @@ class HistoryController extends Controller
     }
 
     /**
+     * PERBAIKAN: Method baru untuk mengekstrak data KPI dengan benar dari request
+     */
+    private function extractKpiDataFromRequest(Request $request): array
+    {
+        // Helper function untuk memastikan string bersih
+        $safeString = function($value) {
+            return is_string($value) ? trim($value) : '';
+        };
+
+        // Helper function untuk format tanggal
+        $formatDate = function($dateValue) {
+            if (!$dateValue) {
+                return '';
+            }
+            try {
+                return Carbon::parse($dateValue)->locale('id')->translatedFormat('d F Y');
+            } catch (\Exception $e) {
+                return '';
+            }
+        };
+
+        $extractedData = [
+            // KPI Information - MURNI dari input user
+            'indikator' => $safeString($request->get('indikator')),
+            'nama_indikator' => $safeString($request->get('nama_indikator')),
+            'formula' => $safeString($request->get('formula')),
+            'target' => $safeString($request->get('target')),
+            'realisasi' => $safeString($request->get('realisasi')),
+            'department' => $safeString($request->get('department')),
+
+            // Signature Information - MURNI dari input user
+            'prepared_jabatan' => $safeString($request->get('prepared_jabatan')),
+            'prepared_nama' => $safeString($request->get('prepared_nama')),
+            'prepared_tanggal' => $formatDate($request->get('prepared_tanggal')),
+
+            'approved_jabatan' => $safeString($request->get('approved_jabatan')),
+            'approved_nama' => $safeString($request->get('approved_nama')),
+            'approved_tanggal' => $formatDate($request->get('approved_tanggal')),
+
+            'validated_jabatan' => $safeString($request->get('validated_jabatan')),
+            'validated_nama' => $safeString($request->get('validated_nama')),
+            'validated_tanggal' => $formatDate($request->get('validated_tanggal')),
+        ];
+
+        // Log untuk debugging
+        \Log::info('KPI Data Extraction:', [
+            'raw_indikator' => $request->get('indikator'),
+            'raw_nama_indikator' => $request->get('nama_indikator'),
+            'raw_target' => $request->get('target'),
+            'raw_realisasi' => $request->get('realisasi'),
+            'raw_prepared_nama' => $request->get('prepared_nama'),
+            'raw_approved_nama' => $request->get('approved_nama'),
+            'raw_validated_nama' => $request->get('validated_nama'),
+            'extracted_indikator' => $extractedData['indikator'],
+            'extracted_nama_indikator' => $extractedData['nama_indikator'],
+            'extracted_target' => $extractedData['target'],
+            'extracted_realisasi' => $extractedData['realisasi'],
+            'extracted_prepared_nama' => $extractedData['prepared_nama'],
+            'extracted_approved_nama' => $extractedData['approved_nama'],
+            'extracted_validated_nama' => $extractedData['validated_nama']
+        ]);
+
+        return $extractedData;
+    }
+
+    // === SISANYA TETAP SAMA ===
+    // Semua method lainnya tetap tidak berubah...
+
+    /**
      * FIX: Get frequently offline endpoints - return array instead of string
      */
     private function getFrequentlyOfflineEndpoints($startDate, $endDate, int $limit = 5): array
@@ -210,7 +300,6 @@ class HistoryController extends Controller
             ->limit($limit)
             ->get();
 
-        // Convert to array with proper structure
         return $frequentOffline->map(function($item) {
             return [
                 'endpoint' => $item->endpoint,
@@ -219,14 +308,10 @@ class HistoryController extends Controller
         })->toArray();
     }
 
-    /**
-     * FIX: Enhanced endpoints data generation with type safety
-     */
     private function generateEndpointsDataFromHistory($latestStatuses, $startDate, $endDate): array
     {
         $endpointsData = [];
 
-        // Ensure $latestStatuses is iterable
         if (!is_iterable($latestStatuses)) {
             \Log::warning('Latest statuses is not iterable', ['type' => gettype($latestStatuses)]);
             return [];
@@ -238,7 +323,6 @@ class HistoryController extends Controller
                 $statistics = $this->getEndpointStatistics($status->endpoint, $startDate, $endDate);
                 $totalOffline = $this->getTotalOfflineDuration($status->endpoint, $startDate, $endDate);
 
-                // Try to get building name from nodes table
                 $node = Node::where('endpoint', $status->endpoint)->first();
                 $buildingName = $node ? $node->name : ($status->node_name ?? 'Unknown');
                 $ipAddress = $node ? $node->ip_address : 'Unknown';
@@ -265,22 +349,17 @@ class HistoryController extends Controller
             }
         }
 
-        // Sort by reliability score
         usort($endpointsData, function($a, $b) {
-            return $a['reliability_score'] - $b['reliability_score'];
+            return $b['reliability_score'] - $a['reliability_score'];
         });
 
         return $endpointsData;
     }
 
-    /**
-     * FIX: Enhanced ranking data generation with type safety
-     */
     private function generateRankingDataFromHistory($latestStatuses, $startDate, $endDate): array
     {
         $rankingData = [];
 
-        // Ensure $latestStatuses is iterable
         if (!is_iterable($latestStatuses)) {
             \Log::warning('Latest statuses is not iterable for ranking', ['type' => gettype($latestStatuses)]);
             return [];
@@ -292,7 +371,6 @@ class HistoryController extends Controller
                 $statistics = $this->getEndpointStatistics($status->endpoint, $startDate, $endDate);
                 $totalOfflineDuration = $this->getTotalOfflineDuration($status->endpoint, $startDate, $endDate);
 
-                // Only include endpoints that have had offline events
                 if ($statistics['offline_events'] > 0) {
                     $node = Node::where('endpoint', $status->endpoint)->first();
                     $buildingName = $node ? $node->name : ($status->node_name ?? 'Unknown');
@@ -319,12 +397,10 @@ class HistoryController extends Controller
             }
         }
 
-        // Sort by offline events (descending)
         usort($rankingData, function($a, $b) {
             return $b['offline_score'] - $a['offline_score'];
         });
 
-        // Add ranking numbers and ensure proper data types
         $rankedData = [];
         foreach (array_slice($rankingData, 0, 20) as $index => $data) {
             $data['rank'] = (int) ($index + 1);
@@ -333,6 +409,10 @@ class HistoryController extends Controller
 
         return $rankedData;
     }
+
+    // Sisanya sama dengan kode sebelumnya...
+    // (getPeriodStatistics, getQuarterDateRange, calculateRealUptime, dll.)
+
 
     /**
      * FIX: Enhanced period statistics with proper return types

@@ -1732,27 +1732,27 @@ function showPdfExportModal() {
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Indikator</label>
-                                <input type="text" name="indikator" value="KPI-TI-001"
+                                <input type="text" name="indikator" value="KPI-TI-001" required
                                        class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500">
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Nama Indikator</label>
-                                <input type="text" name="nama_indikator" value="Inventarisasi PC PMN Monitoring Produksi Munisi dan Seat Management (PC, Laptop & Printer) Area PT Pindad Turen (Lengkap dan Update Per Triwulan)"
-                                       class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                                <textarea name="nama_indikator" rows="3" required
+                                          class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500">Inventarisasi PC PMN Monitoring Produksi Munisi dan Seat Management (PC, Laptop & Printer) Area PT Pindad Turen (Lengkap dan Update Per Triwulan)</textarea>
                             </div>
                             <div class="md:col-span-2">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Formula</label>
-                                <input type="text" name="formula" value="Inventarisasi PC PMN Monitoring Produksi Munisi dan Seat Management (PC, Laptop & Printer) Area PT Pindad Turen (Lengkap dan Update Per Triwulan)"
-                                       class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                                <textarea name="formula" rows="3" required
+                                          class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500">Inventarisasi PC PMN Monitoring Produksi Munisi dan Seat Management (PC, Laptop & Printer) Area PT Pindad Turen (Lengkap dan Update Per Triwulan)</textarea>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Target</label>
-                                <input type="text" name="target" value="1 Dokumen"
+                                <input type="text" name="target" value="1 Dokumen" required
                                        class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500">
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Realisasi</label>
-                                <input type="text" name="realisasi" value="Tercapai 1 dokumen"
+                                <input type="text" name="realisasi" value="Tercapai 1 dokumen" required
                                        class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500">
                             </div>
                         </div>
@@ -1900,17 +1900,17 @@ function showPdfExportModal() {
                                 <h4 class="font-semibold text-gray-700 border-b pb-2">DISIAPKAN OLEH</h4>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Jabatan</label>
-                                    <input type="text" name="prepared_jabatan" value="OFFICER MANAJEMEN SISTEM KOMPUTER TUREN"
+                                    <input type="text" name="prepared_jabatan" value="OFFICER MANAJEMEN SISTEM KOMPUTER TUREN" required
                                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Nama</label>
-                                    <input type="text" name="prepared_nama" value="MUHAMMAD"
+                                    <input type="text" name="prepared_nama" value="MUHAMMAD" required
                                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Tanggal</label>
-                                    <input type="date" name="prepared_tanggal" value="${today.toISOString().split('T')[0]}"
+                                    <input type="date" name="prepared_tanggal" value="${today.toISOString().split('T')[0]}" required
                                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
                                 </div>
                             </div>
@@ -1920,17 +1920,17 @@ function showPdfExportModal() {
                                 <h4 class="font-semibold text-gray-700 border-b pb-2">DISETUJUI OLEH</h4>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Jabatan</label>
-                                    <input type="text" name="approved_jabatan" value="MANAGER"
+                                    <input type="text" name="approved_jabatan" value="MANAGER" required
                                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Nama</label>
-                                    <input type="text" name="approved_nama" value="" placeholder="Masukkan nama..."
+                                    <input type="text" name="approved_nama" value="kimi" placeholder="Masukkan nama..." required
                                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Tanggal</label>
-                                    <input type="date" name="approved_tanggal" value=""
+                                    <input type="date" name="approved_tanggal" value="${today.toISOString().split('T')[0]}"
                                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
                                 </div>
                             </div>
@@ -1940,17 +1940,17 @@ function showPdfExportModal() {
                                 <h4 class="font-semibold text-gray-700 border-b pb-2">DISAHKAN OLEH</h4>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Jabatan</label>
-                                    <input type="text" name="validated_jabatan" value="MANAGER LAYANAN TI BANDUNG TUREN"
+                                    <input type="text" name="validated_jabatan" value="MANAGER LAYANAN TI BANDUNG TUREN" required
                                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Nama</label>
-                                    <input type="text" name="validated_nama" value="RIZKY"
+                                    <input type="text" name="validated_nama" value="RIZKY" required
                                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Tanggal</label>
-                                    <input type="date" name="validated_tanggal" value="${today.toISOString().split('T')[0]}"
+                                    <input type="date" name="validated_tanggal" value="${today.toISOString().split('T')[0]}" required
                                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
                                 </div>
                             </div>
@@ -2018,6 +2018,7 @@ function showPdfExportModal() {
     modal.addEventListener('click', (e) => {
         if (e.target === modal) {
             modal.remove();
+            document.body.style.overflow = '';
         }
     });
 
@@ -2031,7 +2032,6 @@ function showPdfExportModal() {
     // Setup event listeners for date inputs
     setupDateEventListeners();
 }
-
 
 function handlePdfExport(format = 'download') {
     const form = document.getElementById('pdf-export-form');
@@ -2047,37 +2047,47 @@ function handlePdfExport(format = 'download') {
 
         // Validasi form sebelum submit
         if (!validatePdfForm(formData, dateMethod)) {
-            return; // Validation failed, stop execution
+            return;
         }
 
+        // Debug: Log semua form data untuk debugging
+        console.log('Form Data Debug (Complete):');
+        for (let [key, value] of formData.entries()) {
+            console.log(`${key}: "${value}"`);
+        }
+
+        // PERBAIKAN: Buat object options dengan memastikan nilai tidak null/undefined
         let options = {
             format: format,
-            report_type: 'kpi', // Fixed to KPI format only
+            report_type: 'kpi',
             include_ranking: formData.get('include_ranking') || 'true',
 
-            // Header information
-            quarter: formData.get('quarter') || 'IV',
-            year: formData.get('year') || new Date().getFullYear().toString(),
-            department: formData.get('department') || 'DEPARTEMEN SERVICE RESPRESENTATIVE TI TUREN',
+            // Header information - LANGSUNG dari form
+            quarter: formData.get('quarter') || '',
+            year: formData.get('year') || '',
+            department: formData.get('department') || '',
 
-            // KPI Information - pastikan semua field terkirim
-            realisasi: formData.get('realisasi') ?? 'Tercapai 1 dokumen',
-            indikator: formData.get('indikator') ?? 'KPI-TI-001',
-            nama_indikator: formData.get('nama_indikator') ?? 'Inventarisasi PC PMN Monitoring...',
-            formula: formData.get('formula') ?? 'Inventarisasi PC PMN Monitoring...',
-            target: formData.get('target') ?? '1 Dokumen',
+            // KPI Information - LANGSUNG dari form
+            indikator: formData.get('indikator') || '',
+            nama_indikator: formData.get('nama_indikator') || '',
+            formula: formData.get('formula') || '',
+            target: formData.get('target') || '',
+            realisasi: formData.get('realisasi') || '',
 
-            // Footer/Signature Information
-            prepared_jabatan: formData.get('prepared_jabatan') || 'OFFICER MANAJEMEN SISTEM KOMPUTER TUREN',
-            prepared_nama: formData.get('prepared_nama') || 'MUHAMMAD',
-            prepared_tanggal: formData.get('prepared_tanggal') || new Date().toISOString().split('T')[0],
-            approved_jabatan: formData.get('approved_jabatan') || 'MANAGER',
+            // Footer/Signature Information - LANGSUNG dari form
+            prepared_jabatan: formData.get('prepared_jabatan') || '',
+            prepared_nama: formData.get('prepared_nama') || '',
+            prepared_tanggal: formData.get('prepared_tanggal') || '',
+            approved_jabatan: formData.get('approved_jabatan') || '',
             approved_nama: formData.get('approved_nama') || '',
             approved_tanggal: formData.get('approved_tanggal') || '',
-            validated_jabatan: formData.get('validated_jabatan') || 'MANAGER LAYANAN TI BANDUNG TUREN',
-            validated_nama: formData.get('validated_nama') || 'RIZKY',
-            validated_tanggal: formData.get('validated_tanggal') || new Date().toISOString().split('T')[0]
+            validated_jabatan: formData.get('validated_jabatan') || '',
+            validated_nama: formData.get('validated_nama') || '',
+            validated_tanggal: formData.get('validated_tanggal') || ''
         };
+
+        // Debug: Log options yang akan dikirim
+        console.log('Options yang akan dikirim ke server:', options);
 
         // Date handling
         if (dateMethod === 'custom') {
@@ -2089,7 +2099,6 @@ function handlePdfExport(format = 'download') {
                 return;
             }
 
-            // Validasi tanggal
             const startDateObj = new Date(startDate);
             const endDateObj = new Date(endDate);
 
@@ -2098,7 +2107,6 @@ function handlePdfExport(format = 'download') {
                 return;
             }
 
-            // Check date range limit (max 365 days)
             const daysDiff = Math.ceil((endDateObj.getTime() - startDateObj.getTime()) / (1000 * 3600 * 24)) + 1;
             if (daysDiff > 365) {
                 showNotification('Periode maksimal 365 hari. Periode saat ini: ' + daysDiff + ' hari', 'warning');
@@ -2110,20 +2118,29 @@ function handlePdfExport(format = 'download') {
             options.end_date = endDate;
             options.period = daysDiff.toString();
         } else {
-            // Preset period
             options.date_method = 'preset';
-            options.period = formData.get('period') || '30';
-            options.timeframe = formData.get('timeframe') || 'days';
+            options.period = formData.get('period');
+            options.timeframe = formData.get('timeframe');
         }
 
         // Debug log untuk melihat data yang akan dikirim
-        console.log('PDF Export Options:', options);
+        console.log('PDF Export Options (After Processing):', options);
+
+        // Validasi bahwa data penting tidak kosong
+        const requiredFields = ['indikator', 'nama_indikator', 'target', 'prepared_nama'];
+        const missingFields = requiredFields.filter(field => !options[field] || options[field].trim() === '');
+        
+        if (missingFields.length > 0) {
+            console.error('Missing required fields:', missingFields);
+            showNotification(`Data tidak lengkap: ${missingFields.join(', ')}`, 'error');
+            return;
+        }
 
         // Close modal
         const modal = form.closest('.fixed');
         if (modal) {
             modal.remove();
-            document.body.style.overflow = ''; // Restore scroll
+            document.body.style.overflow = '';
         }
 
         // Show loading notification
@@ -2142,9 +2159,6 @@ function handlePdfExport(format = 'download') {
     }
 }
 
-/**
- * Validate PDF form before submission
- */
 function validatePdfForm(formData, dateMethod) {
     // Validasi field wajib
     const requiredFields = {
@@ -2425,9 +2439,6 @@ function animateNumberUpdate(element, startValue, endValue, suffix = '') {
     requestAnimationFrame(updateNumber);
 }
 
-/**
- * Main PDF export function with proper error handling
- */
 async function exportPdfReport(options = {}) {
     try {
         // Default params with validation
@@ -2438,7 +2449,8 @@ async function exportPdfReport(options = {}) {
             year: options.year || new Date().getFullYear().toString(),
             report_type: options.report_type || 'summary',
             date_method: options.date_method || 'preset',
-            timeframe: options.timeframe || 'days'
+            timeframe: options.timeframe || 'days',
+                        ...options
         };
 
         // Add custom dates if provided
@@ -2473,35 +2485,44 @@ async function exportHistory(params = {}) {
         // Show loading notification
         showNotification('Mempersiapkan laporan PDF...', 'info');
 
-        // Build query string with proper array handling
-        const query = new URLSearchParams();
+        // PERBAIKAN: Pastikan semua parameter dikirim dengan benar
+        const queryParams = new URLSearchParams();
+        
+        // Loop through all params dan pastikan semuanya dikirim
         Object.keys(params).forEach(key => {
             const value = params[key];
             if (value !== null && value !== undefined && value !== '') {
-                // Handle arrays properly
                 if (Array.isArray(value)) {
-                    // Option 1: Send as JSON string
-                    query.append(key, JSON.stringify(value));
-
-                    // Option 2: Send multiple parameters with same key (uncomment if preferred)
-                    // value.forEach(item => query.append(key + '[]', item));
+                    // Handle arrays
+                    queryParams.append(key, JSON.stringify(value));
                 } else {
                     // Ensure non-array values are converted to strings
-                    query.append(key, String(value));
+                    queryParams.append(key, String(value));
                 }
             }
         });
 
-        console.log('Fetching PDF from:', `/api/history/export-pdf?${query.toString()}`);
+        // Debug: Log query parameters yang akan dikirim
+        console.log('Query Parameters being sent:');
+        for (let [key, value] of queryParams.entries()) {
+            console.log(`${key}: ${value}`);
+        }
 
-        // Fetch PDF from server with timeout
+        const queryString = queryParams.toString();
+        const url = `/api/history/export-pdf?${queryString}`;
+        
+        console.log('Full URL:', url);
+
+        // Fetch PDF from server dengan timeout
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 60000);
 
-        const response = await fetch(`/api/history/export-pdf?${query.toString()}`, {
+        const response = await fetch(url, {
             method: 'GET',
             headers: {
                 'Accept': 'application/pdf',
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
             },
             signal: controller.signal
@@ -2511,12 +2532,15 @@ async function exportHistory(params = {}) {
 
         if (!response.ok) {
             const errorText = await response.text().catch(() => 'Unknown error');
+            console.error('Server response error:', errorText);
             throw new Error(`Server error: ${response.status} - ${errorText}`);
         }
 
         // Check if response is actually PDF
         const contentType = response.headers.get('content-type');
         if (!contentType || !contentType.includes('application/pdf')) {
+            const responseText = await response.text();
+            console.error('Non-PDF response received:', responseText);
             throw new Error('Server did not return a PDF file');
         }
 
@@ -2526,6 +2550,8 @@ async function exportHistory(params = {}) {
         if (blob.size === 0) {
             throw new Error('PDF file is empty');
         }
+
+        console.log('PDF blob size:', blob.size, 'bytes');
 
         // Handle PDF display/download
         if (params.format === 'view') {
@@ -2548,7 +2574,7 @@ async function exportHistory(params = {}) {
             downloadBlob(blob, params.filename);
         }
 
-        showNotification('Laporan PDF berhasil dibuat', 'success');
+        showNotification('Laporan PDF berhasil dibuat!', 'success');
 
     } catch (error) {
         console.error('Export PDF Error:', error);
@@ -2558,7 +2584,7 @@ async function exportHistory(params = {}) {
         if (error.name === 'AbortError') {
             errorMessage = 'Timeout: Server terlalu lama merespons';
         } else if (error.message.includes('Server error')) {
-            errorMessage = `Server error: ${error.message}`;
+            errorMessage = error.message;
         } else if (error.message.includes('NetworkError') || error.message.includes('fetch')) {
             errorMessage = 'Koneksi ke server bermasalah';
         } else {
@@ -2569,9 +2595,7 @@ async function exportHistory(params = {}) {
     }
 }
 
-/**
- * Helper function to download blob as file
- */
+// Helper function untuk download blob
 function downloadBlob(blob, filename) {
     try {
         const url = window.URL.createObjectURL(blob);
@@ -2579,17 +2603,18 @@ function downloadBlob(blob, filename) {
         a.style.display = 'none';
         a.href = url;
         a.download = filename;
-
+        
         document.body.appendChild(a);
         a.click();
-
-        // Clean up
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-
+        
+        // Cleanup
+        setTimeout(() => {
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }, 100);
     } catch (error) {
         console.error('Error downloading blob:', error);
-        throw new Error('Gagal mendownload file');
+        showNotification('Gagal mengunduh file PDF', 'error');
     }
 }
 

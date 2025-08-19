@@ -1781,6 +1781,11 @@ day
 12 merancang tampilan laporan
 13 menambah periode waktu eksport
 14 menambah fitur input (disahkan, didetujui, ..) margin 1 cm
+15 -
+
+18 memperbaiki error: tidak dapat kirim data ke pdf
+19 fixing kirim data ke pdf
+20 mengubah tampilan tabel ke pie chart
 
 menambah fitur input (disiapkan, disetujui, disahkan)
 bagian yang diinput terdiri dari 14 input oleh user untuk digenerate ke laporan yakni
@@ -1811,6 +1816,9 @@ nama:
 tanggal:
 
 hilangkan opsi laporan karena format laporannya hanya itu saja
+
+pada kodenya ketika user input pada modal export pdf, maka yg terkirim->tercatat ke pdf hanya quarter(triwulan)
+dan year(tahun) sedangkan lainnya tidak ikut terinput
 
 *pada tabel data semua status endpoint dihilangkan/diubah menjadi diagram lingkaran yang menghitung uptime(hijau)
 dan downtime(merah)
