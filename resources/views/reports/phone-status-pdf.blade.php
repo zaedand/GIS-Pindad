@@ -2,6 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -261,13 +262,13 @@
         <h3 style="color: #1f2937; font-size: 16px; font-weight: bold; margin-bottom: 15px; border-bottom: 2px solid #e5e7eb; padding-bottom: 5px;">
             Analisis Total Uptime
         </h3>
-        
+
         <div style="display: flex; align-items: flex-start; gap: 20px; margin-bottom: 15px;">
-            
+
             {{-- Chart Image --}}
             <div style="flex: 0 0 300px; text-align: center;">
-                <img src="{{ $chart_image }}" 
-                    alt="Uptime Downtime Chart" 
+                <img src="{{ $chart_image }}"
+                    alt="Uptime Downtime Chart"
                     style="max-width: 300px; height: auto; border: 1px solid #e5e7eb; border-radius: 8px; background: white;" />
             </div>
 
@@ -275,7 +276,7 @@
             <div style="flex:1; padding-left:20px;">
                 <div class="summary-box">
                     <h4 style="font-size:14px; font-weight:bold; margin-bottom:10px;">Ringkasan Analisis:</h4>
-                    
+
                     @if(isset($chart_data) && !empty($chart_data))
                         <table style="border:none; font-size:12px; color:#374151;">
                             <tr>

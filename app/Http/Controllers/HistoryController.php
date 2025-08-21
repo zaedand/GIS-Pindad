@@ -30,8 +30,8 @@ class HistoryController extends Controller
                 'report_type' => 'string|in:kpi,summary',
                 'filename' => 'nullable|string',
                 'chart_image' => 'nullable|string', // Base64 image
-                'chart_data' => 'nullable|string|json', 
-                
+                'chart_data' => 'nullable|string|json',
+
                 // KPI Information validation - PERBAIKAN: nullable untuk field opsional
                 'indikator' => 'nullable|string|max:255',
                 'nama_indikator' => 'nullable|string|max:1000',
@@ -39,7 +39,7 @@ class HistoryController extends Controller
                 'target' => 'nullable|string|max:255',
                 'realisasi' => 'nullable|string|max:255',
                 'department' => 'nullable|string|max:255',
-                
+
                 // Footer/Signature validation - PERBAIKAN: nullable untuk field opsional
                 'prepared_jabatan' => 'nullable|string|max:255',
                 'prepared_nama' => 'nullable|string|max:255',
@@ -155,11 +155,11 @@ class HistoryController extends Controller
                 'has_chart' => !empty($chartData['chart_image']),
 
                 // Additional chart statistics untuk text display
-                'total_devices_count' => isset($chartData['chart_data']['total_devices']) ? 
+                'total_devices_count' => isset($chartData['chart_data']['total_devices']) ?
                     $chartData['chart_data']['total_devices'] : $currentStats['total_nodes'],
-                'total_uptime_percentage' => isset($chartData['chart_data']['uptime_percentage']) ? 
+                'total_uptime_percentage' => isset($chartData['chart_data']['uptime_percentage']) ?
                     $chartData['chart_data']['uptime_percentage'] : $currentStats['online_percentage'],
-                'total_downtime_percentage' => isset($chartData['chart_data']['downtime_percentage']) ? 
+                'total_downtime_percentage' => isset($chartData['chart_data']['downtime_percentage']) ?
                     $chartData['chart_data']['downtime_percentage'] : $currentStats['offline_percentage'],
 
                 // Table data
@@ -334,7 +334,7 @@ class HistoryController extends Controller
                         // Validate required chart data fields
                         $requiredFields = ['total_devices', 'uptime_percentage', 'downtime_percentage'];
                         $hasRequiredFields = true;
-                        
+
                         foreach ($requiredFields as $field) {
                             if (!isset($chartData[$field])) {
                                 $hasRequiredFields = false;
@@ -351,7 +351,7 @@ class HistoryController extends Controller
                                 'uptime_percentage' => (float) $chartData['uptime_percentage'],
                                 'downtime_percentage' => (float) $chartData['downtime_percentage']
                             ];
-                            
+
                             \Log::info('Chart data processed successfully', $processedData['chart_data']);
                         } else {
                             \Log::warning('Chart data missing required fields', [
@@ -380,13 +380,150 @@ class HistoryController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            
+
             return [
                 'chart_image' => null,
                 'chart_data' => []
             ];
         }
     }
+
+public function getChartData(Request $request)
+{
+    try {
+        // Validasi input tanggal (sama seperti di exportPdf)
+        $validator = Validator::make($request->all(), [
+            'date_method' => 'string|in:preset,custom',
+            'start_date' => 'nullable|date|required_if:date_method,custom',
+            'end_date' => 'nullable|date|required_if:date_method,custom|after_or_equal:start_date',
+            'period' => 'nullable|integer|min:1|max:365',
+            'quarter' => 'string|in:I,II,III,IV',
+            'year' => 'integer|min:2020|max:2030',
+            'timeframe' => 'string|in:days,from_start,quarter',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => 'Invalid parameters',
+                'messages' => $validator->errors()
+            ], 400);
+        }
+
+        // Process dates (sama seperti di exportPdf)
+        $dateMethod = $request->get('date_method', 'preset');
+        $quarter = $request->get('quarter', 'III');
+        $year = $request->get('year', date('Y'));
+        $timeframe = $request->get('timeframe', 'days');
+
+        if ($dateMethod === 'custom') {
+            $startDate = Carbon::parse($request->get('start_date'));
+            $endDate = Carbon::parse($request->get('end_date'))->endOfDay();
+        } else {
+            $period = (int) $request->get('period', 30);
+            switch ($timeframe) {
+                case 'from_start':
+                    $startDate = Carbon::create($year, 1, 1)->startOfDay();
+                    $endDate = Carbon::now()->endOfDay();
+                    break;
+                case 'quarter':
+                    [$startDate, $endDate] = $this->getQuarterDateRange($quarter, $year);
+                    break;
+                case 'days':
+                default:
+                    $endDate = Carbon::now()->endOfDay();
+                    $startDate = Carbon::now()->subDays($period - 1)->startOfDay();
+                    break;
+            }
+        }
+
+        // Get statistics dari history
+        $currentStats = $this->getLatestStatusStatisticsOptimized();
+        $endpointsData = $this->generateEndpointsDataFromHistory($currentStats['latest_statuses'], $startDate, $endDate);
+
+        // Hitung total uptime dari data endpoints
+        $totalDevices = count($endpointsData);
+        $totalPossibleUptime = $totalDevices * 100; // Setiap device maksimal 100%
+
+        // Hitung actual uptime dari data endpoints
+        $actualUptimeSum = 0;
+        foreach ($endpointsData as $endpoint) {
+            $uptimeStr = $endpoint['uptime_period'] ?? '0%';
+            $uptimeValue = (float) str_replace('%', '', $uptimeStr);
+            $actualUptimeSum += $uptimeValue;
+        }
+
+        $actualDowntime = $totalPossibleUptime - $actualUptimeSum;
+        $uptimePercentage = $totalPossibleUptime > 0 ? ($actualUptimeSum / $totalPossibleUptime) * 100 : 0;
+        $downtimePercentage = $totalPossibleUptime > 0 ? ($actualDowntime / $totalPossibleUptime) * 100 : 0;
+
+        // Return data untuk chart
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'total_devices' => $totalDevices,
+                'total_possible_uptime' => $totalPossibleUptime,
+                'actual_uptime' => $actualUptimeSum,
+                'actual_downtime' => $actualDowntime,
+                'uptime_percentage' => round($uptimePercentage, 1),
+                'downtime_percentage' => round($downtimePercentage, 1),
+                'period' => [
+                    'start_date' => $startDate->format('Y-m-d'),
+                    'end_date' => $endDate->format('Y-m-d'),
+                    'days' => $startDate->diffInDays($endDate) + 1
+                ]
+            ]
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('Error getting chart data: ' . $e->getMessage());
+
+        return response()->json([
+            'error' => 'Failed to get chart data',
+            'message' => $e->getMessage()
+        ], 500);
+    }
+}
+
+// Method helper untuk mendapatkan data uptime real-time
+public function getRealTimeUptimeData()
+{
+    try {
+        $currentStats = $this->getLatestStatusStatisticsOptimized();
+
+        // Hitung berdasarkan status real-time
+        $totalDevices = $currentStats['total_nodes'];
+        $onlineDevices = $currentStats['online_nodes'];
+        $offlineDevices = $currentStats['offline_nodes'];
+        $partialDevices = $currentStats['partial_nodes'];
+
+        // Kalkulasi persentase
+        $onlinePercentage = $currentStats['online_percentage'];
+        $offlinePercentage = $currentStats['offline_percentage'];
+        $partialPercentage = $totalDevices > 0 ? ($partialDevices / $totalDevices) * 100 : 0;
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'total_devices' => $totalDevices,
+                'online_devices' => $onlineDevices,
+                'offline_devices' => $offlineDevices,
+                'partial_devices' => $partialDevices,
+                'online_percentage' => round($onlinePercentage, 1),
+                'offline_percentage' => round($offlinePercentage, 1),
+                'partial_percentage' => round($partialPercentage, 1),
+                'timestamp' => Carbon::now()->toISOString()
+            ]
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('Error getting real-time uptime data: ' . $e->getMessage());
+
+        return response()->json([
+            'error' => 'Failed to get real-time data',
+            'message' => $e->getMessage()
+        ], 500);
+    }
+}
 
     /**
      * TAMBAHAN: Generate fallback chart statistics jika tidak ada chart dari frontend
@@ -398,7 +535,7 @@ class HistoryController extends Controller
             $onlineDevices = $currentStats['online_nodes'];
             $offlineDevices = $currentStats['offline_nodes'];
 
-            $uptimePercentage = $totalDevices > 0 ? 
+            $uptimePercentage = $totalDevices > 0 ?
                 round(($onlineDevices / $totalDevices) * 100, 1) : 0;
             $downtimePercentage = 100 - $uptimePercentage;
 
