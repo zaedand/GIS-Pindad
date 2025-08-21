@@ -6,7 +6,7 @@
         body {
             font-family: Arial, sans-serif;
             font-size: 12px;
-            margin: 0;
+            margin: 1cm;
             padding: 20px;
             line-height: 1.4;
         }
@@ -254,6 +254,65 @@
             </div>
         </div>
     </div>
+
+    {{-- Chart Section --}}
+    @if(isset($has_chart) && $has_chart && !empty($chart_image))
+    <div style="page-break-inside: avoid; margin-bottom: 20px;">
+        <h3 style="color: #1f2937; font-size: 16px; font-weight: bold; margin-bottom: 15px; border-bottom: 2px solid #e5e7eb; padding-bottom: 5px;">
+            Analisis Total Uptime
+        </h3>
+        
+        <div style="display: flex; align-items: flex-start; gap: 20px; margin-bottom: 15px;">
+            
+            {{-- Chart Image --}}
+            <div style="flex: 0 0 300px; text-align: center;">
+                <img src="{{ $chart_image }}" 
+                    alt="Uptime Downtime Chart" 
+                    style="max-width: 300px; height: auto; border: 1px solid #e5e7eb; border-radius: 8px; background: white;" />
+            </div>
+
+            {{-- Ringkasan --}}
+            <div style="flex:1; padding-left:20px;">
+                <div class="summary-box">
+                    <h4 style="font-size:14px; font-weight:bold; margin-bottom:10px;">Ringkasan Analisis:</h4>
+                    
+                    @if(isset($chart_data) && !empty($chart_data))
+                        <table style="border:none; font-size:12px; color:#374151;">
+                            <tr>
+                                <td style="padding:4px 0; font-weight:600;">Total Perangkat:</td>
+                                <td style="padding:4px 0; text-align:right;">{{ $chart_data['total_devices'] ?? 0 }} unit</td>
+                            </tr>
+                            <tr>
+                                <td style="padding:4px 0; font-weight:600;">Kemungkinan Maksimal Uptime:</td>
+                                <td style="padding:4px 0; text-align:right;">{{ number_format($chart_data['total_possible_uptime'] ?? 0, 0) }}%</td>
+                            </tr>
+                            <tr>
+                                <td style="padding:4px 0; font-weight:600; color:#059669;">Total Uptime Aktual:</td>
+                                <td style="padding:4px 0; text-align:right; font-weight:bold; color:#059669;">{{ number_format($chart_data['actual_uptime'] ?? 0, 1) }}%</td>
+                            </tr>
+                            <tr>
+                                <td style="padding:4px 0; font-weight:600; color:#dc2626;">Total Downtime:</td>
+                                <td style="padding:4px 0; text-align:right; font-weight:bold; color:#dc2626;">{{ number_format($chart_data['actual_downtime'] ?? 0, 1) }}%</td>
+                            </tr>
+                            <tr style="border-top:2px solid #e5e7eb; font-weight:bold;">
+                                <td style="padding:8px 0 4px 0;">Persentase Uptime:</td>
+                                <td style="padding:8px 0 4px 0; text-align:right; color:#059669;">{{ number_format($chart_data['uptime_percentage'] ?? 0, 1) }}%</td>
+                            </tr>
+                            <tr style="font-weight:bold;">
+                                <td style="padding:4px 0;">Persentase Downtime:</td>
+                                <td style="padding:4px 0; text-align:right; color:#dc2626;">{{ number_format($chart_data['downtime_percentage'] ?? 0, 1) }}%</td>
+                            </tr>
+                        </table>
+                    @else
+                        <div style="color:#6b7280; font-style:italic; text-align:center; padding:10px;">
+                            Data chart tidak tersedia
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
 
     <!-- Data Table Section -->
     <div class="section-title">Data Status Semua Endpoint</div>

@@ -1,380 +1,104 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Status Tracker</title>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Getting Started with Chart JS with www.chartjs3.com</title>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-        }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
-        
-        .header {
-            background: linear-gradient(135deg, #2d3748, #4a5568);
-            color: white;
-            padding: 20px;
-            text-align: center;
-        }
-        
-        .header h1 {
-            margin: 0;
-            font-size: 2rem;
-            font-weight: 600;
-        }
-        
-        .stats-bar {
-            display: flex;
-            background: #f7fafc;
-            padding: 15px 20px;
-            gap: 20px;
-            flex-wrap: wrap;
-        }
-        
-        .stat-item {
-            flex: 1;
-            min-width: 150px;
-            text-align: center;
-            padding: 10px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-        
-        .stat-number {
-            font-size: 1.5rem;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-        
-        .stat-label {
-            color: #666;
-            font-size: 0.9rem;
-        }
-        
-        .online { color: #48bb78; }
-        .offline { color: #f56565; }
-        
-        .endpoint-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
-            padding: 20px;
-        }
-        
-        .endpoint-card {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            border-left: 4px solid #f56565;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        
-        .endpoint-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.12);
-        }
-        
-        .endpoint-card.online {
-            border-left-color: #48bb78;
-        }
-        
-        .endpoint-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-        
-        .endpoint-name {
-            font-size: 1.2rem;
-            font-weight: 600;
-            color: #2d3748;
-        }
-        
-        .status-badge {
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 500;
-            text-transform: uppercase;
-        }
-        
-        .status-online {
-            background: #c6f6d5;
-            color: #22543d;
-        }
-        
-        .status-offline {
-            background: #fed7d7;
-            color: #742a2a;
-        }
-        
-        .endpoint-info {
-            color: #4a5568;
-            line-height: 1.6;
-        }
-        
-        .last-seen {
-            margin-top: 10px;
-            padding-top: 10px;
-            border-top: 1px solid #e2e8f0;
-            font-size: 0.9rem;
-        }
-        
-        .disconnect-time {
-            font-weight: 600;
-            color: #e53e3e;
-        }
-        
-        .controls {
-            padding: 20px;
-            background: #f7fafc;
-            border-top: 1px solid #e2e8f0;
-            text-align: center;
-        }
-        
-        button {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: transform 0.2s;
-            margin: 0 10px;
-        }
-        
-        button:hover {
-            transform: translateY(-1px);
-        }
-        
-        .real-time {
-            color: #48bb78;
-            font-size: 0.9rem;
-            margin-top: 10px;
-        }
+      * {
+        margin: 0;
+        padding: 0;
+        font-family: sans-serif;
+      }
+      .chartMenu {
+        width: 100vw;
+        height: 40px;
+        background: #1A1A1A;
+        color: rgba(54, 162, 235, 1);
+      }
+      .chartMenu p {
+        padding: 10px;
+        font-size: 20px;
+      }
+      .chartCard {
+        width: 100vw;
+        height: calc(100vh - 40px);
+        background: rgba(54, 162, 235, 0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .chartBox {
+        width: 700px;
+        padding: 20px;
+        border-radius: 20px;
+        border: solid 3px rgba(54, 162, 235, 1);
+        background: white;
+      }
     </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>📊 Status Tracker Endpoint</h1>
-            <p>Monitor status online dan waktu disconnect secara real-time</p>
-        </div>
-        
-        <div class="stats-bar">
-            <div class="stat-item">
-                <div class="stat-number online" id="onlineCount">0</div>
-                <div class="stat-label">Online</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-number offline" id="offlineCount">0</div>
-                <div class="stat-label">Offline</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-number" id="totalCount">0</div>
-                <div class="stat-label">Total Endpoint</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-number" id="avgDisconnect">-</div>
-                <div class="stat-label">Rata-rata Disconnect</div>
-            </div>
-        </div>
-        
-        <div class="endpoint-grid" id="endpointGrid">
-            <!-- Endpoint cards akan ditampilkan di sini -->
-        </div>
-        
-        <div class="controls">
-            <button onclick="refreshData()">🔄 Refresh Data</button>
-            <button onclick="simulateStatusChange()">🎲 Simulasi Perubahan</button>
-            <div class="real-time" id="lastUpdate">Terakhir diupdate: -</div>
-        </div>
+  </head>
+  <body>
+    <div class="chartMenu">
+      <p>WWW.CHARTJS3.COM (Chart JS <span id="chartVersion"></span>)</p>
     </div>
-
+    <div class="chartCard">
+      <div class="chartBox">
+        <canvas id="myChart"></canvas>
+      </div>
+    </div>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/chart.js/dist/chart.umd.min.js"></script>
     <script>
-        // Data sample yang Anda berikan
-        let endpointData = [
-            {
-                contact: '-',
-                endpoint: '1081',
-                status: 'Unavailable 0 of',
-                timestamp: '2025-07-16 08:17:05'
-            },
-            {
-                contact: '-',
-                endpoint: '1082',
-                status: 'Unavailable 0 of',
-                timestamp: '2025-07-16 08:17:05'
-            },
-            {
-                contact: '-',
-                endpoint: '1083',
-                status: 'Unavailable 0 of',
-                timestamp: '2025-07-16 08:17:05'
-            }
-        ];
+    // setup 
+    const data = {
+      labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+      datasets: [{
+        label: 'Weekly Sales',
+        data: [18, 12, 6, 9, 12, 3, 9],
+        backgroundColor: [
+          'rgba(255, 26, 104, 0.2)',
+          'rgba(54, 162, 235, 0.2)',
+          'rgba(255, 206, 86, 0.2)',
+          'rgba(75, 192, 192, 0.2)',
+          'rgba(153, 102, 255, 0.2)',
+          'rgba(255, 159, 64, 0.2)',
+          'rgba(0, 0, 0, 0.2)'
+        ],
+        borderColor: [
+          'rgba(255, 26, 104, 1)',
+          'rgba(54, 162, 235, 1)',
+          'rgba(255, 206, 86, 1)',
+          'rgba(75, 192, 192, 1)',
+          'rgba(153, 102, 255, 1)',
+          'rgba(255, 159, 64, 1)',
+          'rgba(0, 0, 0, 1)'
+        ],
+        borderWidth: 1
+      }]
+    };
 
-        // Fungsi untuk menghitung selisih waktu
-        function calculateTimeDifference(timestamp) {
-            const now = new Date();
-            const lastSeen = new Date(timestamp);
-            const diffMs = now - lastSeen;
-            
-            const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
-            
-            if (days > 0) {
-                return `${days} hari, ${hours} jam yang lalu`;
-            } else if (hours > 0) {
-                return `${hours} jam, ${minutes} menit yang lalu`;
-            } else if (minutes > 0) {
-                return `${minutes} menit, ${seconds} detik yang lalu`;
-            } else {
-                return `${seconds} detik yang lalu`;
-            }
+    // config 
+    const config = {
+      type: 'bar',
+      data,
+      options: {
+        scales: {
+          y: {
+            beginAtZero: true
+          }
         }
+      }
+    };
 
-        // Fungsi untuk menentukan apakah endpoint online atau offline
-        function isOnline(status) {
-            return status.toLowerCase().includes('available') && !status.toLowerCase().includes('unavailable');
-        }
+    // render init block
+    const myChart = new Chart(
+      document.getElementById('myChart'),
+      config
+    );
 
-        // Fungsi untuk format timestamp
-        function formatTimestamp(timestamp) {
-            const date = new Date(timestamp);
-            return date.toLocaleString('id-ID', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit'
-            });
-        }
-
-        // Fungsi untuk menghitung statistik
-        function calculateStats() {
-            const online = endpointData.filter(item => isOnline(item.status)).length;
-            const offline = endpointData.length - online;
-            const total = endpointData.length;
-            
-            // Hitung rata-rata waktu disconnect untuk endpoint offline
-            const offlineEndpoints = endpointData.filter(item => !isOnline(item.status));
-            let avgDisconnect = '-';
-            
-            if (offlineEndpoints.length > 0) {
-                const totalDisconnectMs = offlineEndpoints.reduce((sum, item) => {
-                    const now = new Date();
-                    const lastSeen = new Date(item.timestamp);
-                    return sum + (now - lastSeen);
-                }, 0);
-                
-                const avgMs = totalDisconnectMs / offlineEndpoints.length;
-                const avgHours = Math.floor(avgMs / (1000 * 60 * 60));
-                const avgMinutes = Math.floor((avgMs % (1000 * 60 * 60)) / (1000 * 60));
-                
-                if (avgHours > 0) {
-                    avgDisconnect = `${avgHours}j ${avgMinutes}m`;
-                } else {
-                    avgDisconnect = `${avgMinutes}m`;
-                }
-            }
-            
-            return { online, offline, total, avgDisconnect };
-        }
-
-        // Fungsi untuk render endpoint cards
-        function renderEndpoints() {
-            const grid = document.getElementById('endpointGrid');
-            const stats = calculateStats();
-            
-            // Update statistik
-            document.getElementById('onlineCount').textContent = stats.online;
-            document.getElementById('offlineCount').textContent = stats.offline;
-            document.getElementById('totalCount').textContent = stats.total;
-            document.getElementById('avgDisconnect').textContent = stats.avgDisconnect;
-            
-            // Render cards
-            grid.innerHTML = endpointData.map(item => {
-                const online = isOnline(item.status);
-                const timeDiff = calculateTimeDifference(item.timestamp);
-                const formattedTime = formatTimestamp(item.timestamp);
-                
-                return `
-                    <div class="endpoint-card ${online ? 'online' : ''}">
-                        <div class="endpoint-header">
-                            <div class="endpoint-name">Endpoint ${item.endpoint}</div>
-                            <div class="status-badge ${online ? 'status-online' : 'status-offline'}">
-                                ${online ? 'Online' : 'Offline'}
-                            </div>
-                        </div>
-                        <div class="endpoint-info">
-                            <div><strong>Status:</strong> ${item.status}</div>
-                            <div><strong>Contact:</strong> ${item.contact}</div>
-                            <div class="last-seen">
-                                <div><strong>Terakhir terlihat:</strong> ${formattedTime}</div>
-                                ${!online ? `<div class="disconnect-time">Disconnect: ${timeDiff}</div>` : ''}
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-            
-            // Update waktu terakhir refresh
-            document.getElementById('lastUpdate').textContent = 
-                `Terakhir diupdate: ${new Date().toLocaleTimeString('id-ID')}`;
-        }
-
-        // Fungsi untuk refresh data (simulasi)
-        function refreshData() {
-            // Dalam implementasi nyata, ini akan memanggil API
-            console.log('Refreshing data...');
-            renderEndpoints();
-        }
-
-        // Fungsi untuk simulasi perubahan status
-        function simulateStatusChange() {
-            // Randomly change some endpoints status
-            const randomIndex = Math.floor(Math.random() * endpointData.length);
-            const randomEndpoint = endpointData[randomIndex];
-            
-            // Toggle status
-            if (isOnline(randomEndpoint.status)) {
-                randomEndpoint.status = 'Unavailable 0 of';
-                randomEndpoint.timestamp = new Date().toISOString().slice(0, 19).replace('T', ' ');
-            } else {
-                randomEndpoint.status = 'Available 1 of 1';
-                randomEndpoint.timestamp = new Date().toISOString().slice(0, 19).replace('T', ' ');
-            }
-            
-            renderEndpoints();
-        }
-
-        // Auto refresh setiap 30 detik
-        setInterval(() => {
-            renderEndpoints();
-        }, 30000);
-
-        // Initial render
-        renderEndpoints();
+    // Instantly assign Chart.js version
+    const chartVersion = document.getElementById('chartVersion');
+    chartVersion.innerText = Chart.version;
     </script>
-</body>
+
+  </body>
 </html>

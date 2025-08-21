@@ -1957,6 +1957,74 @@ function showPdfExportModal() {
                         </div>
                     </div>
 
+                    <div class="bg-yellow-50 rounded-xl p-4 sm:p-6 border border-yellow-200">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                            <i class="fas fa-chart-pie text-yellow-600"></i>
+                            Preview Chart Uptime/Downtime
+                        </h3>
+                        
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <!-- Chart Preview -->
+                            <div class="bg-white rounded-lg p-4 border border-yellow-300">
+                                <div class="text-center">
+                                    <canvas id="preview-uptime-chart" width="250" height="250" style="max-width: 250px;"></canvas>
+                                </div>
+                            </div>
+                            
+                            <!-- Chart Statistics -->
+                            <div class="bg-white rounded-lg p-4 border border-yellow-300">
+                                <h4 class="font-semibold text-gray-700 mb-3">Statistik Chart:</h4>
+                                <div class="space-y-2 text-sm">
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600">Total Perangkat:</span>
+                                        <span id="chart-total-devices" class="font-medium">-</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600">Kemungkinan Max Uptime:</span>
+                                        <span id="chart-max-uptime" class="font-medium">-</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-green-600">Total Uptime Aktual:</span>
+                                        <span id="chart-actual-uptime" class="font-medium text-green-600">-</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-red-600">Total Downtime:</span>
+                                        <span id="chart-actual-downtime" class="font-medium text-red-600">-</span>
+                                    </div>
+                                    <hr class="border-yellow-200">
+                                    <div class="flex justify-between font-bold">
+                                        <span class="text-green-600">Persentase Uptime:</span>
+                                        <span id="chart-uptime-percentage" class="text-green-600">-</span>
+                                    </div>
+                                    <div class="flex justify-between font-bold">
+                                        <span class="text-red-600">Persentase Downtime:</span>
+                                        <span id="chart-downtime-percentage" class="text-red-600">-</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Performance Assessment -->
+                                <div id="chart-assessment" class="mt-4 p-3 rounded-lg text-sm font-medium">
+                                    <div class="flex items-center gap-2">
+                                        <i class="fas fa-info-circle"></i>
+                                        <span id="chart-assessment-text">Menghitung assessment...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Chart Options -->
+                        <div class="mt-4 bg-white rounded-lg p-4 border border-yellow-300">
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" name="include_chart" checked 
+                                       class="text-yellow-600 focus:ring-yellow-500 rounded">
+                                <span class="text-sm font-medium text-gray-700">Sertakan chart dalam PDF</span>
+                            </label>
+                            <p class="text-xs text-gray-500 mt-1">
+                                Chart akan ditampilkan sebagai diagram pie dalam laporan PDF
+                            </p>
+                        </div>
+                    </div>
+
                     <!-- Current Statistics Preview -->
                     <div class="bg-blue-100 rounded-xl p-4 sm:p-6 border border-blue-200">
                         <h4 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
@@ -2033,7 +2101,270 @@ function showPdfExportModal() {
     setupDateEventListeners();
 }
 
-function handlePdfExport(format = 'download') {
+
+
+function initializeChartPreview() {
+    try {
+        const canvas = document.getElementById('preview-uptime-chart');
+        if (!canvas) {
+            console.warn('Chart preview canvas not found');
+            return;
+        }
+
+        // Calculate uptime data
+        const uptimeData = calculateUptimeData();
+        
+        // Update chart statistics display
+        updateChartStatisticsDisplay(uptimeData);
+        
+        // Create preview chart
+        const ctx = canvas.getContext('2d');
+        
+        const totalPossibleUptime = uptimeData.total_devices * 100;
+        const actualDowntime = totalPossibleUptime - uptimeData.total_uptime;
+        const uptimePercentage = ((uptimeData.total_uptime / totalPossibleUptime) * 100);
+        const downtimePercentage = 100 - uptimePercentage;
+
+        window.previewChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: [
+                    `Uptime (${uptimePercentage.toFixed(1)}%)`,
+                    `Downtime (${downtimePercentage.toFixed(1)}%)`
+                ],
+                datasets: [{
+                    data: [uptimeData.total_uptime, actualDowntime],
+                    backgroundColor: [
+                        '#10B981', // Green for uptime
+                        '#EF4444'  // Red for downtime
+                    ],
+                    borderColor: [
+                        '#059669',
+                        '#DC2626'
+                    ],
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: false,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Preview Chart',
+                        font: {
+                            size: 14,
+                            weight: 'bold'
+                        }
+                    },
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 10,
+                            font: {
+                                size: 10
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed;
+                                return `${label}: ${value.toFixed(1)}%`;
+                            }
+                        }
+                    }
+                },
+                animation: {
+                    duration: 1000
+                }
+            }
+        });
+
+        console.log('Chart preview initialized successfully');
+
+    } catch (error) {
+        console.error('Error initializing chart preview:', error);
+        
+        // Show error message in chart area
+        const canvas = document.getElementById('preview-uptime-chart');
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#f3f4f6';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#6b7280';
+            ctx.font = '14px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Chart preview unavailable', canvas.width/2, canvas.height/2);
+        }
+    }
+}
+
+function generateUptimeChart(uptimeData) {
+    return new Promise((resolve, reject) => {
+        try {
+            // Create hidden canvas
+            const canvas = document.createElement('canvas');
+            canvas.width = 400;
+            canvas.height = 400;
+            canvas.style.display = 'none';
+            document.body.appendChild(canvas);
+
+            const ctx = canvas.getContext('2d');
+
+            // Calculate percentages
+            const totalDevices = uptimeData.total_devices || 9;
+            const totalPossibleUptime = totalDevices * 100; // 900%
+            const actualUptime = uptimeData.total_uptime || 817.5;
+            const actualDowntime = totalPossibleUptime - actualUptime;
+            
+            const uptimePercentage = ((actualUptime / totalPossibleUptime) * 100).toFixed(1);
+            const downtimePercentage = ((actualDowntime / totalPossibleUptime) * 100).toFixed(1);
+
+            // Chart configuration
+            const chart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: [
+                        `Uptime (${uptimePercentage}%)`,
+                        `Downtime (${downtimePercentage}%)`
+                    ],
+                    datasets: [{
+                        data: [actualUptime, actualDowntime],
+                        backgroundColor: [
+                            '#10B981', // Green for uptime
+                            '#EF4444'  // Red for downtime
+                        ],
+                        borderColor: [
+                            '#059669',
+                            '#DC2626'
+                        ],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: false,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Total Uptime vs Downtime Analysis',
+                            font: {
+                                size: 16,
+                                weight: 'bold'
+                            },
+                            padding: 20
+                        },
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 15,
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed;
+                                    return `${label}: ${value.toFixed(1)}%`;
+                                }
+                            }
+                        }
+                    },
+                    animation: {
+                        duration: 0 // Disable animation for faster rendering
+                    }
+                }
+            });
+
+            // Wait for chart to render, then convert to base64
+            setTimeout(() => {
+                try {
+                    const base64Image = canvas.toDataURL('image/png', 1.0);
+                    
+                    // Cleanup
+                    chart.destroy();
+                    document.body.removeChild(canvas);
+                    
+                    // Add chart data to response
+                    resolve({
+                        chartImage: base64Image,
+                        chartData: {
+                            total_devices: totalDevices,
+                            total_possible_uptime: totalPossibleUptime,
+                            actual_uptime: actualUptime,
+                            actual_downtime: actualDowntime,
+                            uptime_percentage: parseFloat(uptimePercentage),
+                            downtime_percentage: parseFloat(downtimePercentage)
+                        }
+                    });
+                } catch (error) {
+                    console.error('Error generating chart image:', error);
+                    chart.destroy();
+                    document.body.removeChild(canvas);
+                    reject(error);
+                }
+            }, 1000); // Give time for chart to render
+
+        } catch (error) {
+            console.error('Error creating chart:', error);
+            reject(error);
+        }
+    });
+}
+
+function calculateUptimeData() {
+    try {
+        // Get nodes data atau gunakan sample jika tidak ada
+        let nodesData = window.nodes || [];
+        
+        // Jika tidak ada data, gunakan sample berdasarkan current stats
+        if (nodesData.length === 0) {
+            // Generate sample data
+            const totalNodes = 9; // Default
+            const onlineNodes = 7; // Estimate
+            
+            nodesData = Array.from({length: totalNodes}, (_, i) => ({
+                status: i < onlineNodes ? 'online' : 'offline'
+            }));
+        }
+
+        const totalDevices = nodesData.length;
+        const onlineDevices = nodesData.filter(n => {
+            const status = (n.status || '').toLowerCase();
+            return status === 'online' || status === 'aktif';
+        }).length;
+
+        // Calculate total uptime (assuming each device contributes 100% when online)
+        const totalPossibleUptime = totalDevices * 100; // 900% untuk 9 device
+        const actualUptimePercentage = totalDevices > 0 ? (onlineDevices / totalDevices) * 100 : 0;
+        const actualUptime = (actualUptimePercentage / 100) * totalPossibleUptime;
+
+        return {
+            total_devices: totalDevices,
+            online_devices: onlineDevices,
+            offline_devices: totalDevices - onlineDevices,
+            total_uptime: actualUptime,
+            uptime_percentage: actualUptimePercentage
+        };
+    } catch (error) {
+        console.error('Error calculating uptime data:', error);
+        // Return default values
+        return {
+            total_devices: 9,
+            online_devices: 7,
+            offline_devices: 2,
+            total_uptime: 777.8,
+            uptime_percentage: 77.8
+        };
+    }
+}
+
+async function handlePdfExport(format = 'download') {
     const form = document.getElementById('pdf-export-form');
     if (!form) {
         console.error('PDF export form not found');
@@ -2050,31 +2381,43 @@ function handlePdfExport(format = 'download') {
             return;
         }
 
-        // Debug: Log semua form data untuk debugging
-        console.log('Form Data Debug (Complete):');
-        for (let [key, value] of formData.entries()) {
-            console.log(`${key}: "${value}"`);
+        // Show loading notification untuk chart generation
+        showNotification('Membuat chart uptime/downtime...', 'info');
+
+        // ===== TAMBAHAN: Generate chart =====
+        const uptimeData = calculateUptimeData();
+        console.log('Uptime data calculated:', uptimeData);
+
+        let chartResult;
+        try {
+            chartResult = await generateUptimeChart(uptimeData);
+            console.log('Chart generated successfully');
+            showNotification('Chart berhasil dibuat, memproses PDF...', 'info');
+        } catch (chartError) {
+            console.error('Chart generation failed:', chartError);
+            showNotification('Gagal membuat chart, melanjutkan tanpa chart...', 'warning');
+            chartResult = null;
         }
 
-        // PERBAIKAN: Buat object options dengan memastikan nilai tidak null/undefined
+        // Build options object seperti sebelumnya
         let options = {
             format: format,
             report_type: 'kpi',
             include_ranking: formData.get('include_ranking') || 'true',
 
-            // Header information - LANGSUNG dari form
+            // Header information
             quarter: formData.get('quarter') || '',
             year: formData.get('year') || '',
             department: formData.get('department') || '',
 
-            // KPI Information - LANGSUNG dari form
+            // KPI Information
             indikator: formData.get('indikator') || '',
             nama_indikator: formData.get('nama_indikator') || '',
             formula: formData.get('formula') || '',
             target: formData.get('target') || '',
             realisasi: formData.get('realisasi') || '',
 
-            // Footer/Signature Information - LANGSUNG dari form
+            // Footer/Signature Information
             prepared_jabatan: formData.get('prepared_jabatan') || '',
             prepared_nama: formData.get('prepared_nama') || '',
             prepared_tanggal: formData.get('prepared_tanggal') || '',
@@ -2086,10 +2429,13 @@ function handlePdfExport(format = 'download') {
             validated_tanggal: formData.get('validated_tanggal') || ''
         };
 
-        // Debug: Log options yang akan dikirim
-        console.log('Options yang akan dikirim ke server:', options);
+        // ===== TAMBAHAN: Tambahkan chart data ke options =====
+        if (chartResult) {
+            options.chart_image = chartResult.chartImage;
+            options.chart_data = JSON.stringify(chartResult.chartData);
+        }
 
-        // Date handling
+        // Date handling (sama seperti sebelumnya)
         if (dateMethod === 'custom') {
             const startDate = formData.get('start_date');
             const endDate = formData.get('end_date');
@@ -2123,10 +2469,9 @@ function handlePdfExport(format = 'download') {
             options.timeframe = formData.get('timeframe');
         }
 
-        // Debug log untuk melihat data yang akan dikirim
-        console.log('PDF Export Options (After Processing):', options);
+        console.log('PDF Export Options (Final with Chart):', options);
 
-        // Validasi bahwa data penting tidak kosong
+        // Validasi required fields
         const requiredFields = ['indikator', 'nama_indikator', 'target', 'prepared_nama'];
         const missingFields = requiredFields.filter(field => !options[field] || options[field].trim() === '');
         
@@ -2145,12 +2490,12 @@ function handlePdfExport(format = 'download') {
 
         // Show loading notification
         const loadingMsg = format === 'download' ?
-            'Mengunduh laporan KPI... Estimasi: 10-30 detik' :
-            'Membuka preview laporan... Estimasi: 10-30 detik';
+            'Mengunduh laporan KPI dengan chart... Estimasi: 15-45 detik' :
+            'Membuka preview laporan dengan chart... Estimasi: 15-45 detik';
 
         showNotification(loadingMsg, 'info');
 
-        // Export PDF with enhanced options
+        // Export PDF with chart
         exportPdfReport(options);
 
     } catch (error) {
@@ -2158,6 +2503,217 @@ function handlePdfExport(format = 'download') {
         showNotification('Terjadi kesalahan saat memproses export PDF: ' + error.message, 'error');
     }
 }
+
+function showChartPreviewInModal() {
+    try {
+        const uptimeData = calculateUptimeData();
+        
+        // Update preview statistics dengan chart preview
+        const chartPreviewContainer = document.getElementById('chart-preview-container');
+        if (!chartPreviewContainer) {
+            // Create chart preview container jika belum ada
+            const previewSection = document.querySelector('.bg-blue-100.rounded-xl');
+            if (previewSection) {
+                const chartDiv = document.createElement('div');
+                chartDiv.id = 'chart-preview-container';
+                chartDiv.className = 'mt-4';
+                chartDiv.innerHTML = `
+                    <h5 class="text-sm font-semibold text-gray-700 mb-2">Preview Chart Uptime/Downtime:</h5>
+                    <div class="bg-white rounded-lg p-3 text-center">
+                        <canvas id="preview-chart" width="200" height="200"></canvas>
+                        <div class="mt-2 text-xs text-gray-600">
+                            <div>Total Uptime: ${uptimeData.total_uptime.toFixed(1)}%</div>
+                            <div>Total Downtime: ${(uptimeData.total_devices * 100 - uptimeData.total_uptime).toFixed(1)}%</div>
+                        </div>
+                    </div>
+                `;
+                previewSection.appendChild(chartDiv);
+            }
+        }
+
+        // Generate small preview chart
+        const canvas = document.getElementById('preview-chart');
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+            
+            const totalPossibleUptime = uptimeData.total_devices * 100;
+            const actualDowntime = totalPossibleUptime - uptimeData.total_uptime;
+            
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Uptime', 'Downtime'],
+                    datasets: [{
+                        data: [uptimeData.total_uptime, actualDowntime],
+                        backgroundColor: ['#10B981', '#EF4444'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: false,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+    } catch (error) {
+        console.error('Error showing chart preview:', error);
+    }
+}
+
+function updateChartStatisticsDisplay(uptimeData) {
+    try {
+        const totalPossibleUptime = uptimeData.total_devices * 100;
+        const actualDowntime = totalPossibleUptime - uptimeData.total_uptime;
+        const uptimePercentage = ((uptimeData.total_uptime / totalPossibleUptime) * 100);
+        const downtimePercentage = 100 - uptimePercentage;
+
+        // Update display elements
+        const elements = {
+            'chart-total-devices': `${uptimeData.total_devices} unit`,
+            'chart-max-uptime': `${totalPossibleUptime.toFixed(0)}%`,
+            'chart-actual-uptime': `${uptimeData.total_uptime.toFixed(1)}%`,
+            'chart-actual-downtime': `${actualDowntime.toFixed(1)}%`,
+            'chart-uptime-percentage': `${uptimePercentage.toFixed(1)}%`,
+            'chart-downtime-percentage': `${downtimePercentage.toFixed(1)}%`
+        };
+
+        Object.entries(elements).forEach(([id, value]) => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.textContent = value;
+            }
+        });
+
+        // Update assessment
+        const assessmentEl = document.getElementById('chart-assessment');
+        const assessmentTextEl = document.getElementById('chart-assessment-text');
+        
+        if (assessmentEl && assessmentTextEl) {
+            let assessmentClass, assessmentText;
+            
+            if (uptimePercentage >= 95) {
+                assessmentClass = 'bg-green-100 border-green-300 text-green-800';
+                assessmentText = 'Excellent - Sistem beroperasi sangat baik';
+            } else if (uptimePercentage >= 80) {
+                assessmentClass = 'bg-yellow-100 border-yellow-300 text-yellow-800';
+                assessmentText = 'Good - Sistem beroperasi baik, perlu monitoring';
+            } else if (uptimePercentage >= 60) {
+                assessmentClass = 'bg-orange-100 border-orange-300 text-orange-800';
+                assessmentText = 'Fair - Sistem memerlukan perhatian';
+            } else {
+                assessmentClass = 'bg-red-100 border-red-300 text-red-800';
+                assessmentText = 'Poor - Sistem memerlukan perbaikan segera';
+            }
+
+            assessmentEl.className = `mt-4 p-3 rounded-lg text-sm font-medium border ${assessmentClass}`;
+            assessmentTextEl.textContent = assessmentText;
+        }
+
+    } catch (error) {
+        console.error('Error updating chart statistics display:', error);
+    }
+}
+
+function updatePdfPreviewStats() {
+    try {
+        // Existing preview stats update code...
+        const totalEl = document.getElementById('preview-total');
+        const onlineEl = document.getElementById('preview-online');
+        const offlineEl = document.getElementById('preview-offline');
+        const uptimeEl = document.getElementById('preview-uptime');
+        const periodEl = document.getElementById('preview-period');
+
+        if (!totalEl) {
+            console.warn('Preview elements not found');
+            return;
+        }
+
+        const form = document.getElementById('pdf-export-form');
+        let currentPeriod = 30;
+
+        if (form) {
+            const formData = new FormData(form);
+            const dateMethod = formData.get('dateMethod');
+
+            if (dateMethod === 'custom') {
+                const startDate = formData.get('start_date');
+                const endDate = formData.get('end_date');
+
+                if (startDate && endDate) {
+                    const start = new Date(startDate);
+                    const end = new Date(endDate);
+                    const timeDiff = end.getTime() - start.getTime();
+                    currentPeriod = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
+                }
+            } else {
+                currentPeriod = parseInt(formData.get('period')) || 30;
+            }
+        }
+
+        if (periodEl) {
+            periodEl.textContent = currentPeriod;
+        }
+
+        // Get nodes data or use sample data
+        let nodesData = window.nodes || [
+            {status: 'online'}, {status: 'online'}, {status: 'offline'},
+            {status: 'online'}, {status: 'online'}, {status: 'online'},
+            {status: 'offline'}, {status: 'online'}, {status: 'online'},
+            {status: 'online'}
+        ];
+
+        const total = nodesData.length;
+        const online = nodesData.filter(n => {
+            const status = (n.status || '').toLowerCase();
+            return status === 'online' || status === 'aktif';
+        }).length;
+        const offline = total - online;
+        const avgUptime = total > 0 ? Math.round((online / total) * 100) : 0;
+
+        // Update display with animation
+        animateNumberUpdate(totalEl, parseInt(totalEl.textContent) || 0, total);
+        animateNumberUpdate(onlineEl, parseInt(onlineEl.textContent) || 0, online);
+        animateNumberUpdate(offlineEl, parseInt(offlineEl.textContent) || 0, offline);
+        animateNumberUpdate(uptimeEl, parseInt(uptimeEl.textContent) || 0, avgUptime, '%');
+
+        // ===== TAMBAHAN: Update chart preview juga =====
+        if (window.previewChart) {
+            const uptimeData = calculateUptimeData();
+            updateChartStatisticsDisplay(uptimeData);
+            
+            // Update chart data
+            const totalPossibleUptime = uptimeData.total_devices * 100;
+            const actualDowntime = totalPossibleUptime - uptimeData.total_uptime;
+            const uptimePercentage = ((uptimeData.total_uptime / totalPossibleUptime) * 100);
+            const downtimePercentage = 100 - uptimePercentage;
+            
+            window.previewChart.data.datasets[0].data = [uptimeData.total_uptime, actualDowntime];
+            window.previewChart.data.labels = [
+                `Uptime (${uptimePercentage.toFixed(1)}%)`,
+                `Downtime (${downtimePercentage.toFixed(1)}%)`
+            ];
+            window.previewChart.update();
+        }
+
+        // Update uptime color
+        if (avgUptime >= 90) {
+            uptimeEl.className = uptimeEl.className.replace(/text-\w+-600/, 'text-green-600');
+        } else if (avgUptime >= 75) {
+            uptimeEl.className = uptimeEl.className.replace(/text-\w+-600/, 'text-yellow-600');
+        } else {
+            uptimeEl.className = uptimeEl.className.replace(/text-\w+-600/, 'text-red-600');
+        }
+
+    } catch (error) {
+        console.error('Error updating preview stats:', error);
+    }
+}
+
 
 function validatePdfForm(formData, dateMethod) {
     // Validasi field wajib
@@ -2329,87 +2885,6 @@ function updateCustomDatePreview() {
         if (previewStartDate) previewStartDate.textContent = 'Error';
         if (previewEndDate) previewEndDate.textContent = 'Error';
         if (previewTotalDays) previewTotalDays.textContent = 'Error';
-    }
-}
-
-function updatePdfPreviewStats() {
-    try {
-        const totalEl = document.getElementById('preview-total');
-        const onlineEl = document.getElementById('preview-online');
-        const offlineEl = document.getElementById('preview-offline');
-        const uptimeEl = document.getElementById('preview-uptime');
-        const periodEl = document.getElementById('preview-period');
-        const realizationInput = document.querySelector('input[name="realisasi"]');
-
-        if (!totalEl) {
-            console.warn('Preview elements not found');
-            return;
-        }
-
-        const form = document.getElementById('pdf-export-form');
-        let currentPeriod = 30;
-
-        if (form) {
-            const formData = new FormData(form);
-            const dateMethod = formData.get('dateMethod');
-
-            if (dateMethod === 'custom') {
-                const startDate = formData.get('start_date');
-                const endDate = formData.get('end_date');
-
-                if (startDate && endDate) {
-                    const start = new Date(startDate);
-                    const end = new Date(endDate);
-                    const timeDiff = end.getTime() - start.getTime();
-                    currentPeriod = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
-                }
-            } else {
-                currentPeriod = parseInt(formData.get('period')) || 30;
-            }
-        }
-
-        if (periodEl) {
-            periodEl.textContent = currentPeriod;
-        }
-
-        // Get nodes data or use sample data
-        let nodesData = window.nodes || [
-            {status: 'online'}, {status: 'online'}, {status: 'offline'},
-            {status: 'online'}, {status: 'online'}, {status: 'online'},
-            {status: 'offline'}, {status: 'online'}, {status: 'online'},
-            {status: 'online'}
-        ];
-
-        const total = nodesData.length;
-        const online = nodesData.filter(n => {
-            const status = (n.status || '').toLowerCase();
-            return status === 'online' || status === 'aktif';
-        }).length;
-        const offline = total - online;
-        const avgUptime = total > 0 ? Math.round((online / total) * 100) : 0;
-
-        // Update display with animation
-        animateNumberUpdate(totalEl, parseInt(totalEl.textContent) || 0, total);
-        animateNumberUpdate(onlineEl, parseInt(onlineEl.textContent) || 0, online);
-        animateNumberUpdate(offlineEl, parseInt(offlineEl.textContent) || 0, offline);
-        animateNumberUpdate(uptimeEl, parseInt(uptimeEl.textContent) || 0, avgUptime, '%');
-
-        // Update realization input
-        if (realizationInput) {
-            realizationInput.value = avgUptime + '%';
-        }
-
-        // Update uptime color
-        if (avgUptime >= 90) {
-            uptimeEl.className = uptimeEl.className.replace(/text-\w+-600/, 'text-green-600');
-        } else if (avgUptime >= 75) {
-            uptimeEl.className = uptimeEl.className.replace(/text-\w+-600/, 'text-yellow-600');
-        } else {
-            uptimeEl.className = uptimeEl.className.replace(/text-\w+-600/, 'text-red-600');
-        }
-
-    } catch (error) {
-        console.error('Error updating preview stats:', error);
     }
 }
 
@@ -2646,7 +3121,9 @@ try {
     window.exportPdfReport = exportPdfReport;
     window.exportHistory = exportHistory;
     window.quickExportPdf = quickExportPdf;
-    window.exportPdf = exportPdf; // Legacy support
+    window.initializeChartPreview = initializeChartPreview;
+    window.showChartPreviewInModal = showChartPreviewInModal;
+    window.exportPdf = exportPdf; 
 
     // Helper functions
     window.closePdfModal = closePdfModal;

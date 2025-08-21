@@ -29,6 +29,8 @@ class HistoryController extends Controller
                 'format' => 'string|in:download,view',
                 'report_type' => 'string|in:kpi,summary',
                 'filename' => 'nullable|string',
+                'chart_image' => 'nullable|string', // Base64 image
+                'chart_data' => 'nullable|string|json', 
                 
                 // KPI Information validation - PERBAIKAN: nullable untuk field opsional
                 'indikator' => 'nullable|string|max:255',
@@ -65,6 +67,13 @@ class HistoryController extends Controller
             // === PERBAIKAN: Ekstrak data KPI dengan benar ===
             $kpiData = $this->extractKpiDataFromRequest($request);
             \Log::info('Extracted KPI Data:', $kpiData);
+
+            // ===== TAMBAHAN: Process chart data =====
+            $chartData = $this->processChartData($request);
+            \Log::info('Processed Chart Data:', [
+                'has_chart_image' => !empty($chartData['chart_image']),
+                'chart_data' => $chartData['chart_data']
+            ]);
 
             // === Process dates ===
             $dateMethod = $request->get('date_method', 'preset');
@@ -140,6 +149,18 @@ class HistoryController extends Controller
                 'online_percentage' => (string) $currentStats['online_percentage'] . '%',
                 'offline_percentage' => (string) $currentStats['offline_percentage'] . '%',
                 'avg_uptime' => (float) $avgUptime,
+
+                'chart_image' => $chartData['chart_image'],
+                'chart_data' => $chartData['chart_data'],
+                'has_chart' => !empty($chartData['chart_image']),
+
+                // Additional chart statistics untuk text display
+                'total_devices_count' => isset($chartData['chart_data']['total_devices']) ? 
+                    $chartData['chart_data']['total_devices'] : $currentStats['total_nodes'],
+                'total_uptime_percentage' => isset($chartData['chart_data']['uptime_percentage']) ? 
+                    $chartData['chart_data']['uptime_percentage'] : $currentStats['online_percentage'],
+                'total_downtime_percentage' => isset($chartData['chart_data']['downtime_percentage']) ? 
+                    $chartData['chart_data']['downtime_percentage'] : $currentStats['offline_percentage'],
 
                 // Table data
                 'endpoints_data' => is_array($endpointsData) ? $endpointsData : [],
@@ -217,9 +238,6 @@ class HistoryController extends Controller
         }
     }
 
-    /**
-     * PERBAIKAN: Method baru untuk mengekstrak data KPI dengan benar dari request
-     */
     private function extractKpiDataFromRequest(Request $request): array
     {
         // Helper function untuk memastikan string bersih
@@ -283,12 +301,133 @@ class HistoryController extends Controller
         return $extractedData;
     }
 
-    // === SISANYA TETAP SAMA ===
-    // Semua method lainnya tetap tidak berubah...
+    private function processChartData(Request $request): array
+    {
+        try {
+            $chartImage = $request->get('chart_image');
+            $chartDataJson = $request->get('chart_data');
+
+            $processedData = [
+                'chart_image' => null,
+                'chart_data' => []
+            ];
+
+            // Process chart image (base64)
+            if ($chartImage && is_string($chartImage)) {
+                // Validate base64 format
+                if (preg_match('/^data:image\/(png|jpeg|jpg);base64,/', $chartImage)) {
+                    $processedData['chart_image'] = $chartImage;
+                    \Log::info('Chart image processed successfully', [
+                        'image_size' => strlen($chartImage),
+                        'format' => 'base64'
+                    ]);
+                } else {
+                    \Log::warning('Invalid chart image format received');
+                }
+            }
+
+            // Process chart data (JSON)
+            if ($chartDataJson && is_string($chartDataJson)) {
+                try {
+                    $chartData = json_decode($chartDataJson, true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($chartData)) {
+                        // Validate required chart data fields
+                        $requiredFields = ['total_devices', 'uptime_percentage', 'downtime_percentage'];
+                        $hasRequiredFields = true;
+                        
+                        foreach ($requiredFields as $field) {
+                            if (!isset($chartData[$field])) {
+                                $hasRequiredFields = false;
+                                break;
+                            }
+                        }
+
+                        if ($hasRequiredFields) {
+                            $processedData['chart_data'] = [
+                                'total_devices' => (int) $chartData['total_devices'],
+                                'total_possible_uptime' => (float) ($chartData['total_possible_uptime'] ?? 0),
+                                'actual_uptime' => (float) ($chartData['actual_uptime'] ?? 0),
+                                'actual_downtime' => (float) ($chartData['actual_downtime'] ?? 0),
+                                'uptime_percentage' => (float) $chartData['uptime_percentage'],
+                                'downtime_percentage' => (float) $chartData['downtime_percentage']
+                            ];
+                            
+                            \Log::info('Chart data processed successfully', $processedData['chart_data']);
+                        } else {
+                            \Log::warning('Chart data missing required fields', [
+                                'received_fields' => array_keys($chartData),
+                                'required_fields' => $requiredFields
+                            ]);
+                        }
+                    } else {
+                        \Log::warning('Chart data JSON decode failed', [
+                            'json_error' => json_last_error_msg(),
+                            'data_type' => gettype($chartData)
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    \Log::error('Error processing chart data JSON', [
+                        'error' => $e->getMessage(),
+                        'raw_data' => substr($chartDataJson, 0, 200) // First 200 chars for debugging
+                    ]);
+                }
+            }
+
+            return $processedData;
+
+        } catch (\Exception $e) {
+            \Log::error('Error processing chart data', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return [
+                'chart_image' => null,
+                'chart_data' => []
+            ];
+        }
+    }
 
     /**
-     * FIX: Get frequently offline endpoints - return array instead of string
+     * TAMBAHAN: Generate fallback chart statistics jika tidak ada chart dari frontend
      */
+    private function generateFallbackChartData($currentStats): array
+    {
+        try {
+            $totalDevices = $currentStats['total_nodes'];
+            $onlineDevices = $currentStats['online_nodes'];
+            $offlineDevices = $currentStats['offline_nodes'];
+
+            $uptimePercentage = $totalDevices > 0 ? 
+                round(($onlineDevices / $totalDevices) * 100, 1) : 0;
+            $downtimePercentage = 100 - $uptimePercentage;
+
+            // Calculate total uptime in "cumulative percentage" format
+            $totalPossibleUptime = $totalDevices * 100;
+            $actualUptime = ($uptimePercentage / 100) * $totalPossibleUptime;
+            $actualDowntime = $totalPossibleUptime - $actualUptime;
+
+            return [
+                'total_devices' => $totalDevices,
+                'total_possible_uptime' => $totalPossibleUptime,
+                'actual_uptime' => $actualUptime,
+                'actual_downtime' => $actualDowntime,
+                'uptime_percentage' => $uptimePercentage,
+                'downtime_percentage' => $downtimePercentage
+            ];
+        } catch (\Exception $e) {
+            \Log::error('Error generating fallback chart data', ['error' => $e->getMessage()]);
+            return [
+                'total_devices' => 0,
+                'total_possible_uptime' => 0,
+                'actual_uptime' => 0,
+                'actual_downtime' => 0,
+                'uptime_percentage' => 0,
+                'downtime_percentage' => 0
+            ];
+        }
+    }
+
     private function getFrequentlyOfflineEndpoints($startDate, $endDate, int $limit = 5): array
     {
         $frequentOffline = DeviceHistory::select('endpoint')
@@ -755,9 +894,6 @@ class HistoryController extends Controller
         }
     }
 
-    /**
-     * Format status for display
-     */
     private function formatStatus($status): string
     {
         switch (strtolower($status)) {
