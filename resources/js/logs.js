@@ -1658,630 +1658,376 @@ function displayEndpointHistoryModal(endpoint, data) {
 /**
  * Export PDF Report with options - Fixed Version
  */
+/**
+ * Animate text updates
+ */
+function animateTextUpdate(element, newText) {
+    if (!element) return;
 
-function showPdfExportModal() {
-    const modal = document.createElement('div');
-    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4';
+    element.style.opacity = '0.5';
+    element.style.transform = 'scale(0.95)';
+    element.style.transition = 'all 0.2s ease-in-out';
 
-    // Calculate default date ranges
-    const today = new Date();
-    const currentYear = today.getFullYear();
-    const currentQuarter = Math.ceil((today.getMonth() + 1) / 3);
-
-    modal.innerHTML = `
-        <div class="bg-white rounded-2xl w-full max-w-7xl flex flex-col shadow-2xl" style="max-height: 95vh; min-height: 70vh;">
-            <!-- Header - Fixed -->
-            <div class="flex-shrink-0 p-4 sm:p-6 border-b border-gray-200 bg-red-500 text-white rounded-t-2xl">
-                <div class="flex justify-between items-center">
-                    <div>
-                        <h2 class="text-xl sm:text-2xl font-bold">
-                            <i class="fas fa-file-pdf mr-2"></i>Export Laporan KPI PDF
-                        </h2>
-                        <p class="mt-1 opacity-90 text-sm sm:text-base">Generate laporan KPI status telepon dengan informasi lengkap</p>
-                    </div>
-                    <button onclick="closePdfModal(this)"
-                            class="text-white/80 hover:text-white text-xl sm:text-2xl p-2 hover:bg-white/20 rounded-lg transition-colors flex-shrink-0">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Content - Scrollable -->
-            <div class="flex-1 overflow-y-auto p-4 sm:p-6">
-                <form id="pdf-export-form" class="space-y-6 sm:space-y-8">
-
-                    <!-- Header Information Section -->
-                    <div class="bg-blue-50 rounded-xl p-4 sm:p-6 border border-blue-200">
-                        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                            <i class="fas fa-info-circle text-blue-500"></i>
-                            Informasi Header Laporan
-                        </h3>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Triwulan</label>
-                                <select name="quarter" onchange="updatePdfPreviewStats()" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                    <option value="I" ${currentQuarter === 1 ? 'selected' : ''}>Triwulan I</option>
-                                    <option value="II" ${currentQuarter === 2 ? 'selected' : ''}>Triwulan II</option>
-                                    <option value="III" ${currentQuarter === 3 ? 'selected' : ''}>Triwulan III</option>
-                                    <option value="IV" ${currentQuarter === 4 ? 'selected' : ''}>Triwulan IV</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Tahun</label>
-                                <select name="year" onchange="updatePdfPreviewStats()" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                    <option value="2023">2023</option>
-                                    <option value="2024" ${currentYear === 2024 ? 'selected' : ''}>2024</option>
-                                    <option value="2025" ${currentYear === 2025 ? 'selected' : ''}>2025</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Departemen</label>
-                                <select name="department" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                    <option value="DEPARTEMEN SERVICE RESPRESENTATIVE TI TUREN" selected>DEPARTEMEN SERVICE RESPRESENTATIVE TI TUREN</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- KPI Information Section -->
-                    <div class="bg-green-50 rounded-xl p-4 sm:p-6 border border-green-200">
-                        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                            <i class="fas fa-chart-line text-green-500"></i>
-                            Informasi KPI
-                        </h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Indikator</label>
-                                <input type="text" name="indikator" value="KPI-TI-001" required
-                                       class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Nama Indikator</label>
-                                <textarea name="nama_indikator" rows="3" required
-                                          class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500">Inventarisasi PC PMN Monitoring Produksi Munisi dan Seat Management (PC, Laptop & Printer) Area PT Pindad Turen (Lengkap dan Update Per Triwulan)</textarea>
-                            </div>
-                            <div class="md:col-span-2">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Formula</label>
-                                <textarea name="formula" rows="3" required
-                                          class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500">Inventarisasi PC PMN Monitoring Produksi Munisi dan Seat Management (PC, Laptop & Printer) Area PT Pindad Turen (Lengkap dan Update Per Triwulan)</textarea>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Target</label>
-                                <input type="text" name="target" value="1 Dokumen" required
-                                       class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Realisasi</label>
-                                <input type="text" name="realisasi" value="Tercapai 1 dokumen" required
-                                       class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Date Range Selection -->
-                    <div class="bg-gray-50 rounded-xl p-4 sm:p-6 border border-gray-200">
-                        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                            <i class="fas fa-calendar-alt text-indigo-500"></i>
-                            Pilih Periode Laporan
-                        </h3>
-
-                        <!-- Date Range Method Selection -->
-                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-                            <div class="space-y-3">
-                                <label class="flex items-center p-3 sm:p-4 bg-white border-2 border-gray-200 rounded-lg hover:border-indigo-300 cursor-pointer transition-colors">
-                                    <input type="radio" name="dateMethod" value="preset" checked
-                                           class="mr-3 text-indigo-600 focus:ring-indigo-500"
-                                           onchange="toggleDateMethod('preset')">
-                                    <div>
-                                        <div class="font-semibold text-gray-800 text-sm sm:text-base">Periode Preset</div>
-                                        <div class="text-xs sm:text-sm text-gray-600">Pilih dari periode yang sudah ditentukan</div>
-                                    </div>
-                                </label>
-
-                                <label class="flex items-center p-3 sm:p-4 bg-white border-2 border-gray-200 rounded-lg hover:border-indigo-300 cursor-pointer transition-colors">
-                                    <input type="radio" name="dateMethod" value="custom"
-                                           class="mr-3 text-indigo-600 focus:ring-indigo-500"
-                                           onchange="toggleDateMethod('custom')">
-                                    <div>
-                                        <div class="font-semibold text-gray-800 text-sm sm:text-base">Tanggal Custom</div>
-                                        <div class="text-xs sm:text-sm text-gray-600">Pilih tanggal mulai dan akhir sendiri</div>
-                                    </div>
-                                </label>
-                            </div>
-
-                            <!-- Quick preset buttons -->
-                            <div class="space-y-2">
-                                <div class="text-sm font-medium text-gray-700 mb-2">Quick Select:</div>
-                                <div class="grid grid-cols-2 lg:grid-cols-1 gap-2">
-                                    <button type="button" onclick="setQuickDate('today')"
-                                            class="w-full text-left px-3 py-2 text-xs sm:text-sm bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition-colors">
-                                        <i class="fas fa-calendar-day mr-2"></i>Hari Ini
-                                    </button>
-                                    <button type="button" onclick="setQuickDate('thisWeek')"
-                                            class="w-full text-left px-3 py-2 text-xs sm:text-sm bg-green-50 hover:bg-green-100 text-green-700 rounded-lg transition-colors">
-                                        <i class="fas fa-calendar-week mr-2"></i>Minggu Ini
-                                    </button>
-                                    <button type="button" onclick="setQuickDate('thisMonth')"
-                                            class="w-full text-left px-3 py-2 text-xs sm:text-sm bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg transition-colors">
-                                        <i class="fas fa-calendar mr-2"></i>Bulan Ini
-                                    </button>
-                                    <button type="button" onclick="setQuickDate('lastMonth')"
-                                            class="w-full text-left px-3 py-2 text-xs sm:text-sm bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-lg transition-colors">
-                                        <i class="fas fa-calendar-minus mr-2"></i>Bulan Lalu
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Preset Period Options -->
-                        <div id="preset-options" class="grid grid-cols-2 md:grid-cols-2 gap-4 mb-6">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Periode Preset</label>
-                                <select name="period" onchange="updatePdfPreviewStats()" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                                    <option value="1">1 Hari</option>
-                                    <option value="3">3 Hari</option>
-                                    <option value="7">7 Hari</option>
-                                    <option value="14">14 Hari</option>
-                                    <option value="30" selected>30 Hari</option>
-                                    <option value="60">60 Hari</option>
-                                    <option value="90">90 Hari</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Format Waktu</label>
-                                <select name="timeframe" onchange="updatePdfPreviewStats()" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                                    <option value="days">Hari Terakhir</option>
-                                    <option value="from_start">Dari Awal Tahun</option>
-                                    <option value="quarter">Per Triwulan</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <!-- Custom Date Range Options -->
-                        <div id="custom-options" class="grid grid-cols-1 lg:grid-cols-2 gap-6 hidden">
-                            <div class="space-y-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                                        <i class="fas fa-calendar-plus mr-1"></i>Tanggal Mulai
-                                    </label>
-                                    <input type="date" name="start_date"
-                                           value="${new Date(today.getTime() - (30 * 24 * 60 * 60 * 1000)).toISOString().split('T')[0]}"
-                                           max="${today.toISOString().split('T')[0]}"
-                                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                           onchange="updateCustomDatePreview()">
-                                </div>
-
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                                        <i class="fas fa-calendar-check mr-1"></i>Tanggal Akhir
-                                    </label>
-                                    <input type="date" name="end_date"
-                                           value="${today.toISOString().split('T')[0]}"
-                                           max="${today.toISOString().split('T')[0]}"
-                                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                           onchange="updateCustomDatePreview()">
-                                </div>
-                            </div>
-
-                            <!-- Custom date preview -->
-                            <div class="bg-white rounded-lg border border-gray-200 p-4">
-                                <h4 class="text-sm font-semibold text-gray-800 mb-3">
-                                    <i class="fas fa-info-circle text-blue-500 mr-1"></i>Preview Periode
-                                </h4>
-                                <div id="date-preview" class="space-y-2 text-sm text-gray-600">
-                                    <div class="flex justify-between">
-                                        <span>Dari:</span>
-                                        <span id="preview-start-date" class="font-medium">-</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span>Sampai:</span>
-                                        <span id="preview-end-date" class="font-medium">-</span>
-                                    </div>
-                                    <div class="flex justify-between pt-2 border-t">
-                                        <span>Total Hari:</span>
-                                        <span id="preview-total-days" class="font-medium text-indigo-600">-</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Footer Information Section -->
-                    <div class="bg-purple-50 rounded-xl p-4 sm:p-6 border border-purple-200">
-                        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                            <i class="fas fa-signature text-purple-500"></i>
-                            Informasi Footer & Tanda Tangan
-                        </h3>
-
-                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            <!-- Disiapkan Oleh -->
-                            <div class="space-y-4">
-                                <h4 class="font-semibold text-gray-700 border-b pb-2">DISIAPKAN OLEH</h4>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Jabatan</label>
-                                    <input type="text" name="prepared_jabatan" value="OFFICER MANAJEMEN SISTEM KOMPUTER TUREN" required
-                                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Nama</label>
-                                    <input type="text" name="prepared_nama" value="MUHAMMAD" required
-                                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Tanggal</label>
-                                    <input type="date" name="prepared_tanggal" value="${today.toISOString().split('T')[0]}" required
-                                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
-                                </div>
-                            </div>
-
-                            <!-- Disetujui Oleh -->
-                            <div class="space-y-4">
-                                <h4 class="font-semibold text-gray-700 border-b pb-2">DISETUJUI OLEH</h4>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Jabatan</label>
-                                    <input type="text" name="approved_jabatan" value="MANAGER" required
-                                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Nama</label>
-                                    <input type="text" name="approved_nama" value="kimi" placeholder="Masukkan nama..." required
-                                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Tanggal</label>
-                                    <input type="date" name="approved_tanggal" value="${today.toISOString().split('T')[0]}"
-                                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
-                                </div>
-                            </div>
-
-                            <!-- Disahkan Oleh -->
-                            <div class="space-y-4">
-                                <h4 class="font-semibold text-gray-700 border-b pb-2">DISAHKAN OLEH</h4>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Jabatan</label>
-                                    <input type="text" name="validated_jabatan" value="MANAGER LAYANAN TI BANDUNG TUREN" required
-                                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Nama</label>
-                                    <input type="text" name="validated_nama" value="RIZKY" required
-                                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Tanggal</label>
-                                    <input type="date" name="validated_tanggal" value="${today.toISOString().split('T')[0]}" required
-                                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-yellow-50 rounded-xl p-4 sm:p-6 border border-yellow-200">
-                        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                            <i class="fas fa-chart-pie text-yellow-600"></i>
-                            Preview Chart Uptime/Downtime
-                        </h3>
-
-                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <!-- Chart Preview -->
-                            <div class="bg-white rounded-lg p-4 border border-yellow-300">
-                                <div class="text-center">
-                                    <canvas id="preview-uptime-chart" width="250" height="250" style="max-width: 250px;"></canvas>
-                                </div>
-                            </div>
-
-                            <!-- Chart Statistics -->
-                            <div class="bg-white rounded-lg p-4 border border-yellow-300">
-                                <h4 class="font-semibold text-gray-700 mb-3">Statistik Chart:</h4>
-                                <div class="space-y-2 text-sm">
-                                    <div class="flex justify-between">
-                                        <span class="text-gray-600">Total Perangkat:</span>
-                                        <span id="chart-total-devices" class="font-medium">-</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-gray-600">Kemungkinan Max Uptime:</span>
-                                        <span id="chart-max-uptime" class="font-medium">-</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-green-600">Total Uptime Aktual:</span>
-                                        <span id="chart-actual-uptime" class="font-medium text-green-600">-</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-red-600">Total Downtime:</span>
-                                        <span id="chart-actual-downtime" class="font-medium text-red-600">-</span>
-                                    </div>
-                                    <hr class="border-yellow-200">
-                                    <div class="flex justify-between font-bold">
-                                        <span class="text-green-600">Persentase Uptime:</span>
-                                        <span id="chart-uptime-percentage" class="text-green-600">-</span>
-                                    </div>
-                                    <div class="flex justify-between font-bold">
-                                        <span class="text-red-600">Persentase Downtime:</span>
-                                        <span id="chart-downtime-percentage" class="text-red-600">-</span>
-                                    </div>
-                                </div>
-
-                                <!-- Performance Assessment -->
-                                <div id="chart-assessment" class="mt-4 p-3 rounded-lg text-sm font-medium">
-                                    <div class="flex items-center gap-2">
-                                        <i class="fas fa-info-circle"></i>
-                                        <span id="chart-assessment-text">Menghitung assessment...</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Chart Options -->
-                        <div class="mt-4 bg-white rounded-lg p-4 border border-yellow-300">
-                            <label class="flex items-center gap-2">
-                                <input type="checkbox" name="include_chart" checked
-                                       class="text-yellow-600 focus:ring-yellow-500 rounded">
-                                <span class="text-sm font-medium text-gray-700">Sertakan chart dalam PDF</span>
-                            </label>
-                            <p class="text-xs text-gray-500 mt-1">
-                                Chart akan ditampilkan sebagai diagram pie dalam laporan PDF
-                            </p>
-                        </div>
-                    </div>
-
-                    <!-- Current Statistics Preview -->
-                    <div class="bg-blue-100 rounded-xl p-4 sm:p-6 border border-blue-200">
-                        <h4 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                            <i class="fas fa-chart-pie text-blue-600"></i>
-                            Preview Statistik yang Akan Dilaporkan
-                        </h4>
-                        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 text-center">
-                            <div class="bg-white rounded-lg p-3 sm:p-4 shadow-sm">
-                                <div class="text-lg sm:text-2xl font-bold text-blue-600" id="preview-total">-</div>
-                                <div class="text-xs text-gray-600">Total Telepon</div>
-                            </div>
-                            <div class="bg-white rounded-lg p-3 sm:p-4 shadow-sm">
-                                <div class="text-lg sm:text-2xl font-bold text-green-600" id="preview-online">-</div>
-                                <div class="text-xs text-gray-600">Online</div>
-                            </div>
-                            <div class="bg-white rounded-lg p-3 sm:p-4 shadow-sm">
-                                <div class="text-lg sm:text-2xl font-bold text-red-600" id="preview-offline">-</div>
-                                <div class="text-xs text-gray-600">Offline</div>
-                            </div>
-                            <div class="bg-white rounded-lg p-3 sm:p-4 shadow-sm">
-                                <div class="text-lg sm:text-2xl font-bold text-indigo-600" id="preview-uptime">-</div>
-                                <div class="text-xs text-gray-600">Avg Uptime</div>
-                            </div>
-                            <div class="bg-white rounded-lg p-3 sm:p-4 shadow-sm col-span-2 sm:col-span-1">
-                                <div class="text-lg sm:text-2xl font-bold text-purple-600" id="preview-period">-</div>
-                                <div class="text-xs text-gray-600">Periode (Hari)</div>
-                            </div>
-                        </div>
-                    </div>
-                </form>
-            </div>
-
-            <!-- Footer - Fixed -->
-            <div class="flex-shrink-0 p-4 sm:p-6 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
-                <div class="flex flex-col sm:flex-row justify-between items-center gap-3">
-                    <div class="text-xs sm:text-sm text-gray-600 flex items-center gap-2 order-2 sm:order-1">
-                        <i class="fas fa-clock"></i>
-                        <span>Estimasi waktu: ~10-45 detik</span>
-                    </div>
-
-                    <div class="flex gap-2 sm:gap-3 order-1 sm:order-2 w-full sm:w-auto">
-                        <button type="button" onclick="closePdfModal(this)"
-                                class="flex-1 sm:flex-none px-3 sm:px-4 py-2 text-sm text-gray-600 hover:text-gray-800 bg-white hover:bg-gray-100 border border-gray-300 rounded-lg transition-colors">
-                            <i class="fas fa-times mr-1"></i>Batal
-                        </button>
-                        <button type="button" onclick="handlePdfExport('download')"
-                                class="flex-1 sm:flex-none px-3 sm:px-4 py-2 text-sm text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors shadow-lg">
-                            <i class="fas fa-download mr-1"></i>Download PDF
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-
-    document.body.appendChild(modal);
-
-    // Close on backdrop click
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            modal.remove();
-            document.body.style.overflow = '';
-        }
-    });
-
-    // Prevent scrolling on body when modal is open
-    document.body.style.overflow = 'hidden';
-
-    // Initialize date preview and statistics
-    updatePdfPreviewStats();
-    updateCustomDatePreview();
-
-    // Setup event listeners for date inputs
-    setupDateEventListeners();
+    setTimeout(() => {
+        element.textContent = newText;
+        element.style.opacity = '1';
+        element.style.transform = 'scale(1)';
+    }, 100);
 }
 
+/**
+ * PERBAIKAN: Setup enhanced date event listeners dengan proper debouncing
+ */
+function setupDateEventListeners() {
+    const startDateInput = document.querySelector('input[name="start_date"]');
+    const endDateInput = document.querySelector('input[name="end_date"]');
 
+    if (startDateInput && endDateInput) {
+        // Debounced event handlers for better performance
+        const debouncedStartHandler = debounce(() => handleDateChange('start'), 300);
+        const debouncedEndHandler = debounce(() => handleDateChange('end'), 300);
 
-function initializeChartPreview() {
-    try {
-        const canvas = document.getElementById('preview-uptime-chart');
-        if (!canvas) {
-            console.warn('Chart preview canvas not found');
-            return;
-        }
+        startDateInput.addEventListener('change', debouncedStartHandler);
+        endDateInput.addEventListener('change', debouncedEndHandler);
 
-        // Calculate uptime data
-        const uptimeData = calculateUptimeData();
+        // Also listen for input events for real-time updates
+        startDateInput.addEventListener('input', debounce(() => handleDateChange('start'), 500));
+        endDateInput.addEventListener('input', debounce(() => handleDateChange('end'), 500));
+    }
 
-        // Update chart statistics display
-        updateChartStatisticsDisplay(uptimeData);
+    // Setup period and timeframe change handlers
+    const periodSelect = document.querySelector('select[name="period"]');
+    const timeframeSelect = document.querySelector('select[name="timeframe"]');
+    const quarterSelect = document.querySelector('select[name="quarter"]');
+    const yearSelect = document.querySelector('select[name="year"]');
 
-        // Create preview chart
-        const ctx = canvas.getContext('2d');
+    if (periodSelect) {
+        periodSelect.addEventListener('change', debounce(updatePdfPreviewStats, 300));
+    }
 
-        const totalPossibleUptime = uptimeData.total_devices * 100;
-        const actualDowntime = totalPossibleUptime - uptimeData.total_uptime;
-        const uptimePercentage = ((uptimeData.total_uptime / totalPossibleUptime) * 100);
-        const downtimePercentage = 100 - uptimePercentage;
+    if (timeframeSelect) {
+        timeframeSelect.addEventListener('change', debounce(updatePdfPreviewStats, 300));
+    }
 
-        window.previewChart = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: [
-                    `Uptime (${uptimePercentage.toFixed(1)}%)`,
-                    `Downtime (${downtimePercentage.toFixed(1)}%)`
-                ],
-                datasets: [{
-                    data: [uptimeData.total_uptime, actualDowntime],
-                    backgroundColor: [
-                        '#10B981', // Green for uptime
-                        '#EF4444'  // Red for downtime
-                    ],
-                    borderColor: [
-                        '#059669',
-                        '#DC2626'
-                    ],
-                    borderWidth: 2
-                }]
-            },
-            options: {
-                responsive: false,
-                maintainAspectRatio: false,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: 'Preview Chart',
-                        font: {
-                            size: 14,
-                            weight: 'bold'
-                        }
-                    },
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            padding: 10,
-                            font: {
-                                size: 10
-                            }
-                        }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                const label = context.label || '';
-                                const value = context.parsed;
-                                return `${label}: ${value.toFixed(1)}%`;
-                            }
-                        }
-                    }
-                },
-                animation: {
-                    duration: 1000
-                }
-            }
-        });
+    if (quarterSelect) {
+        quarterSelect.addEventListener('change', debounce(updatePdfPreviewStats, 300));
+    }
 
-        console.log('Chart preview initialized successfully');
-
-    } catch (error) {
-        console.error('Error initializing chart preview:', error);
-
-        // Show error message in chart area
-        const canvas = document.getElementById('preview-uptime-chart');
-        if (canvas) {
-            const ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#f3f4f6';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#6b7280';
-            ctx.font = '14px Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText('Chart preview unavailable', canvas.width/2, canvas.height/2);
-        }
+    if (yearSelect) {
+        yearSelect.addEventListener('change', debounce(updatePdfPreviewStats, 300));
     }
 }
 
-// Updated function yang mengambil data dari controller
-function generateUptimeChart(filterParams = {}) {
-    return new Promise((resolve, reject) => {
-        // Tampilkan loading
-        showLoading('Generating chart...');
-
-        // Fetch data dari controller
-        fetchChartDataFromController(filterParams)
-            .then(uptimeData => {
-                createChart(uptimeData)
-                    .then(result => {
-                        hideLoading();
-                        resolve(result);
-                    })
-                    .catch(error => {
-                        hideLoading();
-                        reject(error);
-                    });
-            })
-            .catch(error => {
-                hideLoading();
-                console.error('Error fetching chart data:', error);
-                reject(error);
-            });
-    });
+/**
+ * Debounce utility function
+ */
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
 }
 
-// Function untuk fetch data dari controller
-function fetchChartDataFromController(params = {}) {
-    return new Promise((resolve, reject) => {
-        const url = '/api/chart-data'; // Sesuaikan dengan route Anda
+/**
+ * PERBAIKAN: Enhanced PDF export handler dengan format tanggal yang benar
+ */
+async function handlePdfExport(format = 'download') {
+    const form = document.getElementById('pdf-export-form');
+    const exportBtn = document.getElementById('pdf-export-btn');
 
-        // Setup parameters
-        const requestParams = new URLSearchParams({
-            date_method: params.date_method || 'preset',
-            timeframe: params.timeframe || 'days',
-            period: params.period || 30,
-            quarter: params.quarter || 'III',
-            year: params.year || new Date().getFullYear(),
-            ...params
-        });
+    if (!form) {
+        showNotification('Form tidak ditemukan', 'error');
+        return;
+    }
 
-        // Jika custom date
-        if (params.date_method === 'custom') {
-            if (params.start_date) requestParams.set('start_date', params.start_date);
-            if (params.end_date) requestParams.set('end_date', params.end_date);
+    // Prevent multiple simultaneous exports
+    if (PDFExportState.isProcessing) {
+        showNotification('Export sedang diproses, mohon tunggu...', 'info');
+        return;
+    }
+
+    try {
+        PDFExportState.isProcessing = true;
+
+        // Update button state
+        updateExportButtonState(exportBtn, true);
+
+        const formData = new FormData(form);
+        const dateMethod = formData.get('dateMethod');
+
+        // Enhanced form validation
+        const validationResult = await validatePdfFormEnhanced(formData, dateMethod);
+        if (!validationResult.isValid) {
+            showNotification(validationResult.message, 'warning');
+            return;
         }
 
-        fetch(`${url}?${requestParams}`, {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+        // Show progress notification
+        showNotification('Mempersiapkan data laporan...', 'info');
+
+        // Generate chart if needed
+        let chartResult = null;
+        if (formData.get('include_chart') !== null) {
+            try {
+                showNotification('Membuat chart analisis...', 'info');
+                chartResult = await generateUptimeChartOptimized();
+                showNotification('Chart berhasil dibuat, memproses PDF...', 'info');
+            } catch (chartError) {
+                console.error('Chart generation failed:', chartError);
+                showNotification('Melanjutkan tanpa chart...', 'warning');
             }
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(result => {
-            if (result.success && result.data) {
-                resolve(result.data);
-            } else {
-                throw new Error(result.message || 'Failed to fetch chart data');
-            }
-        })
-        .catch(error => {
-            console.error('Fetch error:', error);
-            reject(error);
-        });
-    });
+        }
+
+        // Build comprehensive options object
+        const options = await buildExportOptions(formData, dateMethod, chartResult);
+
+        console.log('PDF Export Options:', options);
+
+        // Close modal
+        const modal = form.closest('.fixed');
+        if (modal) {
+            closePdfModal(modal.querySelector('button'));
+        }
+
+        // Final progress notification
+        const processingMsg = format === 'download' ?
+            'Mengunduh laporan PDF... Estimasi: 15-45 detik' :
+            'Membuka preview PDF... Estimasi: 15-45 detik';
+
+        showNotification(processingMsg, 'info');
+
+        // Execute export
+        await exportPdfReportOptimized(options);
+
+    } catch (error) {
+        console.error('Error in handlePdfExport:', error);
+        showNotification('Terjadi kesalahan: ' + error.message, 'error');
+    } finally {
+        PDFExportState.isProcessing = false;
+        updateExportButtonState(exportBtn, false);
+    }
 }
 
-// Function untuk membuat chart dengan data yang sudah di-fetch
-function createChart(uptimeData) {
+/**
+ * Update export button state
+ */
+function updateExportButtonState(button, isProcessing) {
+    if (!button) return;
+
+    if (isProcessing) {
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Memproses...';
+        button.classList.add('opacity-75', 'cursor-not-allowed');
+    } else {
+        button.disabled = false;
+        button.innerHTML = '<i class="fas fa-download mr-1"></i>Download PDF';
+        button.classList.remove('opacity-75', 'cursor-not-allowed');
+    }
+}
+
+/**
+ * Enhanced form validation with comprehensive checks
+ */
+async function validatePdfFormEnhanced(formData, dateMethod) {
+    try {
+        // Required field validation
+        const requiredFields = {
+            'indikator': 'Indikator KPI',
+            'nama_indikator': 'Nama Indikator',
+            'target': 'Target KPI',
+            'prepared_nama': 'Nama Penyusun'
+        };
+
+        for (const [field, label] of Object.entries(requiredFields)) {
+            const value = formData.get(field);
+            if (!value || value.trim() === '') {
+                return {
+                    isValid: false,
+                    message: `Field "${label}" harus diisi`
+                };
+            }
+        }
+
+        // Date validation for custom method
+        if (dateMethod === 'custom') {
+            const startDate = formData.get('start_date');
+            const endDate = formData.get('end_date');
+
+            if (!startDate || !endDate) {
+                return {
+                    isValid: false,
+                    message: 'Tanggal mulai dan akhir harus diisi untuk periode custom'
+                };
+            }
+
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+
+            if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+                return {
+                    isValid: false,
+                    message: 'Format tanggal tidak valid'
+                };
+            }
+
+            const daysDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 3600 * 24)) + 1;
+
+            if (start > end) {
+                return {
+                    isValid: false,
+                    message: 'Tanggal mulai tidak boleh lebih besar dari tanggal akhir'
+                };
+            }
+
+            if (daysDiff > PDF_CONFIG.MAX_DATE_RANGE) {
+                return {
+                    isValid: false,
+                    message: `Periode maksimal ${PDF_CONFIG.MAX_DATE_RANGE} hari. Periode saat ini: ${daysDiff} hari`
+                };
+            }
+        }
+
+        return { isValid: true, message: 'Valid' };
+
+    } catch (error) {
+        console.error('Validation error:', error);
+        return {
+            isValid: false,
+            message: 'Error validasi form: ' + error.message
+        };
+    }
+}
+
+/**
+ * Generate optimized uptime chart for PDF
+ */
+async function generateUptimeChartOptimized() {
+    try {
+        // Check if we already have chart data cached
+        const cacheKey = PDF_CONFIG.CHART_CACHE_KEY;
+        const cached = PDFExportState.getCachedData(cacheKey);
+
+        if (cached) {
+            return cached;
+        }
+
+        // Get current form data for date range
+        const form = document.getElementById('pdf-export-form');
+        const formData = new FormData(form);
+        const dateParams = extractDateParameters(formData);
+
+        // Try to fetch real-time chart data
+        let chartData;
+        try {
+            const response = await fetch('/api/chart-data?' + new URLSearchParams(dateParams), {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                }
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                if (result.success && result.data) {
+                    chartData = result.data;
+                }
+            }
+        } catch (apiError) {
+            console.warn('API chart data fetch failed, using fallback');
+        }
+
+        // Fallback to calculated data if API fails
+        if (!chartData) {
+            chartData = await calculateChartDataFallback();
+        }
+
+        // Generate chart image
+        const chartImage = await createChartImageOptimized(chartData);
+
+        const result = {
+            chartImage: chartImage,
+            chartData: chartData
+        };
+
+        // Cache the result
+        PDFExportState.setCachedData(cacheKey, result);
+
+        return result;
+
+    } catch (error) {
+        console.error('Error generating optimized chart:', error);
+        throw new Error('Failed to generate chart: ' + error.message);
+    }
+}
+
+/**
+ * Extract date parameters from form data
+ */
+function extractDateParameters(formData) {
+    const dateMethod = formData.get('dateMethod') || 'preset';
+    const params = {
+        date_method: dateMethod,
+        quarter: formData.get('quarter') || 'IV',
+        year: formData.get('year') || new Date().getFullYear().toString(),
+        timeframe: formData.get('timeframe') || 'days'
+    };
+
+    if (dateMethod === 'custom') {
+        params.start_date = formData.get('start_date');
+        params.end_date = formData.get('end_date');
+    } else {
+        params.period = formData.get('period') || PDF_CONFIG.DEFAULT_PERIOD.toString();
+    }
+
+    return params;
+}
+
+/**
+ * Calculate fallback chart data
+ */
+async function calculateChartDataFallback() {
+    try {
+        const uptimeData = await getUptimeDataAsync();
+
+        const totalPossibleUptime = uptimeData.total_devices * 100;
+        const actualUptime = uptimeData.total_uptime || (uptimeData.uptime_percentage / 100 * totalPossibleUptime);
+        const actualDowntime = totalPossibleUptime - actualUptime;
+
+        return {
+            total_devices: uptimeData.total_devices,
+            total_possible_uptime: totalPossibleUptime,
+            actual_uptime: actualUptime,
+            actual_downtime: actualDowntime,
+            uptime_percentage: uptimeData.uptime_percentage,
+            downtime_percentage: 100 - uptimeData.uptime_percentage
+        };
+    } catch (error) {
+        console.error('Error calculating fallback chart data:', error);
+        return {
+            total_devices: 10,
+            total_possible_uptime: 1000,
+            actual_uptime: 800,
+            actual_downtime: 200,
+            uptime_percentage: 80,
+            downtime_percentage: 20
+        };
+    }
+}
+
+/**
+ * Create optimized chart image
+ */
+async function createChartImageOptimized(chartData) {
     return new Promise((resolve, reject) => {
         try {
-            // Create hidden canvas
+            // Create temporary canvas for chart generation
             const canvas = document.createElement('canvas');
             canvas.width = 400;
             canvas.height = 400;
@@ -2290,28 +2036,16 @@ function createChart(uptimeData) {
 
             const ctx = canvas.getContext('2d');
 
-            // Use data from controller
-            const totalDevices = uptimeData.total_devices || 0;
-            const actualUptime = uptimeData.actual_uptime || 0;
-            const actualDowntime = uptimeData.actual_downtime || 0;
-            const uptimePercentage = uptimeData.uptime_percentage || 0;
-            const downtimePercentage = uptimeData.downtime_percentage || 0;
-
-            // Validasi data
-            if (totalDevices === 0) {
-                throw new Error('No devices data available');
-            }
-
-            // Chart configuration
+            // Create chart with optimized settings
             const chart = new Chart(ctx, {
                 type: 'pie',
                 data: {
                     labels: [
-                        `Uptime (${uptimePercentage}%)`,
-                        `Downtime (${downtimePercentage}%)`
+                        `Uptime (${chartData.uptime_percentage.toFixed(1)}%)`,
+                        `Downtime (${chartData.downtime_percentage.toFixed(1)}%)`
                     ],
                     datasets: [{
-                        data: [actualUptime, actualDowntime],
+                        data: [chartData.actual_uptime, chartData.actual_downtime],
                         backgroundColor: [
                             '#10B981', // Green for uptime
                             '#EF4444'  // Red for downtime
@@ -2320,7 +2054,7 @@ function createChart(uptimeData) {
                             '#059669',
                             '#DC2626'
                         ],
-                        borderWidth: 2
+                        borderWidth: 3
                     }]
                 },
                 options: {
@@ -2329,9 +2063,9 @@ function createChart(uptimeData) {
                     plugins: {
                         title: {
                             display: true,
-                            text: `Total Uptime Analysis - ${totalDevices} Devices`,
+                            text: `Analisis Uptime - ${chartData.total_devices} Devices`,
                             font: {
-                                size: 16,
+                                size: 18,
                                 weight: 'bold'
                             },
                             padding: 20
@@ -2339,21 +2073,16 @@ function createChart(uptimeData) {
                         legend: {
                             position: 'bottom',
                             labels: {
-                                padding: 15,
+                                padding: 20,
                                 font: {
-                                    size: 12
-                                }
+                                    size: 14
+                                },
+                                usePointStyle: true,
+                                pointStyle: 'circle'
                             }
                         },
                         tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const label = context.label || '';
-                                    const value = context.parsed;
-                                    const percentage = totalDevices > 0 ? ((value / (actualUptime + actualDowntime)) * 100).toFixed(1) : 0;
-                                    return `${label}: ${value.toFixed(1)}% (${percentage}% of total)`;
-                                }
-                            }
+                            enabled: false // Disable for PDF export
                         }
                     },
                     animation: {
@@ -2371,13 +2100,9 @@ function createChart(uptimeData) {
                     chart.destroy();
                     document.body.removeChild(canvas);
 
-                    // Return with original data from controller
-                    resolve({
-                        chartImage: base64Image,
-                        chartData: uptimeData
-                    });
+                    resolve(base64Image);
                 } catch (error) {
-                    console.error('Error generating chart image:', error);
+                    console.error('Error converting chart to image:', error);
                     chart.destroy();
                     document.body.removeChild(canvas);
                     reject(error);
@@ -2385,718 +2110,326 @@ function createChart(uptimeData) {
             }, 1000);
 
         } catch (error) {
-            console.error('Error creating chart:', error);
+            console.error('Error creating optimized chart image:', error);
             reject(error);
         }
     });
 }
 
-// Alternative function untuk real-time data
-function generateRealTimeUptimeChart() {
-    return new Promise((resolve, reject) => {
-        showLoading('Generating real-time chart...');
-
-        fetch('/api/realtime-uptime-data', {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
-            }
-        })
-        .then(response => response.json())
-        .then(result => {
-            if (result.success && result.data) {
-                const data = result.data;
-
-                // Convert real-time data untuk chart
-                const chartData = {
-                    total_devices: data.total_devices,
-                    actual_uptime: data.online_percentage,
-                    actual_downtime: data.offline_percentage,
-                    uptime_percentage: data.online_percentage,
-                    downtime_percentage: data.offline_percentage,
-                    total_possible_uptime: 100
-                };
-
-                return createChart(chartData);
-            } else {
-                throw new Error(result.message || 'Failed to fetch real-time data');
-            }
-        })
-        .then(result => {
-            hideLoading();
-            resolve(result);
-        })
-        .catch(error => {
-            hideLoading();
-            console.error('Error generating real-time chart:', error);
-            reject(error);
-        });
-    });
-}
-
-// Utility functions
-function showLoading(message = 'Loading...') {
-    const loadingEl = document.getElementById('chart-loading');
-    if (loadingEl) {
-        loadingEl.textContent = message;
-        loadingEl.style.display = 'block';
-    }
-}
-
-function hideLoading() {
-    const loadingEl = document.getElementById('chart-loading');
-    if (loadingEl) {
-        loadingEl.style.display = 'none';
-    }
-}
-
-// Example usage:
-// generateUptimeChart({
-//     date_method: 'custom',
-//     start_date: '2024-01-01',
-//     end_date: '2024-01-31'
-// }).then(result => {
-//     console.log('Chart generated:', result);
-//     // Use result.chartImage and result.chartData
-// });
-
-// For real-time data:
-// generateRealTimeUptimeChart().then(result => {
-//     console.log('Real-time chart generated:', result);
-// });
-
-function calculateUptimeData() {
+/**
+ * PERBAIKAN: Build comprehensive export options dengan format tanggal yang benar
+ */
+async function buildExportOptions(formData, dateMethod, chartResult) {
     try {
-        // Get nodes data atau gunakan sample jika tidak ada
-        let nodesData = window.nodes || [];
+        // Helper functions
+        const safeString = (value) => value ? String(value).trim() : '';
 
-        // Jika tidak ada data, gunakan sample berdasarkan current stats
-        if (nodesData.length === 0) {
-            // Generate sample data
-            const totalNodes = 9; // Default
-            const onlineNodes = 7; // Estimate
-
-            nodesData = Array.from({length: totalNodes}, (_, i) => ({
-                status: i < onlineNodes ? 'online' : 'offline'
-            }));
-        }
-
-        const totalDevices = nodesData.length;
-        const onlineDevices = nodesData.filter(n => {
-            const status = (n.status || '').toLowerCase();
-            return status === 'online' || status === 'aktif';
-        }).length;
-
-        // Calculate total uptime (assuming each device contributes 100% when online)
-        const totalPossibleUptime = totalDevices * 100; // 900% untuk 9 device
-        const actualUptimePercentage = totalDevices > 0 ? (onlineDevices / totalDevices) * 100 : 0;
-        const actualUptime = (actualUptimePercentage / 100) * totalPossibleUptime;
-
-        return {
-            total_devices: totalDevices,
-            online_devices: onlineDevices,
-            offline_devices: totalDevices - onlineDevices,
-            total_uptime: actualUptime,
-            uptime_percentage: actualUptimePercentage
-        };
-    } catch (error) {
-        console.error('Error calculating uptime data:', error);
-        // Return default values
-        return {
-            total_devices: 9,
-            online_devices: 7,
-            offline_devices: 2,
-            total_uptime: 777.8,
-            uptime_percentage: 77.8
-        };
-    }
-}
-
-async function handlePdfExport(format = 'download') {
-    const form = document.getElementById('pdf-export-form');
-    if (!form) {
-        console.error('PDF export form not found');
-        showNotification('Form tidak ditemukan', 'error');
-        return;
-    }
-
-    try {
-        const formData = new FormData(form);
-        const dateMethod = formData.get('dateMethod');
-
-        // Validasi form sebelum submit
-        if (!validatePdfForm(formData, dateMethod)) {
-            return;
-        }
-
-        // Show loading notification untuk chart generation
-        showNotification('Membuat chart uptime/downtime...', 'info');
-
-        // ===== TAMBAHAN: Generate chart =====
-        const uptimeData = calculateUptimeData();
-        console.log('Uptime data calculated:', uptimeData);
-
-        let chartResult;
-        try {
-            chartResult = await generateUptimeChart(uptimeData);
-            console.log('Chart generated successfully');
-            showNotification('Chart berhasil dibuat, memproses PDF...', 'info');
-        } catch (chartError) {
-            console.error('Chart generation failed:', chartError);
-            showNotification('Gagal membuat chart, melanjutkan tanpa chart...', 'warning');
-            chartResult = null;
-        }
-
-        // Build options object seperti sebelumnya
-        let options = {
-            format: format,
+        // Base options
+        const options = {
+            format: formData.get('format') || 'download',
             report_type: 'kpi',
-            include_ranking: formData.get('include_ranking') || 'true',
+            include_ranking: safeString(formData.get('include_ranking')) || 'true',
 
             // Header information
-            quarter: formData.get('quarter') || '',
-            year: formData.get('year') || '',
-            department: formData.get('department') || '',
+            quarter: safeString(formData.get('quarter')),
+            year: safeString(formData.get('year')),
+            department: safeString(formData.get('department')),
 
             // KPI Information
-            indikator: formData.get('indikator') || '',
-            nama_indikator: formData.get('nama_indikator') || '',
-            formula: formData.get('formula') || '',
-            target: formData.get('target') || '',
-            realisasi: formData.get('realisasi') || '',
+            indikator: safeString(formData.get('indikator')),
+            nama_indikator: safeString(formData.get('nama_indikator')),
+            formula: safeString(formData.get('formula')),
+            target: safeString(formData.get('target')),
+            realisasi: safeString(formData.get('realisasi')),
 
-            // Footer/Signature Information
-            prepared_jabatan: formData.get('prepared_jabatan') || '',
-            prepared_nama: formData.get('prepared_nama') || '',
-            prepared_tanggal: formData.get('prepared_tanggal') || '',
-            approved_jabatan: formData.get('approved_jabatan') || '',
-            approved_nama: formData.get('approved_nama') || '',
-            approved_tanggal: formData.get('approved_tanggal') || '',
-            validated_jabatan: formData.get('validated_jabatan') || '',
-            validated_nama: formData.get('validated_nama') || '',
-            validated_tanggal: formData.get('validated_tanggal') || ''
+            // PERBAIKAN: Footer/Signature Information dengan format tanggal server
+            prepared_jabatan: safeString(formData.get('prepared_jabatan')),
+            prepared_nama: safeString(formData.get('prepared_nama')),
+            prepared_tanggal: formatDateForServer(formData.get('prepared_tanggal')),
+            approved_jabatan: safeString(formData.get('approved_jabatan')),
+            approved_nama: safeString(formData.get('approved_nama')),
+            approved_tanggal: formatDateForServer(formData.get('approved_tanggal')),
+            validated_jabatan: safeString(formData.get('validated_jabatan')),
+            validated_nama: safeString(formData.get('validated_nama')),
+            validated_tanggal: formatDateForServer(formData.get('validated_tanggal'))
         };
 
-        // ===== TAMBAHAN: Tambahkan chart data ke options =====
+        // Add chart data if available
         if (chartResult) {
             options.chart_image = chartResult.chartImage;
             options.chart_data = JSON.stringify(chartResult.chartData);
+            options.include_chart = 'true';
         }
 
-        // Date handling (sama seperti sebelumnya)
+        // Handle date parameters
         if (dateMethod === 'custom') {
             const startDate = formData.get('start_date');
             const endDate = formData.get('end_date');
 
-            if (!startDate || !endDate) {
-                showNotification('Mohon pilih tanggal mulai dan akhir', 'warning');
-                return;
+            if (startDate && endDate) {
+                const start = new Date(startDate);
+                const end = new Date(endDate);
+                const daysDiff = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 3600 * 24)) + 1);
+
+                options.date_method = 'custom';
+                options.start_date = startDate;
+                options.end_date = endDate;
+                options.period = daysDiff.toString();
             }
-
-            const startDateObj = new Date(startDate);
-            const endDateObj = new Date(endDate);
-
-            if (startDateObj > endDateObj) {
-                showNotification('Tanggal mulai tidak boleh lebih besar dari tanggal akhir', 'warning');
-                return;
-            }
-
-            const daysDiff = Math.ceil((endDateObj.getTime() - startDateObj.getTime()) / (1000 * 3600 * 24)) + 1;
-            if (daysDiff > 365) {
-                showNotification('Periode maksimal 365 hari. Periode saat ini: ' + daysDiff + ' hari', 'warning');
-                return;
-            }
-
-            options.date_method = 'custom';
-            options.start_date = startDate;
-            options.end_date = endDate;
-            options.period = daysDiff.toString();
         } else {
             options.date_method = 'preset';
-            options.period = formData.get('period');
-            options.timeframe = formData.get('timeframe');
+            options.period = safeString(formData.get('period'));
+            options.timeframe = safeString(formData.get('timeframe'));
         }
 
-        console.log('PDF Export Options (Final with Chart):', options);
-
-        // Validasi required fields
-        const requiredFields = ['indikator', 'nama_indikator', 'target', 'prepared_nama'];
-        const missingFields = requiredFields.filter(field => !options[field] || options[field].trim() === '');
-
-        if (missingFields.length > 0) {
-            console.error('Missing required fields:', missingFields);
-            showNotification(`Data tidak lengkap: ${missingFields.join(', ')}`, 'error');
-            return;
-        }
-
-        // Close modal
-        const modal = form.closest('.fixed');
-        if (modal) {
-            modal.remove();
-            document.body.style.overflow = '';
-        }
-
-        // Show loading notification
-        const loadingMsg = format === 'download' ?
-            'Mengunduh laporan KPI dengan chart... Estimasi: 15-45 detik' :
-            'Membuka preview laporan dengan chart... Estimasi: 15-45 detik';
-
-        showNotification(loadingMsg, 'info');
-
-        // Export PDF with chart
-        exportPdfReport(options);
-
-    } catch (error) {
-        console.error('Error in handlePdfExport:', error);
-        showNotification('Terjadi kesalahan saat memproses export PDF: ' + error.message, 'error');
-    }
-}
-
-function showChartPreviewInModal() {
-    try {
-        const uptimeData = calculateUptimeData();
-
-        // Update preview statistics dengan chart preview
-        const chartPreviewContainer = document.getElementById('chart-preview-container');
-        if (!chartPreviewContainer) {
-            // Create chart preview container jika belum ada
-            const previewSection = document.querySelector('.bg-blue-100.rounded-xl');
-            if (previewSection) {
-                const chartDiv = document.createElement('div');
-                chartDiv.id = 'chart-preview-container';
-                chartDiv.className = 'mt-4';
-                chartDiv.innerHTML = `
-                    <h5 class="text-sm font-semibold text-gray-700 mb-2">Preview Chart Uptime/Downtime:</h5>
-                    <div class="bg-white rounded-lg p-3 text-center">
-                        <canvas id="preview-chart" width="200" height="200"></canvas>
-                        <div class="mt-2 text-xs text-gray-600">
-                            <div>Total Uptime: ${uptimeData.total_uptime.toFixed(1)}%</div>
-                            <div>Total Downtime: ${(uptimeData.total_devices * 100 - uptimeData.total_uptime).toFixed(1)}%</div>
-                        </div>
-                    </div>
-                `;
-                previewSection.appendChild(chartDiv);
-            }
-        }
-
-        // Generate small preview chart
-        const canvas = document.getElementById('preview-chart');
-        if (canvas) {
-            const ctx = canvas.getContext('2d');
-
-            const totalPossibleUptime = uptimeData.total_devices * 100;
-            const actualDowntime = totalPossibleUptime - uptimeData.total_uptime;
-
-            new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Uptime', 'Downtime'],
-                    datasets: [{
-                        data: [uptimeData.total_uptime, actualDowntime],
-                        backgroundColor: ['#10B981', '#EF4444'],
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: false,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    }
-                }
-            });
-        }
-    } catch (error) {
-        console.error('Error showing chart preview:', error);
-    }
-}
-
-function updateChartStatisticsDisplay(uptimeData) {
-    try {
-        const totalPossibleUptime = uptimeData.total_devices * 100;
-        const actualDowntime = totalPossibleUptime - uptimeData.total_uptime;
-        const uptimePercentage = ((uptimeData.total_uptime / totalPossibleUptime) * 100);
-        const downtimePercentage = 100 - uptimePercentage;
-
-        // Update display elements
-        const elements = {
-            'chart-total-devices': `${uptimeData.total_devices} unit`,
-            'chart-max-uptime': `${totalPossibleUptime.toFixed(0)}%`,
-            'chart-actual-uptime': `${uptimeData.total_uptime.toFixed(1)}%`,
-            'chart-actual-downtime': `${actualDowntime.toFixed(1)}%`,
-            'chart-uptime-percentage': `${uptimePercentage.toFixed(1)}%`,
-            'chart-downtime-percentage': `${downtimePercentage.toFixed(1)}%`
-        };
-
-        Object.entries(elements).forEach(([id, value]) => {
-            const element = document.getElementById(id);
-            if (element) {
-                element.textContent = value;
-            }
+        // Debug logging
+        console.log('Export options build completed:', {
+            prepared_tanggal: options.prepared_tanggal,
+            approved_tanggal: options.approved_tanggal,
+            validated_tanggal: options.validated_tanggal
         });
 
-        // Update assessment
-        const assessmentEl = document.getElementById('chart-assessment');
-        const assessmentTextEl = document.getElementById('chart-assessment-text');
-
-        if (assessmentEl && assessmentTextEl) {
-            let assessmentClass, assessmentText;
-
-            if (uptimePercentage >= 95) {
-                assessmentClass = 'bg-green-100 border-green-300 text-green-800';
-                assessmentText = 'Excellent - Sistem beroperasi sangat baik';
-            } else if (uptimePercentage >= 80) {
-                assessmentClass = 'bg-yellow-100 border-yellow-300 text-yellow-800';
-                assessmentText = 'Good - Sistem beroperasi baik, perlu monitoring';
-            } else if (uptimePercentage >= 60) {
-                assessmentClass = 'bg-orange-100 border-orange-300 text-orange-800';
-                assessmentText = 'Fair - Sistem memerlukan perhatian';
-            } else {
-                assessmentClass = 'bg-red-100 border-red-300 text-red-800';
-                assessmentText = 'Poor - Sistem memerlukan perbaikan segera';
-            }
-
-            assessmentEl.className = `mt-4 p-3 rounded-lg text-sm font-medium border ${assessmentClass}`;
-            assessmentTextEl.textContent = assessmentText;
-        }
+        return options;
 
     } catch (error) {
-        console.error('Error updating chart statistics display:', error);
+        console.error('Error building export options:', error);
+        throw new Error('Failed to build export options: ' + error.message);
     }
 }
 
-function updatePdfPreviewStats() {
-    try {
-        // Existing preview stats update code...
-        const totalEl = document.getElementById('preview-total');
-        const onlineEl = document.getElementById('preview-online');
-        const offlineEl = document.getElementById('preview-offline');
-        const uptimeEl = document.getElementById('preview-uptime');
-        const periodEl = document.getElementById('preview-period');
-
-        if (!totalEl) {
-            console.warn('Preview elements not found');
-            return;
-        }
-
-        const form = document.getElementById('pdf-export-form');
-        let currentPeriod = 30;
-
-        if (form) {
-            const formData = new FormData(form);
-            const dateMethod = formData.get('dateMethod');
-
-            if (dateMethod === 'custom') {
-                const startDate = formData.get('start_date');
-                const endDate = formData.get('end_date');
-
-                if (startDate && endDate) {
-                    const start = new Date(startDate);
-                    const end = new Date(endDate);
-                    const timeDiff = end.getTime() - start.getTime();
-                    currentPeriod = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
-                }
-            } else {
-                currentPeriod = parseInt(formData.get('period')) || 30;
-            }
-        }
-
-        if (periodEl) {
-            periodEl.textContent = currentPeriod;
-        }
-
-        // Get nodes data or use sample data
-        let nodesData = window.nodes || [
-            {status: 'online'}, {status: 'online'}, {status: 'offline'},
-            {status: 'online'}, {status: 'online'}, {status: 'online'},
-            {status: 'offline'}, {status: 'online'}, {status: 'online'},
-            {status: 'online'}
-        ];
-
-        const total = nodesData.length;
-        const online = nodesData.filter(n => {
-            const status = (n.status || '').toLowerCase();
-            return status === 'online' || status === 'aktif';
-        }).length;
-        const offline = total - online;
-        const avgUptime = total > 0 ? Math.round((online / total) * 100) : 0;
-
-        // Update display with animation
-        animateNumberUpdate(totalEl, parseInt(totalEl.textContent) || 0, total);
-        animateNumberUpdate(onlineEl, parseInt(onlineEl.textContent) || 0, online);
-        animateNumberUpdate(offlineEl, parseInt(offlineEl.textContent) || 0, offline);
-        animateNumberUpdate(uptimeEl, parseInt(uptimeEl.textContent) || 0, avgUptime, '%');
-
-        // ===== TAMBAHAN: Update chart preview juga =====
-        if (window.previewChart) {
-            const uptimeData = calculateUptimeData();
-            updateChartStatisticsDisplay(uptimeData);
-
-            // Update chart data
-            const totalPossibleUptime = uptimeData.total_devices * 100;
-            const actualDowntime = totalPossibleUptime - uptimeData.total_uptime;
-            const uptimePercentage = ((uptimeData.total_uptime / totalPossibleUptime) * 100);
-            const downtimePercentage = 100 - uptimePercentage;
-
-            window.previewChart.data.datasets[0].data = [uptimeData.total_uptime, actualDowntime];
-            window.previewChart.data.labels = [
-                `Uptime (${uptimePercentage.toFixed(1)}%)`,
-                `Downtime (${downtimePercentage.toFixed(1)}%)`
-            ];
-            window.previewChart.update();
-        }
-
-        // Update uptime color
-        if (avgUptime >= 90) {
-            uptimeEl.className = uptimeEl.className.replace(/text-\w+-600/, 'text-green-600');
-        } else if (avgUptime >= 75) {
-            uptimeEl.className = uptimeEl.className.replace(/text-\w+-600/, 'text-yellow-600');
-        } else {
-            uptimeEl.className = uptimeEl.className.replace(/text-\w+-600/, 'text-red-600');
-        }
-
-    } catch (error) {
-        console.error('Error updating preview stats:', error);
-    }
-}
-
-
-function validatePdfForm(formData, dateMethod) {
-    // Validasi field wajib
-    const requiredFields = {
-        'indikator': 'Indikator KPI',
-        'nama_indikator': 'Nama Indikator',
-        'target': 'Target KPI',
-        'prepared_nama': 'Nama Penyusun',
-        'validated_nama': 'Nama Validator'
-    };
-
-    for (const [field, label] of Object.entries(requiredFields)) {
-        const value = formData.get(field);
-        if (!value || value.trim() === '') {
-            showNotification(`Field "${label}" tidak boleh kosong`, 'warning');
-            return false;
-        }
-    }
-
-    // Validasi tanggal custom
-    if (dateMethod === 'custom') {
-        const startDate = formData.get('start_date');
-        const endDate = formData.get('end_date');
-
-        if (!startDate || !endDate) {
-            showNotification('Tanggal mulai dan akhir harus diisi untuk periode custom', 'warning');
-            return false;
-        }
-    }
-
-    return true;
-}
-
-// Keep all existing helper functions
-function closePdfModal(button) {
-    const modal = button.closest('.fixed');
-    if (modal) {
-        modal.remove();
-        document.body.style.overflow = '';
-    }
-}
-
-function toggleDateMethod(method) {
-    const presetOptions = document.getElementById('preset-options');
-    const customOptions = document.getElementById('custom-options');
-
-    if (!presetOptions || !customOptions) {
-        console.error('Date method elements not found');
-        return;
-    }
-
-    if (method === 'preset') {
-        presetOptions.classList.remove('hidden');
-        customOptions.classList.add('hidden');
-        updatePdfPreviewStats();
-    } else {
-        presetOptions.classList.add('hidden');
-        customOptions.classList.remove('hidden');
-        updateCustomDatePreview();
-        updatePdfPreviewStats();
-    }
-}
-
-function setQuickDate(period) {
-    const today = new Date();
-    const startDateInput = document.querySelector('input[name="start_date"]');
-    const endDateInput = document.querySelector('input[name="end_date"]');
-    const customRadio = document.querySelector('input[name="dateMethod"][value="custom"]');
-
-    if (!startDateInput || !endDateInput || !customRadio) {
-        console.error('Date input elements not found');
-        return;
-    }
-
-    let startDate, endDate;
-
-    switch(period) {
-        case 'today':
-            startDate = today;
-            endDate = today;
-            break;
-        case 'thisWeek':
-            startDate = new Date(today.getTime() - (today.getDay() * 24 * 60 * 60 * 1000));
-            endDate = today;
-            break;
-        case 'thisMonth':
-            startDate = new Date(today.getFullYear(), today.getMonth(), 1);
-            endDate = today;
-            break;
-        case 'lastMonth':
-            const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-            const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
-            startDate = lastMonth;
-            endDate = lastMonthEnd;
-            break;
-        default:
-            console.warn('Unknown period:', period);
-            return;
-    }
-
-    customRadio.checked = true;
-    toggleDateMethod('custom');
-
-    startDateInput.value = startDate.toISOString().split('T')[0];
-    endDateInput.value = endDate.toISOString().split('T')[0];
-
-    updateCustomDatePreview();
-}
-
-function setupDateEventListeners() {
-    const startDateInput = document.querySelector('input[name="start_date"]');
-    const endDateInput = document.querySelector('input[name="end_date"]');
-
-    if (startDateInput && endDateInput) {
-        startDateInput.addEventListener('change', () => {
-            if (endDateInput.value < startDateInput.value) {
-                endDateInput.value = startDateInput.value;
-            }
-            endDateInput.min = startDateInput.value;
-            updateCustomDatePreview();
-            updatePdfPreviewStats();
-        });
-
-        endDateInput.addEventListener('change', () => {
-            if (startDateInput.value > endDateInput.value) {
-                startDateInput.value = endDateInput.value;
-            }
-            updateCustomDatePreview();
-            updatePdfPreviewStats();
-        });
-    }
-}
-
-function updateCustomDatePreview() {
-    const startDateInput = document.querySelector('input[name="start_date"]');
-    const endDateInput = document.querySelector('input[name="end_date"]');
-    const previewStartDate = document.getElementById('preview-start-date');
-    const previewEndDate = document.getElementById('preview-end-date');
-    const previewTotalDays = document.getElementById('preview-total-days');
-
-    if (!startDateInput || !endDateInput || !previewStartDate) return;
-
-    try {
-        const startDate = new Date(startDateInput.value);
-        const endDate = new Date(endDateInput.value);
-
-        if (startDate && endDate && !isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) {
-            const options = {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                weekday: 'long'
-            };
-
-            previewStartDate.textContent = startDate.toLocaleDateString('id-ID', options);
-            previewEndDate.textContent = endDate.toLocaleDateString('id-ID', options);
-
-            const timeDiff = endDate.getTime() - startDate.getTime();
-            const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
-            previewTotalDays.textContent = `${daysDiff} hari`;
-
-            const previewPeriodEl = document.getElementById('preview-period');
-            if (previewPeriodEl) {
-                previewPeriodEl.textContent = daysDiff;
-            }
-        }
-    } catch (error) {
-        console.error('Error updating date preview:', error);
-        if (previewStartDate) previewStartDate.textContent = 'Error';
-        if (previewEndDate) previewEndDate.textContent = 'Error';
-        if (previewTotalDays) previewTotalDays.textContent = 'Error';
-    }
-}
-
-function animateNumberUpdate(element, startValue, endValue, suffix = '') {
-    if (!element || startValue === endValue) {
-        if (element) element.textContent = endValue + suffix;
-        return;
-    }
-
-    const duration = 500;
-    const startTime = performance.now();
-    const difference = endValue - startValue;
-
-    function updateNumber(currentTime) {
-        const elapsed = currentTime - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        const easeProgress = 1 - Math.pow(1 - progress, 3);
-        const currentValue = Math.round(startValue + (difference * easeProgress));
-
-        element.textContent = currentValue + suffix;
-
-        if (progress < 1) {
-            requestAnimationFrame(updateNumber);
-        }
-    }
-
-    requestAnimationFrame(updateNumber);
-}
-
-async function exportPdfReport(options = {}) {
+/**
+ * Optimized PDF export with better error handling and progress tracking
+ */
+async function exportPdfReportOptimized(options = {}) {
     try {
         // Default params with validation
         const params = {
             format: options.format || 'download',
-            period: options.period || '30',
+            period: options.period || PDF_CONFIG.DEFAULT_PERIOD.toString(),
             quarter: options.quarter || 'IV',
             year: options.year || new Date().getFullYear().toString(),
-            report_type: options.report_type || 'summary',
+            report_type: options.report_type || 'kpi',
             date_method: options.date_method || 'preset',
             timeframe: options.timeframe || 'days',
-                        ...options
+            filename: `Laporan_KPI_${options.quarter || 'IV'}_${options.year || new Date().getFullYear()}_${Date.now()}.pdf`,
+            ...options
         };
 
-        // Add custom dates if provided
-        if (options.start_date) params.start_date = options.start_date;
-        if (options.end_date) params.end_date = options.end_date;
+        console.log('Optimized PDF Export Parameters:', params);
 
-        // Generate filename
-        const timestamp = new Date().toISOString().split('T')[0];
-        params.filename = `phone-status-report-${params.period}days-${timestamp}.pdf`;
+        // Build query parameters efficiently
+        const queryParams = new URLSearchParams();
 
-        console.log('Export PDF with params:', params);
+        Object.entries(params).forEach(([key, value]) => {
+            if (value !== null && value !== undefined && value !== '') {
+                queryParams.append(key, String(value));
+            }
+        });
 
-        // Call the export function
-        await exportHistory(params);
+        const url = `/api/history/export-pdf?${queryParams.toString()}`;
+
+        console.log('Export URL (first 200 chars):', url.substring(0, 200) + '...');
+
+        // Enhanced fetch with better timeout and error handling
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 seconds
+
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/pdf',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+            },
+            signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        // Enhanced response validation
+        if (!response.ok) {
+            let errorMessage = `Server error: ${response.status}`;
+            try {
+                const errorText = await response.text();
+                console.error('Server error response:', errorText);
+
+                // Try to parse JSON error
+                try {
+                    const errorJson = JSON.parse(errorText);
+                    if (errorJson.error) {
+                        errorMessage = errorJson.error;
+                        if (errorJson.messages) {
+                            const messages = Object.values(errorJson.messages).flat();
+                            errorMessage += ': ' + messages.join(', ');
+                        }
+                    }
+                } catch (e) {
+                    // Not JSON, use text as is
+                    if (errorText && errorText.length < 200) {
+                        errorMessage += ` - ${errorText}`;
+                    }
+                }
+            } catch (e) {
+                // Ignore error text parsing errors
+            }
+            throw new Error(errorMessage);
+        }
+
+        // Validate content type
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/pdf')) {
+            throw new Error('Server tidak mengembalikan file PDF yang valid');
+        }
+
+        // Get PDF blob with size validation
+        const blob = await response.blob();
+
+        if (blob.size === 0) {
+            throw new Error('File PDF kosong');
+        }
+
+        if (blob.size < 1000) { // Less than 1KB is suspicious
+            throw new Error('File PDF terlalu kecil, kemungkinan rusak');
+        }
+
+        console.log(`PDF berhasil dibuat: ${(blob.size / 1024).toFixed(2)} KB`);
+
+        // Handle PDF based on format
+        await handlePdfBlob(blob, params.filename, params.format);
+
+        // Success notification
+        showNotification('Laporan PDF berhasil dibuat!', 'success');
+
+        // Clear cache after successful export
+        PDFExportState.clearCache();
 
     } catch (error) {
-        console.error('Error in exportPdfReport:', error);
-        showNotification(`Gagal export PDF: ${error.message}`, 'error');
+        console.error('Optimized PDF Export Error:', error);
+        handleExportError(error);
     }
 }
 
+/**
+ * Handle PDF blob based on format preference
+ */
+async function handlePdfBlob(blob, filename, format) {
+    try {
+        if (format === 'view') {
+            // Open in new tab
+            const url = window.URL.createObjectURL(blob);
+            const newWindow = window.open(url, '_blank');
+
+            if (!newWindow || newWindow.closed) {
+                // Popup blocked, fallback to download
+                console.warn('Popup blocked, falling back to download');
+                downloadBlob(blob, filename);
+            } else {
+                // Clean up URL after delay
+                setTimeout(() => {
+                    window.URL.revokeObjectURL(url);
+                }, 10000);
+            }
+        } else {
+            // Direct download
+            downloadBlob(blob, filename);
+        }
+    } catch (error) {
+        console.error('Error handling PDF blob:', error);
+        throw new Error('Gagal memproses file PDF: ' + error.message);
+    }
+}
+
+/**
+ * Enhanced blob download with better error handling
+ */
+function downloadBlob(blob, filename) {
+    try {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+
+        a.style.display = 'none';
+        a.href = url;
+        a.download = filename || 'laporan.pdf';
+
+        // Add to DOM, click, and remove
+        document.body.appendChild(a);
+        a.click();
+
+        // Cleanup with proper timing
+        setTimeout(() => {
+            try {
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            } catch (cleanupError) {
+                console.warn('Cleanup error:', cleanupError);
+            }
+        }, 100);
+
+    } catch (error) {
+        console.error('Error downloading blob:', error);
+        throw new Error('Gagal mengunduh file PDF: ' + error.message);
+    }
+}
+
+/**
+ * Enhanced error handling for export
+ */
+function handleExportError(error) {
+    let errorMessage = 'Gagal membuat laporan PDF';
+
+    if (error.name === 'AbortError') {
+        errorMessage = 'Timeout: Server terlalu lama merespons (>90 detik)';
+    } else if (error.message.includes('Server error')) {
+        errorMessage = error.message;
+    } else if (error.message.includes('NetworkError') || error.message.includes('fetch')) {
+        errorMessage = 'Koneksi ke server bermasalah. Periksa koneksi internet Anda.';
+    } else if (error.message.includes('PDF')) {
+        errorMessage = error.message;
+    } else {
+        errorMessage = error.message || errorMessage;
+    }
+
+    showNotification(errorMessage, 'error');
+}
+
+/**
+ * Enhanced modal close function with cleanup
+ */
+function closePdfModal(button) {
+    try {
+        const modal = button.closest('.fixed');
+        if (!modal) return;
+
+        // Cleanup chart
+        if (PDFExportState.currentChart) {
+            PDFExportState.currentChart.destroy();
+            PDFExportState.currentChart = null;
+        }
+
+        // Reset processing state
+        PDFExportState.isProcessing = false;
+
+        // Animate modal close
+        modal.style.opacity = '0';
+        modal.style.transform = 'scale(0.95)';
+
+        setTimeout(() => {
+            modal.remove();
+            document.body.style.overflow = '';
+        }, 200);
+
+    } catch (error) {
+        console.error('Error closing modal:', error);
+        // Force remove as fallback
+        const modal = document.querySelector('.pdf-export-modal');
+        if (modal) {
+            modal.remove();
+            document.body.style.overflow = '';
+        }
+    }
+}
+
+// PERBAIKAN: Export utility functions untuk compatibility
 async function exportHistory(params = {}) {
     try {
         // Validate required parameters
@@ -3110,7 +2443,7 @@ async function exportHistory(params = {}) {
         // Show loading notification
         showNotification('Mempersiapkan laporan PDF...', 'info');
 
-        // PERBAIKAN: Pastikan semua parameter dikirim dengan benar
+        // Pastikan semua parameter dikirim dengan benar
         const queryParams = new URLSearchParams();
 
         // Loop through all params dan pastikan semuanya dikirim
@@ -3220,47 +2553,1473 @@ async function exportHistory(params = {}) {
     }
 }
 
-// Helper function untuk download blob
-function downloadBlob(blob, filename) {
+// Backward compatibility functions
+function showChartPreviewInModal() {
     try {
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = url;
-        a.download = filename;
+        const uptimeData = calculateUptimeData();
 
-        document.body.appendChild(a);
-        a.click();
+        // Update preview statistics dengan chart preview
+        const chartPreviewContainer = document.getElementById('chart-preview-container');
+        if (!chartPreviewContainer) {
+            // Create chart preview container jika belum ada
+            const previewSection = document.querySelector('.bg-blue-100.rounded-xl');
+            if (previewSection) {
+                const chartDiv = document.createElement('div');
+                chartDiv.id = 'chart-preview-container';
+                chartDiv.className = 'mt-4';
+                chartDiv.innerHTML = `
+                    <h5 class="text-sm font-semibold text-gray-700 mb-2">Preview Chart Uptime/Downtime:</h5>
+                    <div class="bg-white rounded-lg p-3 text-center">
+                        <canvas id="preview-chart" width="200" height="200"></canvas>
+                        <div class="mt-2 text-xs text-gray-600">
+                            <div>Total Uptime: ${uptimeData.total_uptime.toFixed(1)}%</div>
+                            <div>Total Downtime: ${(uptimeData.total_devices * 100 - uptimeData.total_uptime).toFixed(1)}%</div>
+                        </div>
+                    </div>
+                `;
+                previewSection.appendChild(chartDiv);
+            }
+        }
 
-        // Cleanup
-        setTimeout(() => {
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(url);
-        }, 100);
+        // Generate small preview chart
+        const canvas = document.getElementById('preview-chart');
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+
+            const totalPossibleUptime = uptimeData.total_devices * 100;
+            const actualDowntime = totalPossibleUptime - uptimeData.total_uptime;
+
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Uptime', 'Downtime'],
+                    datasets: [{
+                        data: [uptimeData.total_uptime, actualDowntime],
+                        backgroundColor: ['#10B981', '#EF4444'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: false,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
     } catch (error) {
-        console.error('Error downloading blob:', error);
-        showNotification('Gagal mengunduh file PDF', 'error');
+        console.error('Error showing chart preview:', error);
     }
 }
 
+async function exportPdf(period = 30, quarter = 'IV', year = new Date().getFullYear()) {
+    try {
+        const response = await fetch(`/api/history/export-pdf?period=${period}&quarter=${quarter}&year=${year}&format=download`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/pdf'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Server error: ${response.status} - ${await response.text()}`);
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `history-report-${year}-Q${quarter}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+    } catch (err) {
+        console.error("PDF Export Error:", err);
+        alert("Gagal export PDF. Cek console untuk detail error.");
+    }
+}
+
+
+// Configuration constants
+const PDF_CONFIG = {
+    CACHE_DURATION: 5 * 60 * 1000, // 5 minutes
+    MAX_DATE_RANGE: 365,
+    DEFAULT_PERIOD: 30,
+    CHART_CACHE_KEY: 'chart_preview_data',
+    ENDPOINTS_CACHE_KEY: 'endpoints_data_cache'
+};
+
+// Global state management
+const PDFExportState = {
+    currentChart: null,
+    cachedData: new Map(),
+    isProcessing: false,
+
+    getCachedData(key) {
+        const cached = this.cachedData.get(key);
+        if (cached && Date.now() - cached.timestamp < PDF_CONFIG.CACHE_DURATION) {
+            return cached.data;
+        }
+        return null;
+    },
+
+    setCachedData(key, data) {
+        this.cachedData.set(key, {
+            data,
+            timestamp: Date.now()
+        });
+    },
+
+    clearCache() {
+        this.cachedData.clear();
+    }
+};
+
+/**
+ * PERBAIKAN: Format tanggal sesuai dengan requirement server
+ */
+function formatDateForServer(dateString) {
+    if (!dateString) return '';
+
+    try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return '';
+
+        // Format: d/m/Y (contoh: 24/08/2025)
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+
+        return `${day}/${month}/${year}`;
+    } catch (error) {
+        console.error('Error formatting date:', error);
+        return '';
+    }
+}
+
+/**
+ * PERBAIKAN: Format tanggal untuk display Indonesia
+ */
+function formatDateDisplay(dateString) {
+    if (!dateString) return '';
+
+    try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return '';
+
+        const options = {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            weekday: 'long'
+        };
+
+        return date.toLocaleDateString('id-ID', options);
+    } catch (error) {
+        console.error('Error formatting display date:', error);
+        return dateString;
+    }
+}
+
+/**
+ * Enhanced PDF Export Modal with optimizations
+ */
+function showPdfExportModal() {
+    // Prevent multiple modal instances
+    const existingModal = document.querySelector('.pdf-export-modal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+
+    const modal = createModalElement();
+    document.body.appendChild(modal);
+
+    // Setup modal behavior
+    setupModalBehavior(modal);
+
+    // Initialize components asynchronously
+    requestAnimationFrame(() => {
+        initializeModalComponents();
+    });
+}
+
+/**
+ * Create modal element with optimized HTML structure
+ */
+function createModalElement() {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4 pdf-export-modal';
+
+    // Calculate defaults
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentQuarter = Math.ceil((today.getMonth() + 1) / 3);
+    const todayStr = today.toISOString().split('T')[0];
+
+    modal.innerHTML = `
+        <div class="bg-white rounded-2xl w-full max-w-7xl flex flex-col shadow-2xl" style="max-height: 95vh; min-height: 70vh;">
+            ${createModalHeader()}
+            ${createModalContent(currentQuarter, currentYear, todayStr)}
+            ${createModalFooter()}
+        </div>
+    `;
+
+    return modal;
+}
+
+/**
+ * Create modal header section
+ */
+function createModalHeader() {
+    return `
+        <div class="flex-shrink-0 p-4 sm:p-6 border-b border-gray-200 bg-red-500 text-white rounded-t-2xl">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h2 class="text-xl sm:text-2xl font-bold">
+                        <i class="fas fa-file-pdf mr-2"></i>Export Laporan KPI PDF
+                    </h2>
+                    <p class="mt-1 opacity-90 text-sm sm:text-base">Generate laporan KPI dengan analisis chart uptime/downtime</p>
+                </div>
+                <button onclick="closePdfModal(this)"
+                        class="text-white/80 hover:text-white text-xl sm:text-2xl p-2 hover:bg-white/20 rounded-lg transition-colors flex-shrink-0">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Create modal content with optimized sections
+ */
+function createModalContent(currentQuarter, currentYear, todayStr) {
+    return `
+        <div class="flex-1 overflow-y-auto p-4 sm:p-6">
+            <form id="pdf-export-form" class="space-y-6 sm:space-y-8">
+                ${createHeaderSection(currentQuarter, currentYear)}
+                ${createKpiSection()}
+                ${createDateRangeSection(todayStr)}
+                ${createFooterSection(todayStr)}
+                ${createChartPreviewSection()}
+                ${createStatisticsPreviewSection()}
+            </form>
+        </div>
+    `;
+}
+
+/**
+ * Create header information section
+ */
+function createHeaderSection(currentQuarter, currentYear) {
+    const quarters = ['I', 'II', 'III', 'IV'];
+    const quarterOptions = quarters.map(q =>
+        `<option value="${q}" ${currentQuarter === quarters.indexOf(q) + 1 ? 'selected' : ''}>${q}</option>`
+    ).join('');
+
+    return `
+        <div class="bg-blue-50 rounded-xl p-4 sm:p-6 border border-blue-200">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <i class="fas fa-info-circle text-blue-500"></i>
+                Informasi Header Laporan
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Triwulan</label>
+                    <select name="quarter" onchange="updatePdfPreviewStats()"
+                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        ${quarterOptions}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Tahun</label>
+                    <select name="year" onchange="updatePdfPreviewStats()"
+                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="2023">2023</option>
+                        <option value="2024" ${currentYear === 2024 ? 'selected' : ''}>2024</option>
+                        <option value="2025" ${currentYear === 2025 ? 'selected' : ''}>2025</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Departemen</label>
+                    <select name="department" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="DEPARTEMEN SERVICE RESPRESENTATIVE TI TUREN" selected>DEPARTEMEN SERVICE RESPRESENTATIVE TI TUREN</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Create KPI information section
+ */
+function createKpiSection() {
+    return `
+        <div class="bg-green-50 rounded-xl p-4 sm:p-6 border border-green-200">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <i class="fas fa-chart-line text-green-500"></i>
+                Informasi KPI
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Indikator *</label>
+                    <input type="text" name="indikator" value="KPI-TI-001" required
+                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Target *</label>
+                    <input type="text" name="target" value="1 Dokumen" required
+                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Nama Indikator *</label>
+                    <textarea name="nama_indikator" rows="2" required
+                              class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500">Inventarisasi PC PMN Monitoring Produksi Munisi dan Seat Management Area PT Pindad Turen</textarea>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Formula</label>
+                    <textarea name="formula" rows="2"
+                              class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500">Inventarisasi lengkap dan update per triwulan</textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Realisasi</label>
+                    <input type="text" name="realisasi" value="Tercapai 1 dokumen"
+                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * PERBAIKAN: Create date range selection section dengan proper event handlers
+ */
+function createDateRangeSection(todayStr) {
+    const startDate = new Date(Date.now() - (30 * 24 * 60 * 60 * 1000)).toISOString().split('T')[0];
+    const endDate = todayStr;
+
+    return `
+        <div class="bg-gray-50 rounded-xl p-4 sm:p-6 border border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <i class="fas fa-calendar-alt text-indigo-500"></i>
+                Pilih Periode Laporan
+            </h3>
+
+            <!-- Date Method Selection -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+                <div class="space-y-3">
+                    <label class="flex items-center p-3 sm:p-4 bg-white border-2 border-gray-200 rounded-lg hover:border-indigo-300 cursor-pointer transition-colors">
+                        <input type="radio" name="dateMethod" value="preset" checked
+                               class="mr-3 text-indigo-600 focus:ring-indigo-500"
+                               onchange="toggleDateMethod('preset')">
+                        <div>
+                            <div class="font-semibold text-gray-800 text-sm sm:text-base">Periode Preset</div>
+                            <div class="text-xs sm:text-sm text-gray-600">Pilih dari periode yang sudah ditentukan</div>
+                        </div>
+                    </label>
+                    <label class="flex items-center p-3 sm:p-4 bg-white border-2 border-gray-200 rounded-lg hover:border-indigo-300 cursor-pointer transition-colors">
+                        <input type="radio" name="dateMethod" value="custom"
+                               class="mr-3 text-indigo-600 focus:ring-indigo-500"
+                               onchange="toggleDateMethod('custom')">
+                        <div>
+                            <div class="font-semibold text-gray-800 text-sm sm:text-base">Tanggal Custom</div>
+                            <div class="text-xs sm:text-sm text-gray-600">Pilih tanggal mulai dan akhir sendiri</div>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- Quick Select Buttons -->
+                <div class="space-y-2">
+                    <div class="text-sm font-medium text-gray-700 mb-2">Quick Select:</div>
+                    <div class="grid grid-cols-2 lg:grid-cols-1 gap-2">
+                        ${createQuickSelectButtons()}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Preset Options -->
+            <div id="preset-options" class="grid grid-cols-2 gap-4 mb-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Periode Preset</label>
+                    <select name="period" onchange="updatePdfPreviewStats()"
+                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="1">1 Hari</option>
+                        <option value="7">7 Hari</option>
+                        <option value="14">14 Hari</option>
+                        <option value="30" selected>30 Hari</option>
+                        <option value="60">60 Hari</option>
+                        <option value="90">90 Hari</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Format Waktu</label>
+                    <select name="timeframe" onchange="updatePdfPreviewStats()"
+                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="days">Hari Terakhir</option>
+                        <option value="from_start">Dari Awal Tahun</option>
+                        <option value="quarter">Per Triwulan</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Custom Date Options -->
+            <div id="custom-options" class="grid grid-cols-1 lg:grid-cols-2 gap-6 hidden">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-calendar-plus mr-1"></i>Tanggal Mulai
+                        </label>
+                        <input type="date" name="start_date" value="${startDate}" max="${endDate}"
+                               class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                               onchange="handleDateChange('start')">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-calendar-check mr-1"></i>Tanggal Akhir
+                        </label>
+                        <input type="date" name="end_date" value="${endDate}" max="${endDate}"
+                               class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                               onchange="handleDateChange('end')">
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg border border-gray-200 p-4">
+                    <h4 class="text-sm font-semibold text-gray-800 mb-3">
+                        <i class="fas fa-info-circle text-blue-500 mr-1"></i>Preview Periode
+                    </h4>
+                    <div id="date-preview" class="space-y-2 text-sm text-gray-600">
+                        <div class="flex justify-between">
+                            <span>Dari:</span>
+                            <span id="preview-start-date" class="font-medium">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Sampai:</span>
+                            <span id="preview-end-date" class="font-medium">-</span>
+                        </div>
+                        <div class="flex justify-between pt-2 border-t">
+                            <span>Total Hari:</span>
+                            <span id="preview-total-days" class="font-medium text-indigo-600">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Create quick select buttons
+ */
+function createQuickSelectButtons() {
+    const buttons = [
+        { key: 'today', label: 'Hari Ini', icon: 'fa-calendar-day', color: 'blue' },
+        { key: 'thisWeek', label: 'Minggu Ini', icon: 'fa-calendar-week', color: 'green' },
+        { key: 'thisMonth', label: 'Bulan Ini', icon: 'fa-calendar', color: 'purple' },
+        { key: 'lastMonth', label: 'Bulan Lalu', icon: 'fa-calendar-minus', color: 'orange' }
+    ];
+
+    return buttons.map(btn => `
+        <button type="button" onclick="setQuickDate('${btn.key}')"
+                class="w-full text-left px-3 py-2 text-xs sm:text-sm bg-${btn.color}-50 hover:bg-${btn.color}-100 text-${btn.color}-700 rounded-lg transition-colors">
+            <i class="fas ${btn.icon} mr-2"></i>${btn.label}
+        </button>
+    `).join('');
+}
+
+/**
+ * PERBAIKAN: Create footer signature section dengan format tanggal yang benar
+ */
+function createFooterSection(todayStr) {
+    return `
+        <div class="bg-purple-50 rounded-xl p-4 sm:p-6 border border-purple-200">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <i class="fas fa-signature text-purple-500"></i>
+                Informasi Footer & Tanda Tangan
+            </h3>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                ${createSignatureSection('prepared', 'DISIAPKAN OLEH', 'OFFICER MANAJEMEN SISTEM KOMPUTER TUREN', 'MUHAMMAD', todayStr)}
+                ${createSignatureSection('approved', 'DISETUJUI OLEH', 'MANAGER', 'kimi', todayStr)}
+                ${createSignatureSection('validated', 'DISAHKAN OLEH', 'MANAGER LAYANAN TI BANDUNG TUREN', 'RIZKY', todayStr)}
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Create signature section
+ */
+function createSignatureSection(type, title, defaultJabatan, defaultNama, todayStr) {
+    return `
+        <div class="space-y-4">
+            <h4 class="font-semibold text-gray-700 border-b pb-2">${title}</h4>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Jabatan</label>
+                <input type="text" name="${type}_jabatan" value="${defaultJabatan}" required
+                       class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Nama *</label>
+                <input type="text" name="${type}_nama" value="${defaultNama}" required
+                       class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Tanggal</label>
+                <input type="date" name="${type}_tanggal" value="${todayStr}" required
+                       class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Create chart preview section
+ */
+function createChartPreviewSection() {
+    return `
+        <div class="bg-yellow-50 rounded-xl p-4 sm:p-6 border border-yellow-200">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <i class="fas fa-chart-pie text-yellow-600"></i>
+                Preview Chart Uptime/Downtime
+            </h3>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Chart Container -->
+                <div class="bg-white rounded-lg p-4 border border-yellow-300">
+                    <div class="text-center">
+                        <canvas id="preview-uptime-chart" width="250" height="250" style="max-width: 250px;"></canvas>
+                        <div id="chart-loading" class="hidden text-sm text-gray-500 mt-2">Loading chart...</div>
+                    </div>
+                </div>
+
+                <!-- Chart Statistics -->
+                <div class="bg-white rounded-lg p-4 border border-yellow-300">
+                    <h4 class="font-semibold text-gray-700 mb-3">Statistik Chart:</h4>
+                    <div class="space-y-2 text-sm">
+                        ${createChartStatistics()}
+                    </div>
+                    <div id="chart-assessment" class="mt-4 p-3 rounded-lg text-sm font-medium">
+                        <div class="flex items-center gap-2">
+                            <i class="fas fa-info-circle"></i>
+                            <span id="chart-assessment-text">Menghitung assessment...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chart Options -->
+            <div class="mt-4 bg-white rounded-lg p-4 border border-yellow-300">
+                <label class="flex items-center gap-2">
+                    <input type="checkbox" name="include_chart" checked
+                           class="text-yellow-600 focus:ring-yellow-500 rounded">
+                    <span class="text-sm font-medium text-gray-700">Sertakan chart dalam PDF</span>
+                </label>
+                <p class="text-xs text-gray-500 mt-1">
+                    Chart akan ditampilkan sebagai diagram pie dalam laporan PDF
+                </p>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Create chart statistics elements
+ */
+function createChartStatistics() {
+    const stats = [
+        { id: 'chart-total-devices', label: 'Total Perangkat' },
+        { id: 'chart-max-uptime', label: 'Kemungkinan Max Uptime' },
+        { id: 'chart-actual-uptime', label: 'Total Uptime Aktual', class: 'text-green-600' },
+        { id: 'chart-actual-downtime', label: 'Total Downtime', class: 'text-red-600' },
+        { id: 'chart-uptime-percentage', label: 'Persentase Uptime', class: 'text-green-600 font-bold' },
+        { id: 'chart-downtime-percentage', label: 'Persentase Downtime', class: 'text-red-600 font-bold' }
+    ];
+
+    return stats.map(stat => `
+        <div class="flex justify-between ${stat.class || ''}">
+            <span class="text-gray-600">${stat.label}:</span>
+            <span id="${stat.id}" class="font-medium">-</span>
+        </div>
+    `).join('');
+}
+
+/**
+ * Create statistics preview section
+ */
+function createStatisticsPreviewSection() {
+    return `
+        <div class="bg-blue-100 rounded-xl p-4 sm:p-6 border border-blue-200">
+            <h4 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <i class="fas fa-chart-pie text-blue-600"></i>
+                Preview Statistik yang Akan Dilaporkan
+            </h4>
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 text-center">
+                ${createStatisticCards()}
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Create statistic cards
+ */
+function createStatisticCards() {
+    const cards = [
+        { id: 'preview-total', label: 'Total Telepon', color: 'blue' },
+        { id: 'preview-online', label: 'Online', color: 'green' },
+        { id: 'preview-offline', label: 'Offline', color: 'red' },
+        { id: 'preview-uptime', label: 'Avg Uptime', color: 'indigo' },
+        { id: 'preview-period', label: 'Periode (Hari)', color: 'purple' }
+    ];
+
+    return cards.map(card => `
+        <div class="bg-white rounded-lg p-3 sm:p-4 shadow-sm${card.id === 'preview-period' ? ' col-span-2 sm:col-span-1' : ''}">
+            <div class="text-lg sm:text-2xl font-bold text-${card.color}-600" id="${card.id}">-</div>
+            <div class="text-xs text-gray-600">${card.label}</div>
+        </div>
+    `).join('');
+}
+
+/**
+ * Create modal footer
+ */
+function createModalFooter() {
+    return `
+        <div class="flex-shrink-0 p-4 sm:p-6 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
+            <div class="flex flex-col sm:flex-row justify-between items-center gap-3">
+                <div class="text-xs sm:text-sm text-gray-600 flex items-center gap-2 order-2 sm:order-1">
+                    <i class="fas fa-clock"></i>
+                    <span>Estimasi waktu: ~15-45 detik</span>
+                </div>
+                <div class="flex gap-2 sm:gap-3 order-1 sm:order-2 w-full sm:w-auto">
+                    <button type="button" onclick="closePdfModal(this)"
+                            class="flex-1 sm:flex-none px-3 sm:px-4 py-2 text-sm text-gray-600 hover:text-gray-800 bg-white hover:bg-gray-100 border border-gray-300 rounded-lg transition-colors">
+                        <i class="fas fa-times mr-1"></i>Batal
+                    </button>
+                    <button type="button" onclick="handlePdfExport('download')" id="pdf-export-btn"
+                            class="flex-1 sm:flex-none px-3 sm:px-4 py-2 text-sm text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors shadow-lg">
+                        <i class="fas fa-download mr-1"></i>Download PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Setup modal behavior and event listeners
+ */
+function setupModalBehavior(modal) {
+    // Close on backdrop click
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closePdfModal(modal.querySelector('button'));
+        }
+    });
+
+    // Prevent body scroll when modal is open
+    document.body.style.overflow = 'hidden';
+
+    // ESC key to close
+    const handleEscape = (e) => {
+        if (e.key === 'Escape') {
+            closePdfModal(modal.querySelector('button'));
+            document.removeEventListener('keydown', handleEscape);
+        }
+    };
+    document.addEventListener('keydown', handleEscape);
+}
+
+/**
+ * PERBAIKAN: Initialize modal components asynchronously dengan proper error handling
+ */
+async function initializeModalComponents() {
+    try {
+        // Initialize preview statistics
+        await updatePdfPreviewStats();
+
+        // Initialize chart preview
+        await initializeChartPreview();
+
+        // Initialize custom date preview
+        updateCustomDatePreview();
+
+        // Setup date event listeners
+        setupDateEventListeners();
+
+        console.log('Modal components initialized successfully');
+    } catch (error) {
+        console.error('Error initializing modal components:', error);
+        showNotification('Beberapa komponen gagal dimuat, namun modal tetap dapat digunakan', 'warning');
+    }
+}
+
+/**
+ * Enhanced chart preview initialization with better error handling
+ */
+async function initializeChartPreview() {
+    try {
+        const canvas = document.getElementById('preview-uptime-chart');
+        const loadingEl = document.getElementById('chart-loading');
+
+        if (!canvas) {
+            console.warn('Chart preview canvas not found');
+            return;
+        }
+
+        // Show loading
+        if (loadingEl) {
+            loadingEl.classList.remove('hidden');
+        }
+
+        // Get or calculate uptime data
+        const uptimeData = await getUptimeDataAsync();
+
+        // Update chart statistics display
+        updateChartStatisticsDisplay(uptimeData);
+
+        // Create preview chart
+        const ctx = canvas.getContext('2d');
+        await createPreviewChart(ctx, uptimeData);
+
+        // Hide loading
+        if (loadingEl) {
+            loadingEl.classList.add('hidden');
+        }
+
+        console.log('Chart preview initialized successfully');
+
+    } catch (error) {
+        console.error('Error initializing chart preview:', error);
+
+        // Hide loading and show error state
+        const loadingEl = document.getElementById('chart-loading');
+        if (loadingEl) {
+            loadingEl.classList.add('hidden');
+        }
+
+        showChartError();
+    }
+}
+
+/**
+ * Get uptime data asynchronously with caching
+ */
+async function getUptimeDataAsync() {
+    const cacheKey = PDF_CONFIG.ENDPOINTS_CACHE_KEY;
+    const cached = PDFExportState.getCachedData(cacheKey);
+
+    if (cached) {
+        return cached;
+    }
+
+    try {
+        // Try to get real-time data from API
+        const response = await fetch('/api/realtime-uptime-data', {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+            }
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            if (result.success && result.data) {
+                const data = {
+                    total_devices: result.data.total_devices,
+                    online_devices: result.data.online_devices,
+                    offline_devices: result.data.offline_devices,
+                    total_uptime: result.data.online_percentage,
+                    uptime_percentage: result.data.online_percentage
+                };
+
+                PDFExportState.setCachedData(cacheKey, data);
+                return data;
+            }
+        }
+    } catch (error) {
+        console.warn('Failed to fetch real-time data, using fallback', error);
+    }
+
+    // Fallback to calculated data
+    return calculateUptimeDataFallback();
+}
+
+/**
+ * Calculate uptime data fallback with optimization
+ */
+function calculateUptimeDataFallback() {
+    try {
+        // Get nodes data or use sample
+        let nodesData = window.nodes || [];
+
+        if (nodesData.length === 0) {
+            // Generate realistic sample data
+            const totalNodes = 12;
+            const onlineNodes = Math.floor(totalNodes * 0.75); // 75% online rate
+
+            nodesData = Array.from({length: totalNodes}, (_, i) => ({
+                status: i < onlineNodes ? 'online' : 'offline'
+            }));
+        }
+
+        const totalDevices = nodesData.length;
+        const onlineDevices = nodesData.filter(n => {
+            const status = (n.status || '').toLowerCase();
+            return status === 'online' || status === 'aktif';
+        }).length;
+
+        const totalPossibleUptime = totalDevices * 100;
+        const actualUptimePercentage = totalDevices > 0 ? (onlineDevices / totalDevices) * 100 : 0;
+        const actualUptime = (actualUptimePercentage / 100) * totalPossibleUptime;
+
+        return {
+            total_devices: totalDevices,
+            online_devices: onlineDevices,
+            offline_devices: totalDevices - onlineDevices,
+            total_uptime: actualUptime,
+            uptime_percentage: actualUptimePercentage
+        };
+    } catch (error) {
+        console.error('Error calculating fallback uptime data:', error);
+        // Return safe defaults
+        return {
+            total_devices: 10,
+            online_devices: 8,
+            offline_devices: 2,
+            total_uptime: 800,
+            uptime_percentage: 80
+        };
+    }
+}
+
+/**
+ * Create preview chart with better error handling
+ */
+async function createPreviewChart(ctx, uptimeData) {
+    try {
+        const totalPossibleUptime = uptimeData.total_devices * 100;
+        const actualDowntime = totalPossibleUptime - uptimeData.total_uptime;
+        const uptimePercentage = ((uptimeData.total_uptime / totalPossibleUptime) * 100);
+        const downtimePercentage = 100 - uptimePercentage;
+
+        // Destroy existing chart if any
+        if (PDFExportState.currentChart) {
+            PDFExportState.currentChart.destroy();
+        }
+
+        // Create new chart with animation
+        PDFExportState.currentChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: [
+                    `Uptime (${uptimePercentage.toFixed(1)}%)`,
+                    `Downtime (${downtimePercentage.toFixed(1)}%)`
+                ],
+                datasets: [{
+                    data: [uptimeData.total_uptime, actualDowntime],
+                    backgroundColor: [
+                        '#10B981', // Green for uptime
+                        '#EF4444'  // Red for downtime
+                    ],
+                    borderColor: [
+                        '#059669',
+                        '#DC2626'
+                    ],
+                    borderWidth: 2,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: false,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Preview Chart Uptime',
+                        font: {
+                            size: 14,
+                            weight: 'bold'
+                        }
+                    },
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 10,
+                            font: {
+                                size: 10
+                            },
+                            usePointStyle: true
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed;
+                                return `${label}: ${value.toFixed(1)}%`;
+                            }
+                        }
+                    }
+                },
+                animation: {
+                    duration: 1000,
+                    easing: 'easeInOutQuart'
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Error creating preview chart:', error);
+        showChartError();
+    }
+}
+
+/**
+ * Show chart error state
+ */
+function showChartError() {
+    const canvas = document.getElementById('preview-uptime-chart');
+    if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#f3f4f6';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#6b7280';
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Chart tidak dapat dimuat', canvas.width/2, canvas.height/2 - 10);
+        ctx.fillText('Data masih dapat diexport', canvas.width/2, canvas.height/2 + 10);
+    }
+}
+
+/**
+ * Enhanced chart statistics display update
+ */
+function updateChartStatisticsDisplay(uptimeData) {
+    try {
+        const totalPossibleUptime = uptimeData.total_devices * 100;
+        const actualDowntime = totalPossibleUptime - uptimeData.total_uptime;
+        const uptimePercentage = totalPossibleUptime > 0 ? ((uptimeData.total_uptime / totalPossibleUptime) * 100) : 0;
+        const downtimePercentage = 100 - uptimePercentage;
+
+        // Update display elements with animation
+        const updates = {
+            'chart-total-devices': `${uptimeData.total_devices} unit`,
+            'chart-max-uptime': `${totalPossibleUptime.toFixed(0)}%`,
+            'chart-actual-uptime': `${uptimeData.total_uptime.toFixed(1)}%`,
+            'chart-actual-downtime': `${actualDowntime.toFixed(1)}%`,
+            'chart-uptime-percentage': `${uptimePercentage.toFixed(1)}%`,
+            'chart-downtime-percentage': `${downtimePercentage.toFixed(1)}%`
+        };
+
+        Object.entries(updates).forEach(([id, value]) => {
+            const element = document.getElementById(id);
+            if (element) {
+                // Animate number changes
+                animateValueUpdate(element, value);
+            }
+        });
+
+        // Update performance assessment with smooth transition
+        updatePerformanceAssessment(uptimePercentage);
+
+    } catch (error) {
+        console.error('Error updating chart statistics display:', error);
+    }
+}
+
+/**
+ * Animate value updates
+ */
+function animateValueUpdate(element, newValue) {
+    element.style.opacity = '0.5';
+    setTimeout(() => {
+        element.textContent = newValue;
+        element.style.opacity = '1';
+        element.style.transition = 'opacity 0.3s ease-in-out';
+    }, 150);
+}
+
+/**
+ * Update performance assessment with proper styling
+ */
+function updatePerformanceAssessment(uptimePercentage) {
+    const assessmentEl = document.getElementById('chart-assessment');
+    const assessmentTextEl = document.getElementById('chart-assessment-text');
+
+    if (!assessmentEl || !assessmentTextEl) return;
+
+    let assessmentClass, assessmentText, iconClass;
+
+    if (uptimePercentage >= 95) {
+        assessmentClass = 'bg-green-100 border-green-300 text-green-800';
+        assessmentText = 'Excellent - Sistem beroperasi sangat baik';
+        iconClass = 'fa-check-circle text-green-600';
+    } else if (uptimePercentage >= 85) {
+        assessmentClass = 'bg-blue-100 border-blue-300 text-blue-800';
+        assessmentText = 'Very Good - Sistem beroperasi dengan baik';
+        iconClass = 'fa-thumbs-up text-blue-600';
+    } else if (uptimePercentage >= 75) {
+        assessmentClass = 'bg-yellow-100 border-yellow-300 text-yellow-800';
+        assessmentText = 'Good - Sistem memerlukan monitoring rutin';
+        iconClass = 'fa-exclamation-triangle text-yellow-600';
+    } else if (uptimePercentage >= 60) {
+        assessmentClass = 'bg-orange-100 border-orange-300 text-orange-800';
+        assessmentText = 'Fair - Sistem memerlukan perhatian khusus';
+        iconClass = 'fa-exclamation-circle text-orange-600';
+    } else {
+        assessmentClass = 'bg-red-100 border-red-300 text-red-800';
+        assessmentText = 'Poor - Sistem memerlukan perbaikan segera';
+        iconClass = 'fa-times-circle text-red-600';
+    }
+
+    // Animate transition
+    assessmentEl.style.opacity = '0.5';
+    setTimeout(() => {
+        assessmentEl.className = `mt-4 p-3 rounded-lg text-sm font-medium border ${assessmentClass} transition-all duration-300`;
+        assessmentTextEl.innerHTML = `<i class="fas ${iconClass} mr-2"></i>${assessmentText}`;
+        assessmentEl.style.opacity = '1';
+    }, 150);
+}
+
+/**
+ * PERBAIKAN: Enhanced PDF preview statistics update dengan proper period calculation
+ */
+async function updatePdfPreviewStats() {
+    try {
+        const form = document.getElementById('pdf-export-form');
+        if (!form) {
+            console.warn('PDF export form not found');
+            return;
+        }
+
+        // Get current period calculation
+        let currentPeriod = await calculateCurrentPeriod(form);
+
+        // Update period display
+        const periodEl = document.getElementById('preview-period');
+        if (periodEl) {
+            const oldValue = parseInt(periodEl.textContent) || 0;
+            animateNumberUpdate(periodEl, oldValue, currentPeriod);
+        }
+
+        // Get or calculate statistics
+        const stats = await getPreviewStatistics();
+
+        // Update displays with animation
+        const elements = {
+            'preview-total': stats.total,
+            'preview-online': stats.online,
+            'preview-offline': stats.offline,
+            'preview-uptime': stats.avgUptime
+        };
+
+        Object.entries(elements).forEach(([id, value]) => {
+            const element = document.getElementById(id);
+            if (element) {
+                const currentValue = parseInt(element.textContent) || 0;
+                animateNumberUpdate(element, currentValue, value, id === 'preview-uptime' ? '%' : '');
+
+                // Update colors based on values
+                updateElementColor(element, id, value);
+            }
+        });
+
+        // Update chart preview if it exists
+        if (PDFExportState.currentChart) {
+            await updateChartWithNewData();
+        }
+
+        console.log('Preview stats updated successfully');
+
+    } catch (error) {
+        console.error('Error updating preview stats:', error);
+    }
+}
+
+/**
+ * PERBAIKAN: Calculate current period from form data dengan validation
+ */
+async function calculateCurrentPeriod(form) {
+    try {
+        const formData = new FormData(form);
+        const dateMethod = formData.get('dateMethod');
+
+        if (dateMethod === 'custom') {
+            const startDate = formData.get('start_date');
+            const endDate = formData.get('end_date');
+
+            if (startDate && endDate) {
+                const start = new Date(startDate);
+                const end = new Date(endDate);
+
+                if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+                    const timeDiff = end.getTime() - start.getTime();
+                    return Math.max(1, Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1);
+                }
+            }
+        }
+
+        const period = parseInt(formData.get('period')) || PDF_CONFIG.DEFAULT_PERIOD;
+        return Math.max(1, period);
+    } catch (error) {
+        console.error('Error calculating current period:', error);
+        return PDF_CONFIG.DEFAULT_PERIOD;
+    }
+}
+
+/**
+ * Get preview statistics with caching
+ */
+async function getPreviewStatistics() {
+    const cacheKey = 'preview_statistics';
+    const cached = PDFExportState.getCachedData(cacheKey);
+
+    if (cached) {
+        return cached;
+    }
+
+    try {
+        // Try to get from API first
+        const response = await fetch('/api/realtime-uptime-data', {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+            }
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            if (result.success && result.data) {
+                const stats = {
+                    total: result.data.total_devices,
+                    online: result.data.online_devices,
+                    offline: result.data.offline_devices,
+                    avgUptime: Math.round(result.data.online_percentage)
+                };
+
+                PDFExportState.setCachedData(cacheKey, stats);
+                return stats;
+            }
+        }
+    } catch (error) {
+        console.warn('Failed to get API stats, using fallback');
+    }
+
+    // Fallback calculation
+    return calculateFallbackStats();
+}
+
+/**
+ * Calculate fallback statistics
+ */
+function calculateFallbackStats() {
+    let nodesData = window.nodes || [];
+
+    if (nodesData.length === 0) {
+        // Generate sample data
+        const total = 12;
+        const online = Math.floor(total * 0.78); // ~78% online
+
+        nodesData = Array.from({length: total}, (_, i) => ({
+            status: i < online ? 'online' : 'offline'
+        }));
+    }
+
+    const total = nodesData.length;
+    const online = nodesData.filter(n => {
+        const status = (n.status || '').toLowerCase();
+        return status === 'online' || status === 'aktif';
+    }).length;
+    const offline = total - online;
+    const avgUptime = total > 0 ? Math.round((online / total) * 100) : 0;
+
+    return { total, online, offline, avgUptime };
+}
+
+/**
+ * Update element color based on value and type
+ */
+function updateElementColor(element, id, value) {
+    if (id === 'preview-uptime') {
+        const colorClass = value >= 90 ? 'text-green-600' :
+                          value >= 75 ? 'text-yellow-600' : 'text-red-600';
+
+        element.className = element.className.replace(/text-\w+-600/, colorClass);
+    }
+}
+
+/**
+ * Update chart with new data
+ */
+async function updateChartWithNewData() {
+    try {
+        const uptimeData = await getUptimeDataAsync();
+
+        if (PDFExportState.currentChart && uptimeData) {
+            const totalPossibleUptime = uptimeData.total_devices * 100;
+            const actualDowntime = totalPossibleUptime - uptimeData.total_uptime;
+            const uptimePercentage = ((uptimeData.total_uptime / totalPossibleUptime) * 100);
+            const downtimePercentage = 100 - uptimePercentage;
+
+            // Update chart data
+            PDFExportState.currentChart.data.datasets[0].data = [uptimeData.total_uptime, actualDowntime];
+            PDFExportState.currentChart.data.labels = [
+                `Uptime (${uptimePercentage.toFixed(1)}%)`,
+                `Downtime (${downtimePercentage.toFixed(1)}%)`
+            ];
+
+            // Animate update
+            PDFExportState.currentChart.update('active');
+
+            // Update statistics display
+            updateChartStatisticsDisplay(uptimeData);
+        }
+    } catch (error) {
+        console.error('Error updating chart with new data:', error);
+    }
+}
+
+/**
+ * Enhanced number animation with better easing
+ */
+function animateNumberUpdate(element, startValue, endValue, suffix = '') {
+    if (!element || startValue === endValue) {
+        if (element) element.textContent = endValue + suffix;
+        return;
+    }
+
+    const duration = 800;
+    const startTime = performance.now();
+    const difference = endValue - startValue;
+
+    function updateNumber(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+
+        // Use ease-out-cubic for smoother animation
+        const easeProgress = 1 - Math.pow(1 - progress, 3);
+        const currentValue = Math.round(startValue + (difference * easeProgress));
+
+        element.textContent = currentValue + suffix;
+
+        if (progress < 1) {
+            requestAnimationFrame(updateNumber);
+        }
+    }
+
+    requestAnimationFrame(updateNumber);
+}
+
+/**
+ * PERBAIKAN: Enhanced date handling functions dengan proper event handling
+ */
+function toggleDateMethod(method) {
+    const presetOptions = document.getElementById('preset-options');
+    const customOptions = document.getElementById('custom-options');
+
+    if (!presetOptions || !customOptions) {
+        console.error('Date method elements not found');
+        return;
+    }
+
+    // Smooth transition
+    const hideElement = (el) => {
+        el.style.opacity = '0';
+        setTimeout(() => el.classList.add('hidden'), 150);
+    };
+
+    const showElement = (el) => {
+        el.classList.remove('hidden');
+        setTimeout(() => el.style.opacity = '1', 10);
+        el.style.transition = 'opacity 0.15s ease-in-out';
+    };
+
+    if (method === 'preset') {
+        hideElement(customOptions);
+        setTimeout(() => {
+            showElement(presetOptions);
+            // Update preview setelah transition selesai
+            setTimeout(updatePdfPreviewStats, 200);
+        }, 100);
+    } else {
+        hideElement(presetOptions);
+        setTimeout(() => {
+            showElement(customOptions);
+            updateCustomDatePreview();
+            // Update preview setelah transition selesai
+            setTimeout(updatePdfPreviewStats, 200);
+        }, 100);
+    }
+}
+
+/**
+ * PERBAIKAN: Enhanced quick date setting dengan proper event handling
+ */
+function setQuickDate(period) {
+    const today = new Date();
+    const startDateInput = document.querySelector('input[name="start_date"]');
+    const endDateInput = document.querySelector('input[name="end_date"]');
+    const customRadio = document.querySelector('input[name="dateMethod"][value="custom"]');
+
+    if (!startDateInput || !endDateInput || !customRadio) {
+        console.error('Date input elements not found');
+        return;
+    }
+
+    let startDate, endDate;
+
+    switch(period) {
+        case 'today':
+            startDate = endDate = today;
+            break;
+        case 'thisWeek':
+            const dayOfWeek = today.getDay();
+            const startOfWeek = new Date(today.getTime() - (dayOfWeek * 24 * 60 * 60 * 1000));
+            startDate = startOfWeek;
+            endDate = today;
+            break;
+        case 'thisMonth':
+            startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+            endDate = today;
+            break;
+        case 'lastMonth':
+            const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+            const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+            startDate = lastMonth;
+            endDate = lastMonthEnd;
+            break;
+        default:
+            console.warn('Unknown period:', period);
+            return;
+    }
+
+    // Animate radio selection
+    customRadio.checked = true;
+    toggleDateMethod('custom');
+
+    // Set dates with smooth transition
+    setTimeout(() => {
+        startDateInput.value = startDate.toISOString().split('T')[0];
+        endDateInput.value = endDate.toISOString().split('T')[0];
+
+        updateCustomDatePreview();
+        updatePdfPreviewStats();
+    }, 300); // Increased delay to ensure UI is ready
+}
+
+/**
+ * PERBAIKAN: Enhanced date change handler dengan validation
+ */
+function handleDateChange(type) {
+    const startDateInput = document.querySelector('input[name="start_date"]');
+    const endDateInput = document.querySelector('input[name="end_date"]');
+
+    if (!startDateInput || !endDateInput) return;
+
+    // Auto-correct dates if needed
+    if (type === 'start' && endDateInput.value < startDateInput.value) {
+        endDateInput.value = startDateInput.value;
+    } else if (type === 'end' && startDateInput.value > endDateInput.value) {
+        startDateInput.value = endDateInput.value;
+    }
+
+    // Update min/max constraints
+    endDateInput.min = startDateInput.value;
+
+    // Validate date range
+    const startDate = new Date(startDateInput.value);
+    const endDate = new Date(endDateInput.value);
+
+    if (!isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) {
+        const daysDiff = Math.ceil((endDate - startDate) / (1000 * 3600 * 24)) + 1;
+
+        if (daysDiff > PDF_CONFIG.MAX_DATE_RANGE) {
+            showNotification(`Periode maksimal ${PDF_CONFIG.MAX_DATE_RANGE} hari. Periode saat ini: ${daysDiff} hari`, 'warning');
+            return;
+        }
+    }
+
+    // Update previews with debounced calls
+    setTimeout(() => {
+        updateCustomDatePreview();
+        updatePdfPreviewStats();
+    }, 100);
+}
+
+/**
+ * PERBAIKAN: Enhanced custom date preview dengan proper error handling
+ */
+function updateCustomDatePreview() {
+    const startDateInput = document.querySelector('input[name="start_date"]');
+    const endDateInput = document.querySelector('input[name="end_date"]');
+    const previewStartDate = document.getElementById('preview-start-date');
+    const previewEndDate = document.getElementById('preview-end-date');
+    const previewTotalDays = document.getElementById('preview-total-days');
+
+    if (!startDateInput || !endDateInput || !previewStartDate) return;
+
+    try {
+        const startDate = new Date(startDateInput.value);
+        const endDate = new Date(endDateInput.value);
+
+        if (!isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) {
+            const startFormatted = formatDateDisplay(startDateInput.value);
+            const endFormatted = formatDateDisplay(endDateInput.value);
+            const daysDiff = Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24)) + 1);
+
+            // Animate updates
+            animateTextUpdate(previewStartDate, startFormatted);
+            animateTextUpdate(previewEndDate, endFormatted);
+            animateTextUpdate(previewTotalDays, `${daysDiff} hari`);
+
+            // Update period preview
+            const previewPeriodEl = document.getElementById('preview-period');
+            if (previewPeriodEl) {
+                const currentPeriod = parseInt(previewPeriodEl.textContent) || 0;
+                animateNumberUpdate(previewPeriodEl, currentPeriod, daysDiff);
+            }
+        } else {
+            // Show placeholder if dates are invalid
+            previewStartDate.textContent = 'Pilih tanggal mulai';
+            previewEndDate.textContent = 'Pilih tanggal akhir';
+            previewTotalDays.textContent = '- hari';
+        }
+    } catch (error) {
+        console.error('Error updating date preview:', error);
+        ['preview-start-date', 'preview-end-date', 'preview-total-days'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = 'Error';
+        });
+    }
+}
+
+/**
+ * Quick export function for convenience
+ */
 function quickExportPdf() {
-    exportPdfReport({
+    exportPdfReportOptimized({
         period: '30',
         quarter: 'IV',
         year: new Date().getFullYear().toString(),
         format: 'download',
-        report_type: 'summary'
+        report_type: 'kpi'
     });
 }
 
-async function exportPdf(period = 30, quarter = 'IV', year = new Date().getFullYear()) {
-    console.warn('exportPdf is deprecated, use exportPdfReport instead');
-    return exportPdfReport({
-        period: period.toString(),
-        quarter: quarter,
-        year: year.toString(),
-        format: 'download'
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('Optimized PDF Export module loaded');
     });
+} else {
+    console.log('Optimized PDF Export module loaded');
 }
 
 // Export functions to global scope with error handling
@@ -3268,13 +4027,13 @@ try {
     // Main export functions
     window.showPdfExportModal = showPdfExportModal;
     window.handlePdfExport = handlePdfExport;
-    window.exportPdfReport = exportPdfReport;
+    window.exportPdfReportOptimized = exportPdfReportOptimized;
     window.exportHistory = exportHistory;
     window.quickExportPdf = quickExportPdf;
     window.initializeChartPreview = initializeChartPreview;
     window.showChartPreviewInModal = showChartPreviewInModal;
     window.exportPdf = exportPdf;
-    window.generateRealTimeUptimeChart = generateRealTimeUptimeChart;
+    window.generateUptimeChartOptimized = generateUptimeChartOptimized;
 
     // Helper functions
     window.closePdfModal = closePdfModal;
