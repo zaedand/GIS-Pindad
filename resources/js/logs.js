@@ -1775,7 +1775,7 @@ async function handlePdfExport(format = 'download') {
         if (formData.get('include_chart') !== null) {
             try {
                 showNotification('Membuat chart analisis...', 'info');
-                chartResult = await generateUptimeChartOptimized();
+                chartResult = await generateUptimeChart();
                 showNotification('Chart berhasil dibuat, memproses PDF...', 'info');
             } catch (chartError) {
                 console.error('Chart generation failed:', chartError);
@@ -1906,7 +1906,7 @@ async function validatePdfFormEnhanced(formData, dateMethod) {
 /**
  * Generate optimized uptime chart for PDF
  */
-async function generateUptimeChartOptimized() {
+async function generateUptimeChart() {
     try {
         // Check if we already have chart data cached
         const cacheKey = PDF_CONFIG.CHART_CACHE_KEY;
@@ -2614,35 +2614,6 @@ function showChartPreviewInModal() {
         console.error('Error showing chart preview:', error);
     }
 }
-
-async function exportPdf(period = 30, quarter = 'IV', year = new Date().getFullYear()) {
-    try {
-        const response = await fetch(`/api/history/export-pdf?period=${period}&quarter=${quarter}&year=${year}&format=download`, {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/pdf'
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error(`Server error: ${response.status} - ${await response.text()}`);
-        }
-
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `history-report-${year}-Q${quarter}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.URL.revokeObjectURL(url);
-    } catch (err) {
-        console.error("PDF Export Error:", err);
-        alert("Gagal export PDF. Cek console untuk detail error.");
-    }
-}
-
 
 // Configuration constants
 const PDF_CONFIG = {
@@ -4016,10 +3987,10 @@ function quickExportPdf() {
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-        console.log('Optimized PDF Export module loaded');
+        console.log('PDF Export module loaded');
     });
 } else {
-    console.log('Optimized PDF Export module loaded');
+    console.log('PDF Export module loaded');
 }
 
 // Export functions to global scope with error handling
@@ -4032,8 +4003,7 @@ try {
     window.quickExportPdf = quickExportPdf;
     window.initializeChartPreview = initializeChartPreview;
     window.showChartPreviewInModal = showChartPreviewInModal;
-    window.exportPdf = exportPdf;
-    window.generateUptimeChartOptimized = generateUptimeChartOptimized;
+    window.generateUptimeChart = generateUptimeChart;
 
     // Helper functions
     window.closePdfModal = closePdfModal;
