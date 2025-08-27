@@ -30,7 +30,7 @@
     <div class="max-w-7xl mx-auto flex justify-between items-center">
         <div class="flex items-center">
             <img src="https://pindad.com/assets/img/theme-1/logo.png" alt="Logo" class="h-10 w-10 object-contain mr-3">
-            <h1 class="text-xl md:text-2xl font-bold text-corporate"><span class="text-primary">Phone</span>MonitoringSystem</h1>
+            <h1 class="text-xl md:text-2xl font-bold text-corporate"><span class="text-primary">GISPhone</span>MonitoringSystem</h1>
         </div>
         <div class="flex items-center space-x-3">
             <span class="hidden md:inline bg-accent text-white px-3 py-1 text-xs rounded-full">Akses Internal</span>
@@ -119,7 +119,7 @@
       <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
         <div class="flex items-center">
           <img src="https://pindad.com/assets/img/theme-1/logo.png" class="h-8 w-8 object-contain mr-3">
-          <h1 class="text-xl font-semibold text-white"><span class="text-primary">Phone</span>MonitoringSystem</h1>
+          <h1 class="text-xl font-semibold text-white"><span class="text-primary">GISPhone</span>MonitoringSystem</h1>
         </div>
         <p class="text-sm text-center md:text-right">© 2025 Sistem Monitoring Telepon Pindad. Hak Cipta Dilindungi.</p>
       </div>

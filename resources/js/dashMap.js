@@ -1,7 +1,6 @@
-// resources/js/dashboard.js - FIXED CONNECTION VERSION
+// resources/js/dashboard.js
 import { io } from 'socket.io-client';
 
-// Global state management
 const state = {
     map: null,
     markers: new Map(),
@@ -12,7 +11,6 @@ const state = {
     syncInProgress: false
 };
 
-// Performance optimization: Debounce and throttle utilities
 const debounce = (func, delay) => {
     let timeoutId;
     return (...args) => {
@@ -32,21 +30,18 @@ const throttle = (func, limit) => {
     };
 };
 
-// FIXED: Token management - consistent strategy
+// Token handling
 function getAuthToken() {
-    // Priority 1: App config token (from blade template)
     if (window.AppConfig?.authToken) {
         console.log('Using App config token:', window.AppConfig.authToken);
         return window.AppConfig.authToken;
     }
 
-    // Priority 2: Legacy window.userToken
     if (window.userToken) {
         console.log('Using legacy window.userToken:', window.userToken);
         return window.userToken;
     }
 
-    // Priority 3: Stored tokens (untuk persistence)
     const storedToken = localStorage.getItem('auth_token') ||
                        sessionStorage.getItem('auth_token') ||
                        document.querySelector('meta[name="auth-token"]')?.getAttribute('content');
@@ -56,14 +51,12 @@ function getAuthToken() {
         return storedToken;
     }
 
-    // Priority 4: Fallback untuk development
     const fallbackToken = 'pindad_123';
     console.warn('Using fallback token:', fallbackToken);
 
     return fallbackToken;
 }
 
-// Token storage dan persistence
 function storeAuthToken(token) {
     if (!token) return;
     sessionStorage.setItem('auth_token', token);
@@ -76,7 +69,7 @@ function clearAuthToken() {
     console.log('Auth tokens cleared');
 }
 
-// FIXED: API configuration dengan token yang konsisten
+// API configuration
 function getAPIConfig() {
     const token = getAuthToken();
     return {
@@ -87,7 +80,6 @@ function getAPIConfig() {
     };
 }
 
-// FIXED: Socket configuration dengan better token handling
 function getSocketConfig() {
     const token = getAuthToken();
     return {
@@ -131,35 +123,26 @@ const STATUS_CONFIG = {
     }
 };
 
-// Initialize everything when DOM is loaded
 document.addEventListener('DOMContentLoaded', initializeDashboard);
 
 async function initializeDashboard() {
     if (state.isInitialized) return;
 
     try {
-        console.log('=== DASHBOARD INITIALIZATION ===');
-
-        // Validate authentication
         if (window.AppConfig && !window.AppConfig.isAuthenticated) {
             console.error('User not authenticated, redirecting...');
             window.location.href = '/login';
             return;
         }
 
-        // Store token for persistence
         const authToken = getAuthToken();
         storeAuthToken(authToken);
 
-        console.log('Auth token validated:', authToken);
-
-        // Initialize components in optimal order
         await Promise.all([
             initializeMap(),
             fetchNodes()
         ]);
 
-        // Initialize socket after basic setup
         initializeSocket();
 
         state.isInitialized = true;
@@ -174,7 +157,6 @@ async function initializeDashboard() {
 function initializeMap() {
     return new Promise((resolve) => {
         try {
-            // Initialize Leaflet map
             state.map = L.map('map', {
                 center: MAP_CONFIG.center,
                 zoom: MAP_CONFIG.zoom,
@@ -183,7 +165,6 @@ function initializeMap() {
                 preferCanvas: true
             });
 
-            // Tile layers with error handling
             const tileLayerOptions = {
                 maxZoom: MAP_CONFIG.maxZoom,
                 attribution: '© OpenStreetMap contributors',
@@ -198,7 +179,6 @@ function initializeMap() {
 
             osmLayer.addTo(state.map);
 
-            // Layer control
             const baseMaps = {
                 "OpenStreetMap": osmLayer,
                 "Satellite": satelliteLayer
@@ -209,12 +189,12 @@ function initializeMap() {
             resolve();
         } catch (error) {
             console.error('Map initialization failed:', error);
-            resolve(); // Don't block initialization
+            resolve();
         }
     });
 }
 
-// FIXED: Socket initialization dengan proper error handling dan logging
+// Socket initialization
 function initializeSocket() {
     if (state.socket?.connected) {
         console.log('Socket already connected');
@@ -222,16 +202,10 @@ function initializeSocket() {
     }
     const socketConfig = getSocketConfig();
     console.log('Socket URL:', socketConfig.url);
-    console.log('Auth info:', {
-        token: socketConfig.options.auth.token,
-        userId: socketConfig.options.auth.userId,
-        userName: socketConfig.options.auth.userName
-    });
 
     try {
         state.socket = io(socketConfig.url, socketConfig.options);
 
-        // Connection events
         state.socket.on("connect", () => {
             console.log("✅ Connected to Socket.IO server:", state.socket.id);
             console.log("Socket transport:", state.socket.io.engine.transport.name);
@@ -241,7 +215,6 @@ function initializeSocket() {
         state.socket.on("disconnect", (reason) => {
             console.log("❌ Disconnected from Socket.IO server:", reason);
 
-            // Different handling based on disconnect reason
             if (reason === 'io server disconnect') {
                 showToast('Server disconnected the connection', 'error');
             } else if (reason === 'io client disconnect') {
@@ -257,7 +230,6 @@ function initializeSocket() {
             console.error("Error description:", error.description);
             console.error("Error type:", error.type);
 
-            // Specific error handling
             if (error.message.includes('Unauthorized') ||
                 error.message.includes('Authentication') ||
                 error.message.includes('Invalid token')) {
@@ -272,7 +244,6 @@ function initializeSocket() {
             }
         });
 
-        // Reconnection events
         state.socket.on("reconnect", (attemptNumber) => {
             console.log(`✅ Reconnected after ${attemptNumber} attempts`);
             showToast('Connection restored', 'success');
@@ -291,7 +262,6 @@ function initializeSocket() {
             showToast('Unable to reconnect to server', 'error');
         });
 
-        // Server info event (sesuai dengan server.js)
         state.socket.on("server-info", (data) => {
             console.log("📋 Server info received:", data);
             if (data.message) {
@@ -299,13 +269,11 @@ function initializeSocket() {
             }
         });
 
-        // Server error event (sesuai dengan server.js)
         state.socket.on("server-error", (errorData) => {
             console.error("⚠️ Server error received:", errorData);
             showToast(errorData.message || 'Server error occurred', 'error');
         });
 
-        // FIXED: Handle device status updates sesuai dengan server.js
         state.socket.on("device-status", (statusData) => {
             console.log('📊 Received device status update:', statusData);
             console.log('Status data type:', typeof statusData);
@@ -314,7 +282,6 @@ function initializeSocket() {
             handleStatusUpdate(statusData);
         });
 
-        // Debug: Log all events
         state.socket.onAny((eventName, ...args) => {
             console.log(`🔊 Socket event '${eventName}':`, args);
         });
@@ -327,7 +294,7 @@ function initializeSocket() {
     }
 }
 
-// ENHANCED: Fetch dengan consistent API config dan 401 handling
+// Fetch API config , 401 handling
 async function fetchWithRetry(url, options = {}, retries = 3) {
     for (let i = 0; i < retries; i++) {
         try {
@@ -335,7 +302,7 @@ async function fetchWithRetry(url, options = {}, retries = 3) {
             const timeoutId = setTimeout(() => controller.abort(), 10000);
 
             const response = await fetch(url, {
-                headers: getAPIConfig(), // Use consistent API config
+                headers: getAPIConfig(),
                 ...options,
                 signal: controller.signal
             });
@@ -343,7 +310,6 @@ async function fetchWithRetry(url, options = {}, retries = 3) {
             clearTimeout(timeoutId);
 
             if (!response.ok) {
-                // Handle authentication errors
                 if (response.status === 401) {
                     console.error('Authentication failed, clearing tokens');
                     clearAuthToken();
@@ -377,15 +343,12 @@ async function fetchNodes() {
 
         console.log(`Fetched ${fetchedNodes.length} nodes from server`);
 
-        // Use array like map.js for consistency
         state.nodes = fetchedNodes.filter(node => isValidNode(node));
 
         console.log(`Processed ${state.nodes.length} valid nodes`);
 
-        // Apply any existing status updates
         applyLiveStatus();
 
-        // Update UI components
         updateAllComponents();
 
     } catch (error) {
@@ -428,7 +391,6 @@ function isValidNode(node) {
            !isNaN(parseFloat(node.coords[1]));
 }
 
-// FIXED: Handle status updates exactly like server.js format
 function handleStatusUpdate(statusData) {
     console.log('=== HANDLING STATUS UPDATE ===');
     console.log('Raw status data:', statusData);
@@ -456,10 +418,8 @@ function handleStatusUpdate(statusData) {
     try {
         console.log(`Processing ${statusData.length} status updates`);
 
-        // Store latest status data
         state.latestStatus = statusData;
 
-        // Log each status update for debugging
         statusData.forEach((update, index) => {
             console.log(`Status ${index + 1}:`, {
                 endpoint: update.endpoint,
@@ -468,10 +428,8 @@ function handleStatusUpdate(statusData) {
             });
         });
 
-        // Apply status updates to nodes
         applyLiveStatus();
 
-        // Update UI components
         requestAnimationFrame(() => {
             updateAllComponents();
             state.syncInProgress = false;
@@ -486,7 +444,7 @@ function handleStatusUpdate(statusData) {
     console.log('=== END STATUS UPDATE ===');
 }
 
-// FIXED: Apply live status updates sesuai format server
+// Apply live status updates sesuai dengan format server
 function applyLiveStatus() {
     if (!state.latestStatus || state.latestStatus.length === 0) {
         console.log('No latest status to apply');
@@ -499,10 +457,8 @@ function applyLiveStatus() {
 
     state.latestStatus.forEach(update => {
         console.log(`Processing update for endpoint: ${update.endpoint}`);
-
-        // Find node by endpoint (sesuai dengan format server)
         const node = state.nodes.find(n => {
-            // Hapus prefix "Endpoint " jika ada (sesuai server logic)
+
             const cleanEndpoint = update.endpoint.replace(/^Endpoint\s*/i, '');
             const nodeEndpoint = n.endpoint.replace(/^Endpoint\s*/i, '');
 
@@ -521,12 +477,10 @@ function applyLiveStatus() {
         const oldStatus = node.status;
         const newStatus = normalizeStatus(update.status);
 
-        // Update node status
         node.status = newStatus;
         node.last_ping_raw = update.timestamp || new Date().toISOString();
         node.lastPing = new Date(node.last_ping_raw).toLocaleTimeString('id-ID');
 
-        // Log status changes
         console.log(`Node ${node.endpoint} status updated: ${oldStatus} → ${newStatus} (original: "${update.status}")`);
         updatedCount++;
     });
@@ -534,7 +488,6 @@ function applyLiveStatus() {
     console.log(`Updated ${updatedCount} nodes with new status`);
 }
 
-// Status normalization sesuai dengan server data format
 function normalizeStatus(status) {
     if (!status) return 'offline';
 
@@ -542,7 +495,6 @@ function normalizeStatus(status) {
 
     console.log(`Normalizing status: "${statusStr}"`);
 
-    // Handle "unavailable" or "0 of X" patterns - OFFLINE
     if (statusStr.includes('unavailable') ||
         statusStr.includes('0 of') ||
         statusStr === 'offline') {
@@ -550,31 +502,26 @@ function normalizeStatus(status) {
         return 'offline';
     }
 
-    // Handle "not in use" patterns - ONLINE (available)
     if (statusStr.includes('not in use')) {
         console.log(`→ Mapped to: online`);
         return 'online';
     }
 
-    // Handle "in use" patterns - PARTIAL (busy)
     if (statusStr.includes('in use')) {
         console.log(`→ Mapped to: partial`);
         return 'partial';
     }
 
-    // Handle other available patterns
     if (statusStr.includes('available') || statusStr === 'online') {
         console.log(`→ Mapped to: online`);
         return 'online';
     }
 
-    // Handle explicit partial status
     if (statusStr.includes('partial') || statusStr.includes('busy')) {
         console.log(`→ Mapped to: partial`);
         return 'partial';
     }
 
-    // Default to offline for unknown status
     console.log(`→ Unknown status, mapped to: offline`);
     return 'offline';
 }
@@ -583,13 +530,11 @@ function normalizeStatus(status) {
 function updateMapMarkers() {
     if (!state.map) return;
 
-    // Clear existing markers
     state.markers.forEach(marker => {
         state.map.removeLayer(marker);
     });
     state.markers.clear();
 
-    // Create markers for all nodes
     const markersCreated = [];
     state.nodes.forEach(node => {
         const marker = createOptimizedMarker(node);
@@ -620,7 +565,6 @@ function createOptimizedMarker(node) {
         className: `marker-${node.status}`
     });
 
-    // Add device ID to marker element
     marker.on('add', function () {
         const element = marker.getElement();
         if (element) {
@@ -630,13 +574,11 @@ function createOptimizedMarker(node) {
         }
     });
 
-    // Lazy load popup content
     marker.bindPopup(() => getPopupContent(node, color), {
         maxWidth: 300,
         className: 'device-popup'
     });
 
-    // Add click event
     marker.on('click', () => {
         console.log('Clicked on device:', node.endpoint);
     });
@@ -658,7 +600,6 @@ function getLatLngFromCoords(coords) {
     return [MAP_CONFIG.center[0], MAP_CONFIG.center[1]]; // Default coordinates
 }
 
-// Debounced UI updates
 const debouncedUpdateStatusCounts = debounce(updateStatusCounts, 100);
 const debouncedUpdateStatusList = debounce(updateStatusList, 150);
 
@@ -705,7 +646,6 @@ function updateStatusList() {
     const statusListContainer = document.getElementById('status-list');
     if (!statusListContainer) return;
 
-    // Sort nodes by status priority (like map.js)
     const sortedNodes = [...state.nodes].sort((a, b) => {
         const statusOrder = { 'online': 0, 'partial': 1, 'offline': 2, 'unknown': 3 };
         const aOrder = statusOrder[normalizeStatus(a.status)] || 3;
@@ -715,7 +655,6 @@ function updateStatusList() {
         return a.name.localeCompare(b.name);
     });
 
-    // Use DocumentFragment for efficient DOM manipulation
     const fragment = document.createDocumentFragment();
     sortedNodes.forEach(node => {
         const itemElement = createStatusListElement(node);
@@ -751,7 +690,6 @@ function createStatusListElement(node) {
         </div>
     `;
 
-    // Add click event to focus on map
     div.addEventListener('click', () => {
         focusOnNode(node);
     });
@@ -772,7 +710,6 @@ function focusOnNode(node) {
     }
 }
 
-// Security helper
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
@@ -869,7 +806,6 @@ async function refreshData() {
     }
 }
 
-// ENHANCED: Debug functions dengan lebih banyak informasi koneksi
 function debugNodeData() {
     const stats = {
         totalNodes: state.nodes.length,
@@ -902,7 +838,6 @@ function debugNodeData() {
     return stats;
 }
 
-// ENHANCED: Token debug function
 function debugTokenInfo() {
     const tokenInfo = {
         appConfigToken: window.AppConfig?.authToken || null,
@@ -927,14 +862,11 @@ function debugTokenInfo() {
     return tokenInfo;
 }
 
-// ENHANCED: Connection test function
 function testConnection() {
     console.log('=== TESTING CONNECTION ===');
 
-    // Test token first
     debugTokenInfo();
 
-    // Test socket connection
     if (state.socket) {
         console.log('Socket status:', {
             connected: state.socket.connected,
@@ -971,7 +903,6 @@ function testConnection() {
     console.log('=== END CONNECTION TEST ===');
 }
 
-// ENHANCED: Force reconnect function
 function forceReconnect() {
     console.log('Forcing socket reconnection with token refresh...');
 
@@ -979,7 +910,6 @@ function forceReconnect() {
         state.socket.disconnect();
     }
 
-    // Clear cached tokens and re-store
     clearAuthToken();
     storeAuthToken(getAuthToken());
 
@@ -990,31 +920,22 @@ function forceReconnect() {
     showToast('Reconnecting with refreshed token...', 'info');
 }
 
-// Export functions for global access
 Object.assign(window, {
     refreshMap,
     refreshData: debouncedRefreshData,
     debugNodeData,
     testConnection,
     forceReconnect,
-
-    // Debug access to state
     getDashboardState: () => ({ ...state }),
-
-    // Token utilities
     getAuthToken,
     debugTokenInfo,
     clearAuthToken,
     storeAuthToken,
     getAPIConfig,
     getSocketConfig,
-
-    // Utility functions
     applyLiveStatus,
     normalizeStatus,
     focusOnNode,
-
-    // Socket management
     getSocket: () => state.socket,
     initializeSocket
 });
@@ -1068,11 +989,10 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
-// Auto connection monitoring
 let connectionCheckInterval;
 
 function startConnectionMonitoring() {
-    // Check connection every 30 seconds
+    // Check connection
     connectionCheckInterval = setInterval(() => {
         if (state.socket && !state.socket.connected) {
             console.log('Connection lost detected, attempting to reconnect...');
@@ -1091,7 +1011,6 @@ function stopConnectionMonitoring() {
     }
 }
 
-// Enhanced cleanup on page unload
 window.addEventListener('beforeunload', () => {
     console.log('Dashboard unloading, cleaning up...');
 
@@ -1100,10 +1019,8 @@ window.addEventListener('beforeunload', () => {
         state.socket.disconnect();
     }
 
-    // Stop monitoring
     stopConnectionMonitoring();
 
-    // Clear intervals and timeouts
     state.markers.clear();
     state.nodes.length = 0;
     state.latestStatus.length = 0;
@@ -1111,12 +1028,10 @@ window.addEventListener('beforeunload', () => {
     console.log('Cleanup completed');
 });
 
-// Optimized error handling
 window.addEventListener('error', throttle((event) => {
     console.error('Unhandled error:', event.error);
     showToast('An unexpected error occurred', 'error');
 
-    // Check connection if error is network related
     if (event.error.message && event.error.message.includes('fetch')) {
         testConnection();
     }
@@ -1125,7 +1040,6 @@ window.addEventListener('error', throttle((event) => {
 window.addEventListener('unhandledrejection', throttle((event) => {
     console.error('Unhandled promise rejection:', event.reason);
 
-    // Check if it's a connection issue
     if (event.reason && event.reason.message) {
         if (event.reason.message.includes('fetch') ||
             event.reason.message.includes('network') ||
@@ -1138,18 +1052,8 @@ window.addEventListener('unhandledrejection', throttle((event) => {
     }
 }, 5000));
 
-// Start monitoring after initialization
 setTimeout(() => {
     if (state.isInitialized) {
         startConnectionMonitoring();
     }
 }, 5000);
-
-console.log('✅ Fixed Dashboard.js loaded successfully - Connection focused version');
-console.log('🔑 Available debug functions:');
-console.log('  - testConnection() - Test socket and API connection');
-console.log('  - forceReconnect() - Force socket reconnection');
-console.log('  - debugNodeData() - Debug dashboard state');
-console.log('  - debugTokenInfo() - Debug token information');
-console.log('  - clearAuthToken() - Clear stored tokens');
-console.log('🔍 Expected server token: pindad_123 (or from AppConfig)');

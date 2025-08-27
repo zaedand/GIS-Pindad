@@ -208,8 +208,8 @@
         window.appData = {
             routes: {
                 storeUser: "{{ route('users.store') }}",
-                editUser: "{{ url('/users') }}", // e.g., /users/{id}/edit
-                updateUser: "{{ url('/users') }}", // e.g., /users/{id}/update
+                editUser: "{{ url('/users') }}",
+                updateUser: "{{ url('/users') }}",
             },
             csrfToken: "{{ csrf_token() }}",
             methodField: @json(csrf_field() . method_field('PUT'))
