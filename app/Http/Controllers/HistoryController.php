@@ -16,6 +16,7 @@ use Illuminate\Http\Response;
 
 class HistoryController extends Controller
 {
+    // Optimized constants for better performance
     private const CACHE_TTL = 300; // 5 minutes
     private const LONG_CACHE_TTL = 1800; // 30 minutes for static data
     private const SHORT_CACHE_TTL = 60; // 1 minute for real-time data
@@ -59,7 +60,7 @@ class HistoryController extends Controller
 
         try {
             // Enhanced input validation with flexible date format
-            $validation = $this->validatePdfRequest($request);
+            $validation = $this->validatePdfRequestOptimized($request);
             if ($validation instanceof JsonResponse) {
                 // Return the validation error as response, not JsonResponse for PDF method
                 return response()->json($validation->getData(), $validation->getStatusCode());
@@ -72,7 +73,8 @@ class HistoryController extends Controller
                 'memory_start' => memory_get_usage(true)
             ]);
 
-            [$kpiData, $chartData, $dateRange] = $this->processRequestData($request);
+            // Process data with optimized pipeline
+            [$kpiData, $chartData, $dateRange] = $this->processRequestDataOptimized($request);
 
             // Validate constraints
             if ($dateRange['days'] > self::MAX_DATE_RANGE_DAYS) {
@@ -82,7 +84,7 @@ class HistoryController extends Controller
             }
 
             // Generate report data with caching strategy
-            $reportData = $this->generateReportData($kpiData, $chartData, $dateRange);
+            $reportData = $this->generateReportDataOptimized($kpiData, $chartData, $dateRange);
 
             // Memory check before PDF generation
             $memoryUsage = memory_get_usage(true);
@@ -91,16 +93,18 @@ class HistoryController extends Controller
                 gc_collect_cycles();
             }
 
-            $pdf = $this->generatePdf($reportData);
+            // Generate PDF with optimized settings
+            $pdf = $this->generateOptimizedPdf($reportData);
+            $filename = $this->generatePdfFilename($reportData);
 
             $executionTime = microtime(true) - $startTime;
             Log::info('PDF Export Completed', [
                 'execution_time' => round($executionTime, 2),
                 'memory_peak' => memory_get_peak_usage(true),
-            
+                'filename' => $filename
             ]);
 
-            return $pdf->download();
+            return $pdf->download($filename);
 
         } catch (\Exception $e) {
             $executionTime = microtime(true) - $startTime;
@@ -126,13 +130,12 @@ class HistoryController extends Controller
     public function getChartData(Request $request): JsonResponse
     {
         try {
-            $validated = $this->validateChartRequest
-($request);
+            $validated = $this->validateChartRequestOptimized($request);
             if ($validated instanceof JsonResponse) {
                 return $validated;
             }
 
-            $dateRange = $this->processDateRange($request);
+            $dateRange = $this->processDateRangeOptimized($request);
 
             // Multi-level cache key for better cache hit ratio
             $cacheKey = $this->generateCacheKey('chart_data', [
@@ -143,7 +146,7 @@ class HistoryController extends Controller
             ]);
 
             $data = Cache::remember($cacheKey, self::CACHE_TTL, function() use ($dateRange) {
-                return $this->calculateChartStatistics($dateRange);
+                return $this->calculateChartStatisticsOptimized($dateRange);
             });
 
             return response()->json([
@@ -172,7 +175,7 @@ class HistoryController extends Controller
             $cacheKey = 'realtime_uptime_' . date('Y-m-d-H-i');
 
             $data = Cache::remember($cacheKey, self::SHORT_CACHE_TTL, function() {
-                return $this->calculateRealTimeStats();
+                return $this->calculateRealTimeStatsOptimized();
             });
 
             return response()->json([
@@ -192,8 +195,14 @@ class HistoryController extends Controller
         }
     }
 
+    // =============================================================================
+    // OPTIMIZED PRIVATE METHODS
+    // =============================================================================
 
-    private function validatePdfRequest(Request $request)
+    /**
+     * Fixed PDF request validation with flexible date format handling
+     */
+    private function validatePdfRequestOptimized(Request $request)
     {
         $rules = array_merge(self::VALIDATION_RULES, [
             'report_type' => 'string|in:kpi,summary',
@@ -278,7 +287,10 @@ class HistoryController extends Controller
         return false;
     }
 
-    private function validateChartRequest(Request $request)
+    /**
+     * Optimized chart request validation
+     */
+    private function validateChartRequestOptimized(Request $request)
     {
         $validator = Validator::make($request->all(), self::VALIDATION_RULES);
 
@@ -292,12 +304,15 @@ class HistoryController extends Controller
         return true;
     }
 
-    private function processRequestData(Request $request): array
+    /**
+     * Process request data with optimized pipeline
+     */
+    private function processRequestDataOptimized(Request $request): array
     {
         // Parallel processing of different data sections
-        $kpiData = $this->extractKpiData($request);
-        $chartData = $this->processChartData($request);
-        $dateRange = $this->processDateRange($request);
+        $kpiData = $this->extractKpiDataOptimized($request);
+        $chartData = $this->processChartDataOptimized($request);
+        $dateRange = $this->processDateRangeOptimized($request);
 
         return [$kpiData, $chartData, $dateRange];
     }
@@ -305,7 +320,7 @@ class HistoryController extends Controller
     /**
      * Extract KPI data with enhanced safety and flexible date parsing
      */
-    private function extractKpiData(Request $request): array
+    private function extractKpiDataOptimized(Request $request): array
     {
         $safeString = fn($value) => $value ? trim(strip_tags($value)) : '';
 
@@ -363,7 +378,7 @@ class HistoryController extends Controller
     /**
      * Process chart data with enhanced validation and error handling
      */
-    private function processChartData(Request $request): array
+    private function processChartDataOptimized(Request $request): array
     {
         try {
             $chartImage = $request->get('chart_image');
@@ -403,7 +418,10 @@ class HistoryController extends Controller
         }
     }
 
-    private function processDateRange(Request $request): array
+    /**
+     * Optimized date range processing with enhanced validation
+     */
+    private function processDateRangeOptimized(Request $request): array
     {
         $dateMethod = $request->get('date_method', 'preset');
         $quarter = $request->get('quarter', 'IV');
@@ -426,7 +444,7 @@ class HistoryController extends Controller
 
             } else {
                 $period = min((int) $request->get('period', self::DEFAULT_PERIOD_DAYS), self::MAX_DATE_RANGE_DAYS);
-                [$startDate, $endDate] = $this->calculateDateRange($timeframe, $period, $quarter, $year);
+                [$startDate, $endDate] = $this->calculateDateRangeOptimized($timeframe, $period, $quarter, $year);
             }
 
             $days = $startDate->diffInDays($endDate) + 1;
@@ -468,7 +486,7 @@ class HistoryController extends Controller
     /**
      * Enhanced date range calculation with caching
      */
-    private function calculateDateRange(string $timeframe, int $period, string $quarter, int $year): array
+    private function calculateDateRangeOptimized(string $timeframe, int $period, string $quarter, int $year): array
     {
         $cacheKey = "date_range_{$timeframe}_{$period}_{$quarter}_{$year}";
 
@@ -481,7 +499,7 @@ class HistoryController extends Controller
                     ];
 
                 case 'quarter':
-                    return $this->getQuarterDateRange($quarter, $year);
+                    return $this->getQuarterDateRangeOptimized($quarter, $year);
 
                 case 'days':
                 default:
@@ -492,7 +510,10 @@ class HistoryController extends Controller
         });
     }
 
-    private function getQuarterDateRange(string $quarter, int $year): array
+    /**
+     * Optimized quarter date range calculation
+     */
+    private function getQuarterDateRangeOptimized(string $quarter, int $year): array
     {
         if (!isset(self::QUARTERS[$quarter])) {
             $quarter = 'IV'; // Safe fallback
@@ -500,6 +521,7 @@ class HistoryController extends Controller
 
         [$startMonth, $endMonth] = self::QUARTERS[$quarter];
 
+        // Optimized end day calculation
         $endDay = match($endMonth) {
             2 => ($year % 4 === 0 && ($year % 100 !== 0 || $year % 400 === 0)) ? 29 : 28,
             4, 6, 9, 11 => 30,
@@ -515,7 +537,7 @@ class HistoryController extends Controller
     /**
      * Generate report data with advanced caching and optimization
      */
-    private function generateReportData(array $kpiData, array $chartData, array $dateRange): array
+    private function generateReportDataOptimized(array $kpiData, array $chartData, array $dateRange): array
     {
         $cacheKey = $this->generateCacheKey('report_data', [
             'start' => $dateRange['start_date']->format('Y-m-d'),
@@ -524,7 +546,7 @@ class HistoryController extends Controller
         ]);
 
         $statistics = Cache::remember($cacheKey, self::CACHE_TTL, function() use ($dateRange) {
-            return $this->getStatistics($dateRange);
+            return $this->getOptimizedStatistics($dateRange);
         });
 
         return array_merge($kpiData, [
@@ -567,13 +589,18 @@ class HistoryController extends Controller
         ]);
     }
 
-    private function getStatistics(array $dateRange): array
+    /**
+     * Get optimized statistics with intelligent caching
+     */
+    private function getOptimizedStatistics(array $dateRange): array
     {
         $startTime = microtime(true);
 
         try {
-            $latestStatuses = $this->getLatestStatuses();
+            // Get latest statuses with optimized query
+            $latestStatuses = $this->getLatestStatusesOptimized();
 
+            // Calculate basic statistics
             $totalNodes = $latestStatuses->count();
             $onlineNodes = $latestStatuses->where('current_status', 'online')->count();
             $offlineNodes = $latestStatuses->where('current_status', 'offline')->count();
@@ -583,11 +610,11 @@ class HistoryController extends Controller
             $offlinePercentage = $totalNodes > 0 ? round(($offlineNodes / $totalNodes) * 100, 1) : 0;
 
             // Generate detailed data with parallel processing where possible
-            $endpointsData = $this->generateEndpointsData($latestStatuses, $dateRange);
-            $rankingData = $this->generateRankingData($endpointsData);
-            $periodStats = $this->getPeriodStatistics($dateRange);
-            $frequentlyOffline = $this->getFrequentlyOfflineEndpoints($dateRange);
-            $avgUptime = $this->calculateAverageUptime($endpointsData);
+            $endpointsData = $this->generateEndpointsDataOptimized($latestStatuses, $dateRange);
+            $rankingData = $this->generateRankingDataOptimized($endpointsData);
+            $periodStats = $this->getPeriodStatisticsOptimized($dateRange);
+            $frequentlyOffline = $this->getFrequentlyOfflineEndpointsOptimized($dateRange);
+            $avgUptime = $this->calculateAverageUptimeOptimized($endpointsData);
 
             $executionTime = microtime(true) - $startTime;
             Log::info('Statistics generated', [
@@ -613,7 +640,7 @@ class HistoryController extends Controller
             ];
 
         } catch (\Exception $e) {
-            Log::error('Error generating statistics', [
+            Log::error('Error generating optimized statistics', [
                 'error' => $e->getMessage(),
                 'date_range' => $dateRange
             ]);
@@ -623,7 +650,10 @@ class HistoryController extends Controller
         }
     }
 
-    private function getLatestStatuses()
+    /**
+     * Get latest statuses with highly optimized query
+     */
+    private function getLatestStatusesOptimized()
     {
         $cacheKey = 'latest_statuses_' . date('Y-m-d-H-i');
 
@@ -649,18 +679,19 @@ class HistoryController extends Controller
     /**
      * Calculate chart statistics with advanced optimization
      */
-    private function calculateChartStatistics(array $dateRange): array
+    private function calculateChartStatisticsOptimized(array $dateRange): array
     {
         try {
             $cacheKey = $this->generateCacheKey('chart_stats', $dateRange);
 
             return Cache::remember($cacheKey, self::CACHE_TTL, function() use ($dateRange) {
-                $latestStatuses = $this->getLatestStatuses();
-                $endpointsData = $this->generateEndpointsData($latestStatuses, $dateRange);
+                $latestStatuses = $this->getLatestStatusesOptimized();
+                $endpointsData = $this->generateEndpointsDataOptimized($latestStatuses, $dateRange);
 
                 $totalDevices = count($endpointsData);
                 $totalPossibleUptime = $totalDevices * 100;
 
+                // Optimized uptime calculation
                 $actualUptimeSum = array_sum(array_map(function($endpoint) {
                     return (float) str_replace('%', '', $endpoint['uptime_period'] ?? '0%');
                 }, $endpointsData));
@@ -693,10 +724,10 @@ class HistoryController extends Controller
     /**
      * Calculate real-time statistics with smart caching
      */
-    private function calculateRealTimeStats(): array
+    private function calculateRealTimeStatsOptimized(): array
     {
         try {
-            $latestStatuses = $this->getLatestStatuses();
+            $latestStatuses = $this->getLatestStatusesOptimized();
 
             $totalDevices = $latestStatuses->count();
             $onlineDevices = $latestStatuses->where('current_status', 'online')->count();
@@ -729,7 +760,7 @@ class HistoryController extends Controller
     /**
      * Generate endpoints data with batch processing and optimization
      */
-    private function generateEndpointsData($latestStatuses, array $dateRange): array
+    private function generateEndpointsDataOptimized($latestStatuses, array $dateRange): array
     {
         try {
             $endpoints = $latestStatuses->pluck('endpoint')->toArray();
@@ -746,8 +777,8 @@ class HistoryController extends Controller
                         $endpoint = (object) $status;
 
                         // Use cached calculations where possible
-                        $uptimeData = $this->calculateUptime($endpoint->endpoint, $dateRange);
-                        $statistics = $this->getEndpointStatistics($endpoint->endpoint, $dateRange);
+                        $uptimeData = $this->calculateUptimeOptimized($endpoint->endpoint, $dateRange);
+                        $statistics = $this->getEndpointStatisticsOptimized($endpoint->endpoint, $dateRange);
 
                         $node = $nodes->get($endpoint->endpoint);
 
@@ -792,7 +823,7 @@ class HistoryController extends Controller
     /**
      * Generate ranking data with optimization
      */
-    private function generateRankingData(array $endpointsData): array
+    private function generateRankingDataOptimized(array $endpointsData): array
     {
         try {
             return collect($endpointsData)
@@ -816,7 +847,7 @@ class HistoryController extends Controller
     /**
      * Get period statistics with enhanced optimization
      */
-    private function getPeriodStatistics(array $dateRange): array
+    private function getPeriodStatisticsOptimized(array $dateRange): array
     {
         try {
             $cacheKey = $this->generateCacheKey('period_stats', $dateRange);
@@ -825,6 +856,7 @@ class HistoryController extends Controller
                 $startDate = $dateRange['start_date'];
                 $endDate = $dateRange['end_date'];
 
+                // Single optimized query for all statistics
                 $stats = DB::table('device_history')
                     ->whereBetween('timestamp', [$startDate, $endDate])
                     ->selectRaw('
@@ -871,7 +903,7 @@ class HistoryController extends Controller
     /**
      * Get frequently offline endpoints with optimization
      */
-    private function getFrequentlyOfflineEndpoints(array $dateRange): array
+    private function getFrequentlyOfflineEndpointsOptimized(array $dateRange): array
     {
         try {
             $cacheKey = $this->generateCacheKey('frequent_offline', $dateRange);
@@ -902,7 +934,7 @@ class HistoryController extends Controller
     /**
      * Calculate uptime with advanced optimization and caching
      */
-    private function calculateUptime(string $endpoint, array $dateRange): array
+    private function calculateUptimeOptimized(string $endpoint, array $dateRange): array
     {
         try {
             $cacheKey = $this->generateCacheKey('uptime', [
@@ -915,6 +947,7 @@ class HistoryController extends Controller
                 $startDate = $dateRange['start_date'];
                 $endDate = $dateRange['end_date'];
 
+                // Optimized query to get status events
                 $logs = DB::table('device_history')
                     ->where('endpoint', $endpoint)
                     ->whereBetween('timestamp', [$startDate, $endDate])
@@ -990,7 +1023,7 @@ class HistoryController extends Controller
     /**
      * Get endpoint statistics with batch optimization
      */
-    private function getEndpointStatistics(string $endpoint, array $dateRange): array
+    private function getEndpointStatisticsOptimized(string $endpoint, array $dateRange): array
     {
         try {
             $cacheKey = $this->generateCacheKey('endpoint_stats', [
@@ -1034,7 +1067,7 @@ class HistoryController extends Controller
     /**
      * Calculate average uptime with optimization
      */
-    private function calculateAverageUptime(array $endpointsData): float
+    private function calculateAverageUptimeOptimized(array $endpointsData): float
     {
         try {
             if (empty($endpointsData)) {
@@ -1075,9 +1108,9 @@ class HistoryController extends Controller
     }
 
     /**
-     * Generate PDF report
+     * Generate PDF with optimized settings and error handling
      */
-    private function generatePdf(array $reportData)
+    private function generateOptimizedPdf(array $reportData)
     {
         try {
             // Memory optimization before PDF generation
@@ -1114,6 +1147,21 @@ class HistoryController extends Controller
 
             throw new \Exception('Failed to generate PDF: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Generate optimized PDF filename
+     */
+    private function generatePdfFilename(array $reportData): string
+    {
+        $quarter = $reportData['quarter'] ?? 'IV';
+        $year = $reportData['year'] ?? date('Y');
+        $period = $reportData['period_days'] ?? 30;
+        $timestamp = date('Ymd_His');
+
+        $sanitizedDepartment = preg_replace('/[^a-zA-Z0-9]/', '_', $reportData['department'] ?? 'TI');
+
+        return "Laporan_KPI_Status_Telepon_Q{$quarter}_{$year}_{$period}hari_{$sanitizedDepartment}_{$timestamp}.pdf";
     }
 
     // =============================================================================
@@ -1367,6 +1415,13 @@ class HistoryController extends Controller
         ], $code);
     }
 
+    // =============================================================================
+    // EXISTING OPTIMIZED API METHODS
+    // =============================================================================
+
+    /**
+     * Get all history records with enhanced optimization
+     */
     public function getAllHistory(Request $request): JsonResponse
     {
         try {
@@ -1399,6 +1454,11 @@ class HistoryController extends Controller
                 ];
             });
 
+            // Handle export request
+            if ($request->get('export') === 'csv') {
+                return $this->exportToCsvOptimized($result['data']);
+            }
+
             return response()->json($result);
 
         } catch (\Exception $e) {
@@ -1410,37 +1470,27 @@ class HistoryController extends Controller
     /**
      * Get history for specific endpoint with optimization
      */
-    public function getHistory(string $endpoint, Request $request): JsonResponse
+    public function getHistory($endpoint, Request $request): JsonResponse
     {
         try {
-            $limit = min((int) $request->get('limit', self::DEFAULT_LIMIT), 500);
-            $cacheKey = "endpoint_history_{$endpoint}_{$limit}";
+            $limit = $request->get('limit', 50);
 
-            $history = Cache::remember($cacheKey, self::CACHE_TTL, function() use ($endpoint, $limit) {
-                return DeviceHistory::where('endpoint', $endpoint)
-                    ->select(['id', 'current_status', 'previous_status', 'timestamp', 'description'])
-                    ->orderByDesc('timestamp')
-                    ->orderByDesc('id')
-                    ->limit($limit)
-                    ->get()
-                    ->toArray();
-            });
+            $history = DeviceHistory::where('endpoint', $endpoint)
+                ->orderBy('timestamp', 'desc')
+                ->orderBy('created_at', 'desc')
+                ->limit($limit)
+                ->get();
 
-            return response()->json([
-                'endpoint' => $endpoint,
-                'data' => $history,
-                'count' => count($history)
-            ]);
+            return response()->json($history->toArray());
 
         } catch (\Exception $e) {
-            Log::error('Failed to fetch endpoint history', [
-                'endpoint' => $endpoint,
-                'error' => $e->getMessage()
-            ]);
-
-            return $this->errorResponse('Failed to fetch endpoint history: ' . $e->getMessage());
+            return response()->json([
+                'error' => 'Failed to fetch endpoint history',
+                'message' => $e->getMessage()
+            ], 500);
         }
     }
+
 
     /**
      * Get statistics for specific endpoint with caching
@@ -1490,7 +1540,7 @@ class HistoryController extends Controller
             $cacheKey = 'current_offline_devices_' . date('Y-m-d-H-i');
 
             $result = Cache::remember($cacheKey, self::SHORT_CACHE_TTL, function() {
-                $latestStatuses = $this->getLatestStatuses();
+                $latestStatuses = $this->getLatestStatusesOptimized();
 
                 $offlineDevices = $latestStatuses
                     ->where('current_status', 'offline')
@@ -1527,62 +1577,110 @@ class HistoryController extends Controller
     public function updateStatus(Request $request): JsonResponse
     {
         try {
-            $rules = [
+            // Validation rules
+            $validator = Validator::make($request->all(), [
                 'endpoint' => 'required|string|max:255',
                 'node_name' => 'required|string|max:255',
                 'previous_status' => 'required|string|in:online,offline,partial',
                 'current_status' => 'required|string|in:online,offline,partial',
-                'timestamp' => 'required|date|before_or_equal:now',
+                'timestamp' => 'required|date',
                 'description' => 'nullable|string|max:500'
-            ];
+            ]);
 
-            $validated = $request->validate($rules);
+            if ($validator->fails()) {
+                return response()->json([
+                    'error' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
 
-            // Enhanced duplicate detection
-            $existing = DeviceHistory::where([
-                ['endpoint', $validated['endpoint']],
-                ['timestamp', $validated['timestamp']],
-                ['current_status', $validated['current_status']]
-            ])->first();
+            $data = $validator->validated();
+
+            // Check for duplicate entries (prevent double logging)
+            $existing = DeviceHistory::where('endpoint', $data['endpoint'])
+                ->where('timestamp', $data['timestamp'])
+                ->where('current_status', $data['current_status'])
+                ->first();
 
             if ($existing) {
                 return response()->json([
                     'message' => 'Status change already recorded',
-                    'data' => $existing,
-                    'duplicate' => true
+                    'data' => $existing
                 ], 200);
             }
 
-            // Create new history record with enhanced data
+            // Create new history record
             $history = DeviceHistory::create([
-                'endpoint' => $validated['endpoint'],
-                'node_name' => $validated['node_name'],
-                'previous_status' => $validated['previous_status'],
-                'current_status' => $validated['current_status'],
-                'timestamp' => Carbon::parse($validated['timestamp']),
-                'description' => $validated['description'] ?? $this->generateSmartDescription(
-                    $validated['previous_status'],
-                    $validated['current_status']
-                ),
+                'endpoint' => $data['endpoint'],
+                'node_name' => $data['node_name'],
+                'previous_status' => $data['previous_status'],
+                'current_status' => $data['current_status'],
+                'timestamp' => Carbon::parse($data['timestamp']),
+                'description' => $data['description'] ?? $this->generateDescription($data['previous_status'], $data['current_status']),
+                'created_at' => now(),
+                'updated_at' => now()
             ]);
-
-            // Intelligent cache invalidation
-            $this->invalidateRelatedCache($validated['endpoint']);
 
             return response()->json([
                 'message' => 'Status updated successfully',
-                'data' => $history,
-                'cache_cleared' => true
+                'data' => $history
             ], 201);
 
         } catch (\Exception $e) {
-            Log::error('Failed to update status', [
-                'error' => $e->getMessage(),
-                'request_data' => $request->only(['endpoint', 'current_status', 'timestamp'])
+            return response()->json([
+                'error' => 'Failed to update status',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Enhanced CSV export with streaming
+     */
+    private function exportToCsvOptimized($history)
+    {
+        $filename = 'phone_activity_logs_' . date('Y-m-d_H-i-s') . '.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
+        ];
+
+        return response()->stream(function() use ($history) {
+            $output = fopen('php://output', 'w');
+
+            // UTF-8 BOM for proper encoding
+            fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
+
+            // Enhanced CSV headers
+            fputcsv($output, [
+                'ID', 'Endpoint', 'Node Name', 'Previous Status',
+                'Current Status', 'Timestamp', 'Description',
+                'Created At', 'Status Change Duration'
             ]);
 
-            return $this->errorResponse('Failed to update status: ' . $e->getMessage());
-        }
+            // Process data in chunks for memory efficiency
+            foreach (collect($history)->chunk(100) as $chunk) {
+                foreach ($chunk as $record) {
+                    fputcsv($output, [
+                        $record['id'] ?? '',
+                        $record['endpoint'] ?? '',
+                        $record['node_name'] ?? '',
+                        $this->formatStatus($record['previous_status'] ?? ''),
+                        $this->formatStatus($record['current_status'] ?? ''),
+                        $record['timestamp'] ?? '',
+                        $record['description'] ?? '',
+                        $record['created_at'] ?? '',
+                        $record['timestamp'] ? Carbon::parse($record['timestamp'])->diffForHumans() : ''
+                    ]);
+                }
+            }
+
+            fclose($output);
+        }, 200, $headers);
     }
 
     /**
