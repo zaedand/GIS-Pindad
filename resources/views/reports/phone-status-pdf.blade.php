@@ -27,12 +27,12 @@
         .header .title {
             font-size: 20px;
             font-weight: bold;
-            margin: 0; /* hilangkan margin default h3 */
+            margin-right: 0;
         }
 
         .header .header-text {
             flex: 1;
-            text-align: center; /* teks di tengah */
+            text-align: center;
         }
 
         .header .header-text h3 {
@@ -171,13 +171,13 @@
 </head>
 <body>
     <!-- Header Section -->
-    <div class="header">
+    <div border="1" class="header">
     @php
         $logoPath = public_path('img/logo_PINDAD_sedang10.jpg');
         $logoBase64 = base64_encode(file_get_contents($logoPath));
     @endphp
 
-    <img src="data:image/jpeg;base64,{{ $logoBase64 }}" class="logo" alt="Logo Pindad"><h3 class="title">PT PINDAD (Persero)</h3>
+    <img src="data:image/jpeg;base64,{{ $logoBase64 }}" class="logo" alt="Logo Pindad"><h3 class="title">PT PINDAD</h3>
 
     <div class="header-text">
 
@@ -217,10 +217,10 @@
             <td>Periode Monitoring</td>
             <td>: {{ $start_date }} s/d {{ $end_date }} ({{ $period_days }} hari)</td>
         </tr>
-        <tr>
+        <!-- <tr>
             <td>Tanggal Generate</td>
             <td>: {{ $generated_date }}</td>
-        </tr>
+        </tr> -->
     </table>
 
     <!-- Summary Section -->
@@ -362,7 +362,6 @@
     </table>
 
     @if(is_array($ranking_data) && count($ranking_data) > 0)
-    <!-- Page Break -->
     <div class="page-break"></div>
 
     <!-- Ranking Section -->

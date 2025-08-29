@@ -1796,8 +1796,8 @@ async function handlePdfExport(format = 'download') {
 
         // Final progress notification
         const processingMsg = format === 'download' ?
-            'Mengunduh laporan PDF... Estimasi: 15-45 detik' :
-            'Membuka preview PDF... Estimasi: 15-45 detik';
+            'Mengunduh laporan PDF... Estimasi: 1-20 detik' :
+            'Membuka preview PDF... Estimasi: 1-20 detik';
 
         showNotification(processingMsg, 'info');
 
@@ -3011,9 +3011,9 @@ function createFooterSection(todayStr) {
                 Informasi Footer & Tanda Tangan
             </h3>
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                ${createSignatureSection('prepared', 'DISIAPKAN OLEH', 'OFFICER MANAJEMEN SISTEM KOMPUTER TUREN', 'MUHAMMAD', todayStr)}
-                ${createSignatureSection('approved', 'DISETUJUI OLEH', 'MANAGER', 'kimi', todayStr)}
-                ${createSignatureSection('validated', 'DISAHKAN OLEH', 'MANAGER LAYANAN TI BANDUNG TUREN', 'RIZKY', todayStr)}
+                ${createSignatureSection('prepared', 'DISIAPKAN OLEH', 'OFFICER QUALITY CONTROL LAYANAN TI BANDUNG TUREN', 'SOFI R', todayStr)}
+                ${createSignatureSection('approved', 'DISETUJUI OLEH', 'PLT EXPERT LAYANAN TI BANDUNG TUREN', 'RIZKY F', todayStr)}
+                ${createSignatureSection('validated', 'DISAHKAN OLEH', 'MANAGER LAYANAN TI BANDUNG TUREN', 'WILIANTO S', todayStr)}
             </div>
         </div>
     `;
@@ -3051,33 +3051,7 @@ function createSignatureSection(type, title, defaultJabatan, defaultNama, todayS
 function createChartPreviewSection() {
     return `
         <div class="bg-yellow-50 rounded-xl p-4 sm:p-6 border border-yellow-200">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                <i class="fas fa-chart-pie text-yellow-600"></i>
-                Preview Chart Uptime/Downtime
-            </h3>
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- Chart Container -->
-                <div class="bg-white rounded-lg p-4 border border-yellow-300">
-                    <div class="text-center">
-                        <canvas id="preview-uptime-chart" width="250" height="250" style="max-width: 250px;"></canvas>
-                        <div id="chart-loading" class="hidden text-sm text-gray-500 mt-2">Loading chart...</div>
-                    </div>
-                </div>
-
-                <!-- Chart Statistics -->
-                <div class="bg-white rounded-lg p-4 border border-yellow-300">
-                    <h4 class="font-semibold text-gray-700 mb-3">Statistik Chart:</h4>
-                    <div class="space-y-2 text-sm">
-                        ${createChartStatistics()}
-                    </div>
-                    <div id="chart-assessment" class="mt-4 p-3 rounded-lg text-sm font-medium">
-                        <div class="flex items-center gap-2">
-                            <i class="fas fa-info-circle"></i>
-                            <span id="chart-assessment-text">Menghitung assessment...</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            
 
             <!-- Chart Options -->
             <div class="mt-4 bg-white rounded-lg p-4 border border-yellow-300">
@@ -3121,13 +3095,7 @@ function createChartStatistics() {
 function createStatisticsPreviewSection() {
     return `
         <div class="bg-blue-100 rounded-xl p-4 sm:p-6 border border-blue-200">
-            <h4 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                <i class="fas fa-chart-pie text-blue-600"></i>
-                Preview Statistik yang Akan Dilaporkan
-            </h4>
-            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 text-center">
-                ${createStatisticCards()}
-            </div>
+            
         </div>
     `;
 }
@@ -3161,7 +3129,7 @@ function createModalFooter() {
             <div class="flex flex-col sm:flex-row justify-between items-center gap-3">
                 <div class="text-xs sm:text-sm text-gray-600 flex items-center gap-2 order-2 sm:order-1">
                     <i class="fas fa-clock"></i>
-                    <span>Estimasi waktu: ~15-45 detik</span>
+                    <span>Estimasi waktu: ~1-20 detik</span>
                 </div>
                 <div class="flex gap-2 sm:gap-3 order-1 sm:order-2 w-full sm:w-auto">
                     <button type="button" onclick="closePdfModal(this)"
