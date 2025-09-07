@@ -24,7 +24,7 @@
         <div class="bg-white/90 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/20">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm font-medium text-gray-600">Online</p>
+                    <p class="text-sm font-medium text-gray-600">Available</p>
                     <p class="text-3xl font-bold text-green-600" id="online-phones">0</p>
                 </div>
                 <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center">
@@ -36,7 +36,7 @@
         <div class="bg-white/90 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/20">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm font-medium text-gray-600">Offline</p>
+                    <p class="text-sm font-medium text-gray-600">Unavailable</p>
                     <p class="text-3xl font-bold text-red-600 animate-blink " id="offline-phones">0</p>
                 </div>
                 <div class="w-12 h-12 bg-gradient-to-br from-red-500 to-pink-600 rounded-xl flex items-center justify-center">
@@ -245,14 +245,7 @@
         }
     }
 </script>
-<!-- <script>
-    @auth
-        window.userToken = @json(auth()->user()->createToken('map-token')->plainTextToken);
-    @else
-        window.userToken = null;
-        window.location.href = '/login';
-    @endauth
-</script> -->
+
 <script>
     window.userToken = "{{ $apiKey }}";
 </script>
